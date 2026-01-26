@@ -6,6 +6,9 @@
   programs.nix-ld.enable = true;
 
   environment.systemPackages = with pkgs; [
+    # llm cli
+    codex
+
     # c/c++
     gcc
     clang
@@ -34,7 +37,6 @@
     vhdl-ls
   ];
 
-  # Stupid STM32CubeIDE rules
   services.udev.packages = [
     pkgs.stlink
   ];

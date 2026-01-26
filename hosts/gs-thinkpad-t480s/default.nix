@@ -6,8 +6,7 @@
 
 {
   imports = [
-    ../../modules
-
+    ../../modules/default.nix
     ./hardware-configuration.nix
   ];
 

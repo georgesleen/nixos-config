@@ -17,9 +17,15 @@
   };
 
   outputs =
-    { nixpkgs, home-manager, ... }:
+    inputs@{
+      self,
+      nixpkgs,
+      home-manager,
+      ...
+    }:
     {
       nixosConfigurations.gs-thinkpad-t480s = nixpkgs.lib.nixosSystem {
+        specialArgs = { inherit inputs; };
         modules = [
           ./hosts/gs-thinkpad-t480s
 
