@@ -62,8 +62,9 @@
       name = "George Sleen";
       email = "147893275+georgeSleen@users.noreply.github.com";
     };
-    extraConfig = {
+    settings = {
       init.defaultBranch = "main";
+      pull.rebase = false;
     };
   };
 
