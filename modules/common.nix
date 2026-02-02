@@ -15,4 +15,13 @@
     tailscale # personal lan
     direnv # secrets and environment manager
   ];
+
+  # Swap caps and esc
+  services.xserver.xkb = {
+    layout = "us";
+    options = "caps:swapescape";
+  };
+
+  # Also swap caps and esc in TTY
+  console.useXkbConfig = true;
 }
