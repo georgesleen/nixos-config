@@ -1,16 +1,31 @@
-# GNOME tweaks and extensions
-
-{ config, pkgs, ... }:
-
+# modules/gnome.nix
 {
-  services.gnome.gnome-shell = {
-    enable = true;
-    extensions = with pkgs.gnomeExtensions; [
-      automatic-theme-switcher
-    ];
-  };
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
-  environment.systemPackages = with pkgs; [
-    gnome-extension-manager
+let
+  extensions = with pkgs.gnomeExtensions; [
+    night-theme-switcher
+    # add more here
+    # blur-my-shell
+    # dash-to-dock
   ];
+in
+{
+  # Append packages without referencing config.environment.systemPackages
+  environment.systemPackages = lib.mkAfter ([ pkgs.gnome-extension-manager ] ++ extensions);
+
+  home-manager.users.george-sleen = {
+    dconf.enable = true;
+
+    dconf.settings."org/gnome/shell" = {
+      disable-user-extensions = false;
+
+      # Append UUIDs safely (no recursion, still mergeable)
+      enabled-extensions = lib.mkAfter (map (e: e.extensionUuid) extensions);
+    };
+  };
 }
