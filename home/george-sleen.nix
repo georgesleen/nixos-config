@@ -19,13 +19,13 @@
   #     xxx
   # '';
 
-  # Enable the terminal shortcut in gnome
+  # Enable the terminal shortcut in GNOME
   dconf.enable = true;
 
   dconf.settings = {
     "org/gnome/settings-daemon/plugins/media-keys" = {
       custom-keybindings = [
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0"
+        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
       ];
     };
 
@@ -33,6 +33,10 @@
       name = "terminal";
       command = "kgx";
       binding = "<Control><Alt>t";
+    };
+
+    "org/gnome/desktop/input-sources" = {
+      xkb-options = [ "caps:swapescape" ];
     };
   };
 
