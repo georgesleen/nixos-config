@@ -27,6 +27,7 @@
     # embedded
     openocd
     stlink
+    gcc-arm-embedded
     tio
 
     # verilog
