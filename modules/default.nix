@@ -11,5 +11,6 @@
     ./virtualization.nix
     ./dev.nix
     ./lsp.nix
+    ./gnome.nix
   ];
 }
