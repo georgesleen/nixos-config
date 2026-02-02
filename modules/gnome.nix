@@ -3,10 +3,14 @@
 { config, pkgs, ... }:
 
 {
-  programs.gnome-shell = {
+  services.gnome.gnome-shell = {
     enable = true;
     extensions = with pkgs.gnomeExtensions; [
       automatic-theme-switcher
     ];
   };
+
+  environment.systemPackages = with pkgs; [
+    gnome-extension-manager
+  ];
 }
