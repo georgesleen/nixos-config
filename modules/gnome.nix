@@ -29,6 +29,7 @@ in
 
     dconf.settings."org/gnome/shell" = {
       disable-user-extensions = false;
+      disable-extension-version-validation = true;
 
       # Append UUIDs safely (no recursion, still mergeable)
       enabled-extensions = lib.mkAfter (map (e: e.extensionUuid) extensions);
@@ -40,13 +41,14 @@ in
       switch-windows-backward = [ "<Shift><Alt>Tab" ];
       switch-applications = [ ];
       switch-applications-backward = [ ];
+      minimize = [ "<Super>Down" ];
     };
 
     # Auto-hide the top bar but reveal on mouse-over.
     dconf.settings."org/gnome/shell/extensions/hidetopbar" = {
       enable-intellihide = true;
       show-in-overview = true;
-      mouse-sensitive = true;
+      mouse-sensitive = false;
       mouse-sensitive-fullscreen-window = true;
       hot-corner = false;
     };
