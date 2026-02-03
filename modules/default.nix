@@ -6,6 +6,7 @@
   # Import all module files here
   imports = [
     ./common.nix
+    ./fonts.nix
     ./btrfs.nix
     ./laptop.nix
     ./virtualization.nix

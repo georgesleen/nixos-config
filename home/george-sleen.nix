@@ -43,11 +43,11 @@
   programs.kitty = {
     enable = true;
     settings = {
-      font_family = "Monospace";
-      font_size = 12;
-      background_opacity = "0.95";
+      font_family = "JetBrains Mono, Monospace";
+      font_size = 11;
+      background_opacity = "0.92";
       hide_window_decorations = "yes";
-      window_padding_width = 6;
+      window_padding_width = 4;
     };
   };
 
