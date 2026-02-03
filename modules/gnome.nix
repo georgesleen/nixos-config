@@ -9,12 +9,16 @@
 let
   extensions = with pkgs.gnomeExtensions; [
     night-theme-switcher
+    undecorate
     # add more here
     # blur-my-shell
     # dash-to-dock
   ];
 in
 {
+  # Enable for night-theme-switcher
+  services.geoclue2.enable = true;
+  
   # Append packages without referencing config.environment.systemPackages
   environment.systemPackages = lib.mkAfter ([ pkgs.gnome-extension-manager ] ++ extensions);
 

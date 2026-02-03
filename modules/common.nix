@@ -14,7 +14,15 @@
     usbutils # for lsusb
     tailscale # personal lan
     direnv # secrets and environment manager
+    glib-networking # networking
   ];
+
+  # Networking
+  security.pki.certificates = [
+    #optional
+  ];
+
+  security.pki.installCACerts = true;
 
   # Swap caps and esc
   services.xserver.xkb = {
