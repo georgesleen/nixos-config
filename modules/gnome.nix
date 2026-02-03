@@ -12,6 +12,7 @@ let
     undecorate
     hide-top-bar
     no-title-bar
+    power-tracker
     # add more here
     # blur-my-shell
     # dash-to-dock
