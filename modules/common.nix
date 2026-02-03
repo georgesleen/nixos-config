@@ -7,6 +7,7 @@
     helix # text editor
     git # version control
     gh # github cli
+    kitty # terminal emulator
     rsync # file sync
     tree # file viewer
     xclip # clipboard interface for helix
@@ -15,6 +16,7 @@
     tailscale # personal lan
     direnv # secrets and environment manager
     glib-networking # networking
+    ripgrep # fast text search
   ];
 
   # Networking
