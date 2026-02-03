@@ -49,6 +49,7 @@
 
   # Enable the GNOME Desktop Environment.
   services.displayManager.gdm.enable = true;
+  services.displayManager.gdm.wayland = false; # force X11 (Xorg) session
   services.desktopManager.gnome.enable = true;
 
   # Exclude certain GNOME packages
