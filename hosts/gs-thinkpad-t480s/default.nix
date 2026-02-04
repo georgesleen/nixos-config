@@ -51,8 +51,7 @@
   services.displayManager.gdm.enable = true;
   services.desktopManager.gnome.enable = true;
 
-  # X11 undecorate toggle (disables Wayland when enabled).
-  services.x11Undecorate.enable = true;
+  services.displayManager.gdm.wayland = true;
 
   # Exclude certain GNOME packages
   environment.gnome.excludePackages = with pkgs; [
