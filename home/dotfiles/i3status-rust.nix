@@ -5,9 +5,6 @@
     [theme]
     name = "native"
 
-    [icons]
-    name = "awesome6"
-
     [[block]]
     block = "net"
     format = " {ssid} {signal_strength}% {ip} "

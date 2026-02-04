@@ -14,7 +14,7 @@ in
     in {
       modifier = mod;
       terminal = "kitty";
-      menu = "rofi -show drun";
+      menu = "bemenu-run --fn 'JetBrainsMono Nerd Font 12' --prompt 'run:' --ignorecase --list 10 --border 2 --tb '#1b1f27' --tf '#e6edf3' --fb '#1b1f27' --ff '#e6edf3' --nb '#1b1f27' --nf '#e6edf3' --hb '#7aa2f7' --hf '#0b0f16'";
       floating.modifier = mod;
       input."*".xkb_options = "caps:swapescape";
       input."type:touchpad".natural_scroll = "enabled";
@@ -29,7 +29,7 @@ in
       ];
       keybindings = {
         "${mod}+Return" = "exec kitty";
-        "${mod}+d" = "exec rofi -show drun";
+        "${mod}+d" = "exec bemenu-run --fn 'JetBrainsMono Nerd Font 12' --prompt 'run:' --ignorecase --list 10 --border 2 --tb '#1b1f27' --tf '#e6edf3' --fb '#1b1f27' --ff '#e6edf3' --nb '#1b1f27' --nf '#e6edf3' --hb '#7aa2f7' --hf '#0b0f16'";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
@@ -83,6 +83,9 @@ in
 
   services.mako = {
     enable = true;
+    settings = {
+      default-timeout = 5000;
+    };
   };
 
   services.swayidle = {
@@ -95,6 +98,29 @@ in
 
   services.clipman = {
     enable = true;
+  };
+
+  services.darkman = {
+    enable = true;
+    settings = {
+      lat = 49.2609;
+      lng = -123.1139;
+      usegeoclue = false;
+    };
+    lightModeScripts = {
+      gtk = ''
+        gsettings set org.gnome.desktop.interface gtk-theme "Adwaita"
+        gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
+        gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
+      '';
+    };
+    darkModeScripts = {
+      gtk = ''
+        gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-dark"
+        gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
+        gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
+      '';
+    };
   };
 
   programs.waybar.enable = false;

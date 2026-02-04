@@ -4,7 +4,7 @@
   home.packages = with pkgs; [
     nil # Nix LSP
     waybar
-    rofi
+    bemenu
     grim
     slurp
     wl-clipboard
