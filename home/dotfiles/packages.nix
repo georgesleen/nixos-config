@@ -21,5 +21,7 @@
     xdg-desktop-portal-wlr
     clipman
     i3status
+    networkmanagerapplet
+    blueman
   ];
 }
