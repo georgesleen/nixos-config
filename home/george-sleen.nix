@@ -1,148 +1,19 @@
 { config, pkgs, ... }:
 
-let
-  swayBg = builtins.path {
-    path = ../assets/background.png;
-    name = "background.png";
-  };
-in
 {
   home.username = "george-sleen";
   home.homeDirectory = "/home/george-sleen";
 
-  # link the configuration file in current directory to the specified location in home directory
-  # home.file."config/i3/wallpaper.jps".source = ./wallpaper.jpg;
-
-  # link all files in './scripts' to '~/.config/i3/scripts'
-  # home.file.".config/i3/scripts" = {
-  #   source = ./scripts;
-  #   recursive = true;
-  #   executable = true;
-  # };
-
-  # encode the file content in nix configuration file directly
-  # home.file.".xxx".text = ''
-  #     xxx
-  # '';
-
-  # Enable the terminal shortcut in GNOME
-  dconf.enable = true;
-
-  dconf.settings = {
-    "org/gnome/settings-daemon/plugins/media-keys" = {
-      custom-keybindings = [
-        "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0/"
-      ];
-    };
-
-    "org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/custom0" = {
-      name = "terminal";
-      command = "kitty";
-      binding = "<Control><Alt>t";
-    };
-
-    "org/gnome/desktop/input-sources" = {
-      xkb-options = [ "caps:swapescape" ];
-    };
-  };
-
-  programs.kitty = {
-    enable = true;
-    settings = {
-      font_family = "JetBrains Mono, Monospace";
-      font_size = 12;
-      background_opacity = "0.92";
-      hide_window_decorations = "yes";
-      window_padding_width = 4;
-    };
-  };
-
-  wayland.windowManager.sway = {
-    enable = true;
-    config = {
-      modifier = "Mod4";
-      terminal = "kitty";
-      output."*".bg = "${swayBg} fill";
-    };
-  };
-
-  # Helix config
-  programs.helix = {
-    enable = true;
-
-    settings = {
-      theme = "monokai_pro_machine";
-    };
-
-    languages = {
-      language = [
-        {
-          name = "nix";
-          language-servers = [ "nil" ];
-          formatter.command = "nixfmt";
-        }
-      ];
-
-      language-server = {
-        nil = {
-          command = "nil";
-        };
-      };
-    };
-  };
-
-  # Set cursor size and dpi for 4k monitor
-  xresources.properties = {
-    "Xcursor.size" = 16;
-    "Xft.dpi" = 172;
-  };
-
-  # Packages that should be installed to the user profile
-  home.packages = with pkgs; [
-    nil # Nix LSP
+  imports = [
+    ./dotfiles/bashrc.nix
+    ./dotfiles/dconf.nix
+    ./dotfiles/git.nix
+    ./dotfiles/helix.nix
+    ./dotfiles/kitty.nix
+    ./dotfiles/packages.nix
+    ./dotfiles/sway.nix
+    ./dotfiles/xresources.nix
   ];
-
-  # Basic git configuration
-  programs.git = {
-    enable = true;
-    settings.user = {
-      name = "George Sleen";
-      email = "147893275+georgeSleen@users.noreply.github.com";
-    };
-    settings = {
-      init.defaultBranch = "main";
-      pull.rebase = false;
-    };
-  };
-
-  # gh cli authentication
-  programs.gh = {
-    enable = true;
-    gitCredentialHelper = {
-      enable = true;
-    };
-  };
-
-  programs.bash = {
-    enable = true;
-    enableCompletion = true;
-    # TODO add your custom bashrc here
-    bashrcExtra = ''
-      export PATH="$PATH:$HOME/bin:$HOME/.local/bin:$HOME/go/bin"
-      PS1="\[\e[38;2;0;199;129m\]\u@\h:\w\[\e[0m\]\$ "
-      bind '"\C-?": backward-kill-word'
-      bind '"\C-h": backward-kill-word'
-    '';
-
-    # Set some aliases
-    shellAliases = { };
-  };
-
-  # Auto connect to virtualization
-  dconf.settings."org/virt-manager/virt-manager/connections" = {
-    autoconnect = [ "qemu:///system" ];
-    uris = [ "qemu:///system" ];
-  };
 
   # This value determines the home manager release that your
   # configuration is compatible with. This helps avoid breakage

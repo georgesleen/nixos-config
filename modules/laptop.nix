@@ -11,5 +11,6 @@
     jellyfin # media server
     vlc # media player
     kdePackages.okular # pdf viewer
+    brightnessctl # backlight control
   ];
 }

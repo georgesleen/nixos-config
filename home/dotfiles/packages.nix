@@ -1,0 +1,8 @@
+{ config, pkgs, ... }:
+
+{
+  home.packages = with pkgs; [
+    nil # Nix LSP
+    waybar
+  ];
+}
