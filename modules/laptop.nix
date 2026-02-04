@@ -10,6 +10,6 @@
     qbittorrent # torrenting client
     jellyfin # media server
     vlc # media player
-    kedPackages.okular # pdf viewer
+    kdePackages.okular # pdf viewer
   ];
 }
