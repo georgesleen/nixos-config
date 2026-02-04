@@ -55,6 +55,8 @@
 
   # Enable keyring so it unlocks on login outside GNOME too.
   services.gnome.gnome-keyring.enable = true;
+  security.pam.services.gdm.enableGnomeKeyring = true;
+  security.pam.services.gdm-password.enableGnomeKeyring = true;
 
   xdg.portal = {
     enable = true;
