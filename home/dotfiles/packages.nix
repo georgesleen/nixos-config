@@ -2,13 +2,14 @@
 
 {
   home.sessionVariables = {
-    XDG_DATA_DIRS = "$XDG_DATA_DIRS:$HOME/.local/share";
+    XDG_DATA_HOME = "$HOME/.local/share";
+    XDG_DATA_DIRS = "/usr/local/share:/usr/share:$HOME/.local/share";
   };
 
   home.packages = with pkgs; [
     nil # Nix LSP
     waybar
-    bemenu
+    dmenu
     grim
     slurp
     wl-clipboard
