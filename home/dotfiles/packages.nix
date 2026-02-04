@@ -4,6 +4,8 @@
   home.sessionVariables = {
     XDG_DATA_HOME = "$HOME/.local/share";
     XDG_DATA_DIRS = "/usr/local/share:/usr/share:$HOME/.local/share";
+    EDITOR = "hx";
+    VISUAL = "hx";
   };
 
   home.packages = with pkgs; [
