@@ -4,7 +4,7 @@
   options = {
     my.opacity = lib.mkOption {
       type = lib.types.str;
-      default = "0.92";
+      default = "0.94";
       description = "Global UI opacity used by terminal and compositor rules.";
     };
   };
