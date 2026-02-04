@@ -1,5 +1,11 @@
 { config, pkgs, ... }:
 
+let
+  swayBg = builtins.path {
+    path = ../assets/background.png;
+    name = "background.png";
+  };
+in
 {
   home.username = "george-sleen";
   home.homeDirectory = "/home/george-sleen";
@@ -48,6 +54,15 @@
       background_opacity = "0.92";
       hide_window_decorations = "yes";
       window_padding_width = 4;
+    };
+  };
+
+  wayland.windowManager.sway = {
+    enable = true;
+    config = {
+      modifier = "Mod4";
+      terminal = "kitty";
+      output."*".bg = "${swayBg} fill";
     };
   };
 
@@ -115,6 +130,8 @@
     bashrcExtra = ''
       export PATH="$PATH:$HOME/bin:$HOME/.local/bin:$HOME/go/bin"
       PS1="\[\e[38;2;0;199;129m\]\u@\h:\w\[\e[0m\]\$ "
+      bind '"\C-?": backward-kill-word'
+      bind '"\C-h": backward-kill-word'
     '';
 
     # Set some aliases

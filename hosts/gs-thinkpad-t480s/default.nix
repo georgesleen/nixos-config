@@ -53,6 +53,12 @@
 
   services.displayManager.gdm.wayland = true;
 
+  # Enable Sway (Wayland) alongside GNOME.
+  programs.sway = {
+    enable = true;
+    extraPackages = with pkgs; [ swaybg ];
+  };
+
   # Exclude certain GNOME packages
   environment.gnome.excludePackages = with pkgs; [
     # baobab # disk usage analyzer
