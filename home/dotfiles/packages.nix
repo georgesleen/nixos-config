@@ -4,11 +4,12 @@
   home.packages = with pkgs; [
     nil # Nix LSP
     waybar
-    rofi-wayland
+    rofi
     grim
     slurp
     wl-clipboard
     mako
+    libnotify
     swayidle
     swaylock
     xdg-desktop-portal-wlr

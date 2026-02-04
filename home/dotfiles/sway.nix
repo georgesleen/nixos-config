@@ -23,8 +23,8 @@ in
         {
           mode = "hide";
           hiddenState = "hide";
-          modifier = mod;
           statusCommand = "i3status-rs";
+          extraConfig = "modifier ${mod}";
         }
       ];
       keybindings = {
@@ -75,8 +75,8 @@ in
         "XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
         "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
         "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
-        "Print" = "exec sh -c 'mkdir -p ~/Screenshots; grim - | tee ~/Screenshots/$(date +%F_%H-%M-%S).png | wl-copy'";
-        "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; slurp -d | grim -g - - | tee ~/Screenshots/$(date +%F_%H-%M-%S).png | wl-copy'";
+        "Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; grim - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
+        "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
       };
     };
   };
