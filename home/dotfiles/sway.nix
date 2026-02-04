@@ -14,7 +14,7 @@ in
     in {
       modifier = mod;
       terminal = "kitty";
-      menu = "dmenu_run";
+      menu = "i3-dmenu-desktop --dmenu='dmenu -i'";
       floating.modifier = mod;
       input."*".xkb_options = "caps:swapescape";
       input."type:touchpad".natural_scroll = "enabled";
@@ -29,7 +29,7 @@ in
       ];
       keybindings = {
         "${mod}+Return" = "exec kitty";
-        "${mod}+d" = "exec dmenu_run";
+        "${mod}+d" = "exec i3-dmenu-desktop --dmenu='dmenu -i'";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
@@ -108,6 +108,7 @@ in
     enable = true;
     settings = {
       default-timeout = 5000;
+      max-icon-size = 0;
     };
   };
 
