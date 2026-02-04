@@ -13,5 +13,6 @@
     ./dev.nix
     ./lsp.nix
     ./gnome.nix
+    ./x11-undecorate.nix
   ];
 }
