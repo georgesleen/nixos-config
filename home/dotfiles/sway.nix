@@ -105,7 +105,11 @@ in
         };
       };
     };
-    extraConfig = "";
+    extraConfig = ''
+      # Keep kitty transparent even when fullscreen.
+      for_window [app_id="kitty"] opacity ${config.my.opacity}
+      exec_always swaymsg "[app_id=\"kitty\"] opacity ${config.my.opacity}"
+    '';
   };
 
   services.mako = {

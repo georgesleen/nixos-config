@@ -53,6 +53,9 @@
 
   services.displayManager.gdm.wayland = true;
 
+  # Enable keyring so it unlocks on login outside GNOME too.
+  services.gnome.gnome-keyring.enable = true;
+
   xdg.portal = {
     enable = true;
     wlr.enable = true;

@@ -23,6 +23,8 @@
 
       # Match prompt green (RGB 0,199,129)
       set -g status-style "fg=#00c781,bg=default"
+      set -g status-separator "#[fg=#00c781]|#[default]"
+      set -g window-status-separator "#[fg=#00c781]|#[default]"
     '';
   };
 }
