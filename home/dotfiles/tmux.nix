@@ -20,6 +20,9 @@
 
       # Allow mouse drag → clipboard copy
       bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "xclip -selection clipboard -i"
+
+      # Match prompt green (RGB 0,199,129)
+      set -g status-style "fg=#00c781,bg=default"
     '';
   };
 }
