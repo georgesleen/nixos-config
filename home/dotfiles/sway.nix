@@ -2,7 +2,7 @@
 
 let
   swayBg = builtins.path {
-    path = ../assets/background.png;
+    path = ../../assets/background.png;
     name = "background.png";
   };
 in
