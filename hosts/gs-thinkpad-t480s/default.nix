@@ -53,6 +53,11 @@
 
   services.displayManager.gdm.wayland = true;
 
+  xdg.portal = {
+    enable = true;
+    wlr.enable = true;
+  };
+
   # Enable Sway (Wayland) alongside GNOME.
   programs.sway = {
     enable = true;

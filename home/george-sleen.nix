@@ -9,9 +9,12 @@
     ./dotfiles/dconf.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
+    ./dotfiles/i3status-rust.nix
     ./dotfiles/kitty.nix
     ./dotfiles/packages.nix
+    ./dotfiles/rofi.nix
     ./dotfiles/sway.nix
+    ./dotfiles/tmux.nix
     ./dotfiles/xresources.nix
   ];
 
