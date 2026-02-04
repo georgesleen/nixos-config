@@ -23,6 +23,8 @@ in
         "XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
         "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
         "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
+        "Print" = "exec sh -c 'mkdir -p ~/Screenshots; grim - | tee ~/Screenshots/$(date +%F_%H-%M-%S).png | wl-copy'";
+        "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; slurp -d | grim -g - - | tee ~/Screenshots/$(date +%F_%H-%M-%S).png | wl-copy'";
       };
     };
   };
