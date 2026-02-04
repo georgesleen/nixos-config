@@ -1,6 +1,10 @@
 { config, pkgs, ... }:
 
 {
+  home.sessionVariables = {
+    XDG_DATA_DIRS = "$XDG_DATA_DIRS:$HOME/.local/share";
+  };
+
   home.packages = with pkgs; [
     nil # Nix LSP
     waybar
@@ -14,6 +18,6 @@
     swaylock
     xdg-desktop-portal-wlr
     clipman
-    i3status-rust
+    i3status
   ];
 }
