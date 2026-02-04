@@ -2,8 +2,8 @@
 
 {
   xdg.configFile."i3status-rust/config.toml".text = ''
-    [theme]
-    name = "native"
+    theme = "native"
+    icons = "awesome6"
 
     [[block]]
     block = "net"
