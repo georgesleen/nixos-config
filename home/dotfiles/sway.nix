@@ -106,6 +106,10 @@ in
       };
     };
     extraConfig = ''
+      # Remove borders/title bars.
+      default_border none
+      default_floating_border none
+
       # Keep kitty transparent even when fullscreen.
       for_window [app_id="kitty"] opacity ${config.my.opacity}
       exec_always swaymsg "[app_id=\"kitty\"] opacity ${config.my.opacity}"
