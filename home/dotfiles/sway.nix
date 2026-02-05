@@ -25,7 +25,7 @@ in
         {
           mode = "hide";
           hiddenState = "hide";
-          statusCommand = "i3status";
+          statusCommand = "sh -c 'i3status -c ~/.config/i3status/config 2>/dev/null'";
           extraConfig = "modifier ${mod}";
         }
       ];
