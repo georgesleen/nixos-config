@@ -17,6 +17,8 @@
     }
 
     battery all {
+      last_full_capacity = true
+      integer_battery_capacity = true
       format = "%status %percentage %remaining"
       format_down = ""
       status_chr = "⚡"
