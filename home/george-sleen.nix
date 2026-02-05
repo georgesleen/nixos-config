@@ -6,6 +6,7 @@
 
   imports = [
     ./dotfiles/bashrc.nix
+    ./dotfiles/battery.nix
     ./dotfiles/dconf.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix

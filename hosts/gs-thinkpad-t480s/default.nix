@@ -58,6 +58,20 @@
   security.pam.services.gdm.enableGnomeKeyring = true;
   security.pam.services.gdm-password.enableGnomeKeyring = true;
 
+  services.logind.settings.Login = {
+    CriticalPowerAction = "hibernate";
+  };
+
+  # Battery charge thresholds (ThinkPad)
+  services.tlp = {
+    enable = true;
+    settings = {
+      START_CHARGE_THRESH_BAT0 = 75;
+      STOP_CHARGE_THRESH_BAT0 = 80;
+    };
+  };
+  services.power-profiles-daemon.enable = false;
+
   xdg.portal = {
     enable = true;
     wlr.enable = true;
