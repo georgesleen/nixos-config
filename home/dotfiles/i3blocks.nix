@@ -13,7 +13,6 @@ let
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    rate="$(echo "$rate" | tr -d ' ')"
     echo "Pwr $rate"
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
@@ -83,7 +82,7 @@ let
     total="$(echo "$line" | awk '{print $2}')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "Mem $used_fmt/$total_fmt""MiB"
+    echo "Mem $used_fmt/$total_fmt MiB"
   '';
   diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
     set -euo pipefail
@@ -92,7 +91,7 @@ let
     total="$(echo "$line" | awk '{print $2}' | tr -d 'G')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "Disk $used_fmt/$total_fmt""GiB"
+    echo "Disk $used_fmt/$total_fmt GiB"
   '';
 in
 {
