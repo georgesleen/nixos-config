@@ -77,6 +77,15 @@
   };
   services.power-profiles-daemon.enable = false;
 
+  systemd.services.powertop-autotune = {
+    description = "Powertop auto-tune";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.powertop}/bin/powertop --auto-tune";
+    };
+  };
+
   xdg.portal = {
     enable = true;
     wlr.enable = true;

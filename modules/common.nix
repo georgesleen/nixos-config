@@ -18,6 +18,7 @@
     glib-networking # networking
     ripgrep # fast text search
     btop # system monitoring tool
+    powertop # power monitoring/tuning
   ];
 
   # Networking
