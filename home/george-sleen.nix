@@ -10,7 +10,8 @@
     ./dotfiles/dconf.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
-    ./dotfiles/i3status-rust.nix
+    ./dotfiles/i3status.nix
+    ./dotfiles/i3blocks.nix
     ./dotfiles/kitty.nix
     ./dotfiles/packages.nix
     ./dotfiles/sway.nix

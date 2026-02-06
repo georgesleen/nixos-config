@@ -25,7 +25,7 @@ in
         {
           mode = "hide";
           hiddenState = "hide";
-          statusCommand = "${pkgs.i3status-rust}/bin/i3status-rs ${config.xdg.configHome}/i3status-rust/config.toml";
+          statusCommand = "${pkgs.i3blocks}/bin/i3blocks -c ${config.xdg.configHome}/i3blocks/config";
           extraConfig = "modifier ${mod}";
         }
       ];
@@ -89,8 +89,6 @@ in
         "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
       };
       startup = [
-        { command = "nm-applet"; }
-        { command = "blueman-applet"; }
       ];
       modes = {
         resize = {

@@ -9,6 +9,9 @@
     }
 
     order += "wireless _first_"
+    order += "load"
+    order += "memory"
+    order += "disk /"
     order += "battery all"
     order += "tztime local"
 
@@ -26,6 +29,18 @@
       status_bat = ""
       status_unk = "?"
       status_full = ""
+    }
+
+    load {
+      format = "Load %1min"
+    }
+
+    memory {
+      format = "Mem %used"
+    }
+
+    disk "/" {
+      format = "Disk %avail"
     }
 
     tztime local {
