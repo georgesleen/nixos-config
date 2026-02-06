@@ -38,6 +38,11 @@
   # Enable networking
   networking.networkmanager.enable = true;
 
+  environment.variables = {
+    EDITOR = "hx";
+    VISUAL = "hx";
+  };
+
   # Set your time zone
   time.timeZone = "America/Vancouver";
 
