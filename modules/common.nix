@@ -17,6 +17,7 @@
     direnv # secrets and environment manager
     glib-networking # networking
     ripgrep # fast text search
+    btop # system monitoring tool
   ];
 
   # Networking
