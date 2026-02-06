@@ -75,6 +75,15 @@ let
     cores="$(${pkgs.coreutils}/bin/nproc)"
     echo "Load $load/$cores"
   '';
+  memoryBlock = pkgs.writeShellScript "i3blocks-memory" ''
+    set -euo pipefail
+    line="$(${pkgs.procps}/bin/free -m | awk '/Mem:/ {print $3, $2}')"
+    used="$(echo "$line" | awk '{print $1}')"
+    total="$(echo "$line" | awk '{print $2}')"
+    used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
+    total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
+    echo "Mem $used_fmt/$total_fmt MiB"
+  '';
 in
 {
   xdg.configFile."i3blocks/config".text = ''
@@ -91,13 +100,7 @@ in
     interval=10
 
     [memory]
-    command=${pkgs.procps}/bin/free -m | awk '
-      /Mem:/ {
-        used=$3; total=$2;
-        gsub(/([0-9])([0-9]{3})$/, "\\1_\\2", used);
-        gsub(/([0-9])([0-9]{3})$/, "\\1_\\2", total);
-        print "Mem " used "/" total "MiB"
-      }'
+    command=${memoryBlock}
     interval=10
 
     [disk]
