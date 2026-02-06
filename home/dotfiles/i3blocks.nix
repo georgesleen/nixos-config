@@ -6,14 +6,15 @@ let
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "PWR n/a"
+      echo "Pwr n/a"
       exit 0
     fi
     rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{print $2, $3}')
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    echo "PWR $rate"
+    rate="$(echo "$rate" | tr -d ' ')"
+    echo "Pwr $rate"
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
     set -euo pipefail
@@ -34,7 +35,7 @@ let
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "BAT n/a"
+      echo "Bat n/a"
       exit 0
     fi
     info="$("$upower_bin" -i "$bat")"
@@ -64,16 +65,16 @@ let
     tte_fmt="$(fmt_time "$tte")"
     ttf_fmt="$(fmt_time "$ttf")"
     case "$state" in
-      charging) echo "BAT $pct (chg) $ttf_fmt" ;;
-      fully-charged) echo "BAT $pct (full)" ;;
-      *) echo "BAT $pct $tte_fmt" ;;
+      charging) echo "Bat $pct (chg) $ttf_fmt" ;;
+      fully-charged) echo "Bat $pct (full)" ;;
+      *) echo "Bat $pct $tte_fmt" ;;
     esac
   '';
   loadBlock = pkgs.writeShellScript "i3blocks-load" ''
     set -euo pipefail
     load="$(${pkgs.coreutils}/bin/uptime | awk -F'load average: ' '{split($2,a,","); print a[1]}')"
     cores="$(${pkgs.coreutils}/bin/nproc)"
-    echo "Load $load/$cores"
+    echo "Load $load/$cores""c"
   '';
   memoryBlock = pkgs.writeShellScript "i3blocks-memory" ''
     set -euo pipefail
@@ -82,7 +83,16 @@ let
     total="$(echo "$line" | awk '{print $2}')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "Mem $used_fmt/$total_fmt MiB"
+    echo "Mem $used_fmt/$total_fmt""MiB"
+  '';
+  diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
+    set -euo pipefail
+    line="$(${pkgs.coreutils}/bin/df -BG / | awk 'NR==2 {print $3, $2}')"
+    used="$(echo "$line" | awk '{print $1}' | tr -d 'G')"
+    total="$(echo "$line" | awk '{print $2}' | tr -d 'G')"
+    used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
+    total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
+    echo "Disk $used_fmt/$total_fmt""GiB"
   '';
 in
 {
@@ -104,7 +114,7 @@ in
     interval=10
 
     [disk]
-    command=${pkgs.coreutils}/bin/df -h / | awk 'NR==2 {print "Disk " $4}'
+    command=${diskBlock}
     interval=60
 
     [battery]

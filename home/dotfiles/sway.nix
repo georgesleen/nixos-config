@@ -19,7 +19,7 @@ in
       input."*".xkb_options = "caps:swapescape";
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
-      input."type:touchpad".pointer_accel = "0.1";
+      input."type:touchpad".pointer_accel = "0.7";
       output."*".bg = "${swayBg} fill";
       bars = [
         {
