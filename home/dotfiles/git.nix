@@ -8,6 +8,7 @@
       email = "147893275+georgeSleen@users.noreply.github.com";
     };
     settings = {
+      core.editor = "hx";
       init.defaultBranch = "main";
       pull.rebase = false;
     };

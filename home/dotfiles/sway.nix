@@ -25,7 +25,17 @@ in
         {
           mode = "hide";
           hiddenState = "hide";
+          position = "top";
           statusCommand = "${pkgs.i3blocks}/bin/i3blocks -c ${config.xdg.configHome}/i3blocks/config";
+          fonts = {
+            names = [ "JetBrains Mono" ];
+            size = 10.0;
+          };
+          colors = {
+            background = "#000000AA";
+            statusline = "#ffffffff";
+            separator = "#666666ff";
+          };
           extraConfig = "modifier ${mod}";
         }
       ];

@@ -40,10 +40,33 @@ let
     info="$("$upower_bin" -i "$bat")"
     pct="$(printf "%s\n" "$info" | awk '/percentage/ {print $2}')"
     state="$(printf "%s\n" "$info" | awk '/state/ {print $2}')"
+    tte="$(printf "%s\n" "$info" | awk '/time to empty/ {print $4, $5}')"
+    ttf="$(printf "%s\n" "$info" | awk '/time to full/ {print $4, $5}')"
+    fmt_time() {
+      local n="$1"
+      if [ -z "$n" ]; then
+        echo ""
+        return
+      fi
+      local hrs mins
+      hrs=$(printf "%.0f" "$(echo "$n" | awk '{print $1}')")
+      mins=$(printf "%.0f" "$(echo "$n" | awk '{print ($1 - int($1)) * 60}')")
+      if [ "$mins" -ge 60 ]; then
+        hrs=$((hrs+1))
+        mins=0
+      fi
+      if [ "$hrs" -gt 0 ]; then
+        printf "%dh%02dm" "$hrs" "$mins"
+      else
+        printf "%dm" "$mins"
+      fi
+    }
+    tte_fmt="$(fmt_time "$tte")"
+    ttf_fmt="$(fmt_time "$ttf")"
     case "$state" in
-      charging) echo "BAT $pct (chg)" ;;
+      charging) echo "BAT $pct (chg) $ttf_fmt" ;;
       fully-charged) echo "BAT $pct (full)" ;;
-      *) echo "BAT $pct" ;;
+      *) echo "BAT $pct $tte_fmt" ;;
     esac
   '';
   loadBlock = pkgs.writeShellScript "i3blocks-load" ''
@@ -68,7 +91,13 @@ in
     interval=10
 
     [memory]
-    command=${pkgs.procps}/bin/free -g | awk '/Mem:/ {print "Mem " $3 "/" $2 "GiB"}'
+    command=${pkgs.procps}/bin/free -m | awk '
+      /Mem:/ {
+        used=$3; total=$2;
+        gsub(/([0-9])([0-9]{3})$/, "\\1_\\2", used);
+        gsub(/([0-9])([0-9]{3})$/, "\\1_\\2", total);
+        print "Mem " used "/" total "MiB"
+      }'
     interval=10
 
     [disk]
