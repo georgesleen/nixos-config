@@ -23,6 +23,7 @@
     xdg-desktop-portal-wlr
     clipman
     i3status
+    i3status-rust
     networkmanagerapplet
     blueman
   ];

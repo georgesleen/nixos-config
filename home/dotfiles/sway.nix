@@ -25,7 +25,7 @@ in
         {
           mode = "hide";
           hiddenState = "hide";
-          statusCommand = "sh -c 'i3status -c ~/.config/i3status/config 2>/dev/null'";
+          statusCommand = "${pkgs.i3status-rust}/bin/i3status-rs ${config.xdg.configHome}/i3status-rust/config.toml";
           extraConfig = "modifier ${mod}";
         }
       ];
