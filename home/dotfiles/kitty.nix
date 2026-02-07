@@ -16,6 +16,7 @@
       settings = {
         font_family = "JetBrains Mono";
         font_size = 12;
+        disable_ligatures = "always";
         background_opacity = config.my.opacity;
         hide_window_decorations = "yes";
         window_padding_width = 4;
