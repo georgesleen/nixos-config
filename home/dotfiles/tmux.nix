@@ -5,7 +5,8 @@
     enable = true;
     extraConfig = ''
       set -sg escape-time 0
-      set-option -ga terminal-overrides ",xterm-256color:Tc"
+      set -g default-terminal "tmux-256color"
+      set -as terminal-overrides ",*:RGB"
       set -g mouse on
 
       # use vi copy/scroll mode
