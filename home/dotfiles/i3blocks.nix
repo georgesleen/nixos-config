@@ -93,6 +93,17 @@ let
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
     echo "Disk $used_fmt/$total_fmt GiB"
   '';
+  volumeBlock = pkgs.writeShellScript "i3blocks-volume" ''
+    set -euo pipefail
+    vol="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print $2}')"
+    if [ -z "$vol" ]; then
+      echo "Vol n/a"
+      exit 0
+    fi
+    pct="$(echo "$vol" | awk '{printf "%d", $1 * 100}')"
+    mute="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | rg -q MUTED && echo " (muted)" || echo "")"
+    echo "Vol $pct%$mute"
+  '';
 in
 {
   xdg.configFile."i3blocks/config".text = ''
@@ -103,6 +114,10 @@ in
     [wireless]
     command=${wirelessBlock}
     interval=10
+
+    [volume]
+    command=${volumeBlock}
+    interval=2
 
     [load]
     command=${loadBlock}
