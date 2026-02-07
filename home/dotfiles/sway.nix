@@ -156,16 +156,16 @@ in
     };
     lightModeScripts = {
       gtk = ''
-        gsettings set org.gnome.desktop.interface gtk-theme "Adwaita"
-        gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
-        gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
+        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface gtk-theme "Adwaita"
+        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
+        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
       '';
     };
     darkModeScripts = {
       gtk = ''
-        gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-dark"
-        gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
-        gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
+        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface gtk-theme "Adwaita-dark"
+        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
+        ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
       '';
     };
   };
