@@ -10,10 +10,11 @@
   };
 
   config = {
+    fonts.fontconfig.enable = true;
     programs.kitty = {
       enable = true;
       settings = {
-        font_family = "JetBrains Mono, Monospace";
+        font_family = "JetBrains Mono";
         font_size = 12;
         background_opacity = config.my.opacity;
         hide_window_decorations = "yes";
