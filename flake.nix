@@ -14,6 +14,9 @@
       # to avoid problems cause by different versions of nixpkgs.
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Waveforms
+    waveforms.url = "github:liff/waveforms-flake";
   };
 
   outputs =
@@ -21,6 +24,7 @@
       self,
       nixpkgs,
       home-manager,
+      waveforms,
       ...
     }:
     {
@@ -28,6 +32,7 @@
         specialArgs = { inherit inputs; };
         modules = [
           ./hosts/gs-thinkpad-t480s
+          waveforms.nixosModule
 
           # Make home-manager as a module of nixos
           # so that home-manager configuration will be deployed automatically when executing 'nixos-rebuild switch'
