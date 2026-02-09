@@ -19,6 +19,7 @@
     ripgrep # fast text search
     btop # system monitoring tool
     powertop # power monitoring/tuning
+    unzip # archive extraction tool
   ];
 
   # Networking
