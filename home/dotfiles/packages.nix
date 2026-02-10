@@ -26,6 +26,9 @@
     i3blocks
     iw
     networkmanagerapplet
+    harper
+    marksman
+    nodePackages.prettier
     blueman
   ];
 }
