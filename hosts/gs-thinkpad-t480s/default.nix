@@ -67,6 +67,10 @@
     CriticalPowerAction = "hibernate";
   };
 
+  # Enable hibernate resume from swap.
+  boot.resumeDevice = "/dev/disk/by-uuid/9300b555-a316-4f12-8d44-2990a19f107e";
+  boot.kernelParams = [ "resume=UUID=9300b555-a316-4f12-8d44-2990a19f107e" ];
+
   # Battery charge thresholds (ThinkPad)
   services.tlp = {
     enable = true;
