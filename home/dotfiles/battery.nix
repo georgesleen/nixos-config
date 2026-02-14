@@ -19,7 +19,7 @@ let
       exit 0
     fi
 
-    cache_dir="$\{XDG_CACHE_HOME:-$HOME/.cache}/battery-notify"
+    cache_dir="''${XDG_CACHE_HOME:-$HOME/.cache}/battery-notify"
     mkdir -p "$cache_dir"
     last_file="$cache_dir/last"
     last="none"
@@ -33,8 +33,10 @@ let
     fi
 
     if [ "$pct" -le 5 ] && [ "$last" != "5" ]; then
-      "$notify_send" -u critical "Battery critical" "Battery at $pct% — hibernating soon"
+      "$notify_send" -u critical "Battery critical" "Battery at $pct% — hibernating now"
       echo "5" > "$last_file"
+      systemctl --user stop battery-notify.timer || true
+      systemctl hibernate
       exit 0
     fi
 

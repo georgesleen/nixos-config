@@ -40,8 +40,9 @@ let
     info="$("$upower_bin" -i "$bat")"
     pct="$(printf "%s\n" "$info" | awk '/percentage/ {print $2}')"
     state="$(printf "%s\n" "$info" | awk '/state/ {print $2}')"
-    tte="$(printf "%s\n" "$info" | awk '/time to empty/ {print $4, $5}')"
-    ttf="$(printf "%s\n" "$info" | awk '/time to full/ {print $4, $5}')"
+    energy="$(printf "%s\n" "$info" | awk '/energy:/ {print $2; exit}')"
+    energy_full="$(printf "%s\n" "$info" | awk '/energy-full:/ {print $2; exit}')"
+    rate="$(printf "%s\n" "$info" | awk '/energy-rate:/ {print $2; exit}')"
     fmt_time() {
       local n="$1"
       if [ -z "$n" ]; then
@@ -61,8 +62,18 @@ let
         printf "%dm" "$mins"
       fi
     }
-    tte_fmt="$(fmt_time "$tte")"
-    ttf_fmt="$(fmt_time "$ttf")"
+    tte_hours=""
+    ttf_hours=""
+    if [ -n "$rate" ] && awk -v r="$rate" 'BEGIN{exit (r>0.1)?0:1}'; then
+      if [ -n "$energy" ]; then
+        tte_hours="$(awk -v e="$energy" -v r="$rate" 'BEGIN{printf "%.2f", e/r}')"
+      fi
+      if [ -n "$energy_full" ] && [ -n "$energy" ]; then
+        ttf_hours="$(awk -v ef="$energy_full" -v e="$energy" -v r="$rate" 'BEGIN{printf "%.2f", (ef-e)/r}')"
+      fi
+    fi
+    tte_fmt="$(fmt_time "$tte_hours")"
+    ttf_fmt="$(fmt_time "$ttf_hours")"
     case "$state" in
       charging) echo "Bat $pct (chg) $ttf_fmt" ;;
       fully-charged) echo "Bat $pct (full)" ;;

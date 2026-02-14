@@ -20,6 +20,7 @@
     btop # system monitoring tool
     powertop # power monitoring/tuning
     unzip # archive extraction tool
+    ffmpeg # Media tool
   ];
 
   # Networking
