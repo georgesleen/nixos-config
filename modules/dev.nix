@@ -36,6 +36,9 @@
 
     # vhdl
     vhdl-ls
+
+    # typst
+    typst
   ];
 
   services.udev.packages = [
