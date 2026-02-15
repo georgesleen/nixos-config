@@ -218,6 +218,9 @@
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
+  # Reduce Wi-Fi power usage
+  networking.networkmanager.wifi.powersave = true;
+
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
   # networking.firewall.allowedUDPPorts = [ ... ];
