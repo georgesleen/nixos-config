@@ -99,6 +99,7 @@ in
         "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
       };
       startup = [
+        { command = "nm-applet"; }
       ];
       modes = {
         resize = {

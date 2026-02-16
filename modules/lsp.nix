@@ -20,7 +20,7 @@
     ruff
     black
     pyright
-    python-lsp-server
+    python3Packages.python-lsp-server
 
     # javascript/typescript
     typescript
