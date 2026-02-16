@@ -16,6 +16,11 @@
           formatter.command = "nixfmt";
         }
         {
+          name = "python";
+          language-servers = [ "pylsp" ];
+          formatter.command = "black";
+        }
+        {
           name = "markdown";
           language-servers = [ "harper" "marksman" ];
           formatter.command = "prettier";
@@ -38,6 +43,9 @@
         };
         marksman = {
           command = "marksman";
+        };
+        pylsp = {
+          command = "pylsp";
         };
         tinymist = {
           command = "tinymist";
