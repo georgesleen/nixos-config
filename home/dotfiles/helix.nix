@@ -21,6 +21,11 @@
           formatter.command = "prettier";
           formatter.args = [ "--parser" "markdown" "--print-width" "80" "--prose-wrap" "always" ];
         }
+        {
+          name = "typst";
+          language-servers = [ "tinymist" "harper" ];
+          formatter.command = "typstyle";
+        }
       ];
 
       language-server = {
@@ -33,6 +38,9 @@
         };
         marksman = {
           command = "marksman";
+        };
+        tinymist = {
+          command = "tinymist";
         };
       };
     };

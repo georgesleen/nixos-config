@@ -25,6 +25,7 @@
 
     # typst
     tinymist
+    typstyle
 
     # bash
     bash-language-server
