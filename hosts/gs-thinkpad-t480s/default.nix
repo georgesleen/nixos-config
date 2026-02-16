@@ -8,6 +8,7 @@
   imports = [
     ../../modules/default.nix
     ./hardware-configuration.nix
+    ./power.nix
   ];
 
   # Enable experimental features
@@ -63,32 +64,6 @@
   security.pam.services.gdm.enableGnomeKeyring = true;
   security.pam.services.gdm-password.enableGnomeKeyring = true;
 
-  services.logind.settings.Login = {
-    CriticalPowerAction = "hibernate";
-  };
-
-  # Enable hibernate resume from swap.
-  boot.resumeDevice = "/dev/disk/by-uuid/9300b555-a316-4f12-8d44-2990a19f107e";
-  boot.kernelParams = [ "resume=UUID=9300b555-a316-4f12-8d44-2990a19f107e" ];
-
-  # Battery charge thresholds (ThinkPad)
-  services.tlp = {
-    enable = true;
-    settings = {
-      START_CHARGE_THRESH_BAT0 = 75;
-      STOP_CHARGE_THRESH_BAT0 = 80;
-    };
-  };
-  services.power-profiles-daemon.enable = false;
-
-  systemd.services.powertop-autotune = {
-    description = "Powertop auto-tune";
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.powertop}/bin/powertop --auto-tune";
-    };
-  };
 
   xdg.portal = {
     enable = true;
@@ -198,12 +173,6 @@
     libimobiledevice # USB iPhone tethering
   ];
 
-  # Enable iPhone tethering
-  services.usbmuxd.enable = true;
-  systemd.services.usbmuxd.serviceConfig = {
-    TimeoutStopSec = "10s";
-    KillMode = "mixed";
-  };
 
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
@@ -218,8 +187,6 @@
   # Enable the OpenSSH daemon.
   services.openssh.enable = true;
 
-  # Reduce Wi-Fi power usage
-  networking.networkmanager.wifi.powersave = true;
 
   # Open ports in the firewall.
   # networking.firewall.allowedTCPPorts = [ ... ];
