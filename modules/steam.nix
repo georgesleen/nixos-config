@@ -3,5 +3,5 @@
 { config, pkgs, ... }:
 
 {
-  programs.steam.enable = true;
+  programs.steam.enable = false;
 }

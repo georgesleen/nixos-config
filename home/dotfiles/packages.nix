@@ -25,7 +25,7 @@
     i3status
     i3blocks
     iw
-    networkmanagerapplet
+    networkmanager_dmenu
     harper
     marksman
     nodePackages.prettier
