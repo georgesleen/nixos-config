@@ -1,6 +1,6 @@
 # Packages for my laptop
 
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   environment.systemPackages = with pkgs; [
@@ -15,5 +15,9 @@
     kicad # Schematic capture and PCB design
     zed-editor # Code editor
     zoom # Video conferencing
+  ];
+
+  nixpkgs.overlays = [
+    inputs.stm32cubeide.overlays.default
   ];
 }

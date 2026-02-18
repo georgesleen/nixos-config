@@ -1,13 +1,13 @@
 # Development tools
 
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, ... }:
 
 {
   programs.nix-ld.enable = true;
 
   environment.systemPackages = with pkgs; [
     # llm cli
-    codex
+    inputs.codex-cli-nix.packages.${pkgs.system}.default
 
     # c/c++
     gcc
