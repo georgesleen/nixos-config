@@ -38,4 +38,10 @@
 
   # Also swap caps and esc in TTY
   console.useXkbConfig = true;
+
+  # Tailscale daemon
+  services.tailscale = {
+    enable = true;
+    extraUpFlags = [ "--ssh" ];
+  };
 }
