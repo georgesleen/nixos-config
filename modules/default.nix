@@ -14,5 +14,6 @@
     ./lsp.nix
     ./gnome.nix
     ./vscode.nix
+    ./system-python.nix
   ];
 }
