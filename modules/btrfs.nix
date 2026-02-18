@@ -5,6 +5,10 @@
   environment.systemPackages = with pkgs; [
     snapper
     inputs.nixpkgs-24_11.legacyPackages.${pkgs.system}.btrfs-assistant
+    btrfs-progs
+    btrfs-snap
+    btrfs-list
+    btrfs-heatmap
   ];
 
   services.snapper = {
