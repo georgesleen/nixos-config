@@ -1,8 +1,0 @@
-[0;1;32m●[0m battery-notify.timer - Battery notification timer
-     Loaded: loaded (]8;;file://gs-thinkpad-t480s/home/george-sleen/.config/systemd/user/battery-notify.timer\/home/george-sleen/.config/systemd/user/battery-notify.timer]8;;\; [0;1;32menabled[0m; preset: ignored)
-     Active: [0;1;32mactive (waiting)[0m since Mon 2026-02-16 20:11:32 PST; 1 day 1h ago
- Invocation: 0b375c7cf5c143658e8395daec0412f3
-    Trigger: Tue 2026-02-17 21:37:58 PST; 1min 52s left
-   Triggers: [0;1;31m●[0m battery-notify.service
-
-Feb 16 20:11:32 gs-thinkpad-t480s systemd[7435]: Started Battery notification timer.
