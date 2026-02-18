@@ -24,7 +24,6 @@ in {
         vscode-extensions.ms-toolsai.vscode-jupyter-slideshow
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
-        vscode-extensions.github.copilot
         vscode-extensions.github.copilot-chat
       ];
     })
