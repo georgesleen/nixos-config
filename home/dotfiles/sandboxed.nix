@@ -26,10 +26,7 @@ in
   '';
 
   home.packages =
-    (lib.optionals (pkgs ? stm32cubeide) [
-      (wrapSandboxed pkgs.stm32cubeide)
-    ])
-    ++ (lib.optionals (pkgs ? stm32cubemx) [
+    (lib.optionals (pkgs ? stm32cubemx) [
       (wrapSandboxed pkgs.stm32cubemx)
     ])
     ++ (lib.optionals (pkgs ? "quartus-prime-lite") [

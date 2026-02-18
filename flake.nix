@@ -18,9 +18,6 @@
     # Waveforms
     waveforms.url = "github:liff/waveforms-flake";
 
-    # STM32CubeIDE (overlay)
-    stm32cubeide.url = "git+https://git.sr.ht/~shelvacu/stm32cubeide-nix";
-
     # Always up-to-date Codex CLI
     codex-cli-nix.url = "github:sadjow/codex-cli-nix";
   };
@@ -31,7 +28,6 @@
       nixpkgs,
       home-manager,
       waveforms,
-      stm32cubeide,
       codex-cli-nix,
       ...
     }:

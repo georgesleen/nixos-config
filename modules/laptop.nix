@@ -1,6 +1,6 @@
 # Packages for my laptop
 
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, ... }:
 
 {
   environment.systemPackages = with pkgs; [
@@ -17,7 +17,4 @@
     zoom # Video conferencing
   ];
 
-  nixpkgs.overlays = [
-    inputs.stm32cubeide.overlays.default
-  ];
 }
