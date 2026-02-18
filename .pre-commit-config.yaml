@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: nix-parse
+        name: nix-parse
+        entry: bash -c 'for f in "$@"; do nix-instantiate --parse "$f" >/dev/null; done' --
+        language: system
+        types: [nix]

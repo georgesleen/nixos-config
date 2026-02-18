@@ -27,6 +27,10 @@
       waveforms,
       ...
     }:
+    let
+      systems = [ "x86_64-linux" "aarch64-linux" ];
+      forAllSystems = nixpkgs.lib.genAttrs systems;
+    in
     {
       nixosConfigurations.gs-thinkpad-t480s = nixpkgs.lib.nixosSystem {
         specialArgs = { inherit inputs; };
@@ -46,5 +50,18 @@
           }
         ];
       };
+
+      devShells = forAllSystems (system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              pkgs.nix
+              pkgs.pre-commit
+            ];
+          };
+        });
     };
 }

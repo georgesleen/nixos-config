@@ -12,6 +12,8 @@
   '';
 
   home.activation.distroboxAssemble = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "$HOME/.config/distrobox/distrobox.ini"
+    if ! download= ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "$HOME/.config/distrobox/distrobox.ini"; then
+      echo "home-manager: distrobox assemble failed; run it manually after rebuild" >&2
+    fi
   '';
 }
