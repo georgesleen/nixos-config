@@ -155,11 +155,6 @@
     ];
   };
 
-  # Create a shared sandboxed home for wrapped GUI tools.
-  systemd.tmpfiles.rules = [
-    "d /home/sandboxed 0750 george-sleen users - -"
-  ];
-
   # Install firefox.
   programs.firefox.enable = true;
 

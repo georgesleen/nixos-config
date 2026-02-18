@@ -1,7 +1,7 @@
 { config, pkgs, lib, ... }:
 
 let
-  sandboxHome = "/home/sandboxed";
+  sandboxHome = "/home/george-sleen/Virtualization/home/nixos";
 
   wrapSandboxed = pkg:
     pkgs.symlinkJoin {
@@ -21,6 +21,10 @@ let
     };
 in
 {
+  home.activation.sandboxedHome = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    mkdir -p "$HOME/Virtualization/home/nixos"
+  '';
+
   home.packages =
     (lib.optionals (pkgs ? stm32cubeide) [
       (wrapSandboxed pkgs.stm32cubeide)
