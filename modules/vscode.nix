@@ -22,6 +22,8 @@ in {
         vscode-extensions.ms-toolsai.jupyter-renderers
         vscode-extensions.ms-toolsai.vscode-jupyter-cell-tags
         vscode-extensions.ms-toolsai.vscode-jupyter-slideshow
+        vscode-extensions.ms-python.python
+        vscode-extensions.ms-python.vscode-pylance
       ];
     })
   ];
