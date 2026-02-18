@@ -13,6 +13,7 @@
     kdePackages.okular # pdf viewer
     brightnessctl # backlight control
     kicad # Schematic capture and PCB design
+    zed-editor # Code editor
     zoom # Video conferencing
   ];
 }
