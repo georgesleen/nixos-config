@@ -16,7 +16,10 @@
         bind '"\C-h": backward-kill-word'
       fi
     '';
-    shellAliases = { };
+    shellAliases = {
+      btrfslist = "sudo btrfs-list /home";
+      btrfsqcycle = "sudo btrfs quota rescan -w / && sudo btrfs-list /home && sudo btrfs quota disable /";
+    };
   };
 
   programs.direnv = {

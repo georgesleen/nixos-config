@@ -1,10 +1,9 @@
 # For managing btrfs disks
-{ config, pkgs, inputs, ... }:
+{ config, pkgs, ... }:
 
 {
   environment.systemPackages = with pkgs; [
     snapper
-    inputs.nixpkgs-24_11.legacyPackages.${pkgs.system}.btrfs-assistant
     btrfs-progs
     btrfs-snap
     btrfs-list
