@@ -18,6 +18,10 @@ in {
       vscodeExtensions = [
         helixEmulation
         vscode-extensions.ms-toolsai.jupyter
+        vscode-extensions.ms-toolsai.jupyter-keymap
+        vscode-extensions.ms-toolsai.jupyter-renderers
+        vscode-extensions.ms-toolsai.vscode-jupyter-cell-tags
+        vscode-extensions.ms-toolsai.vscode-jupyter-slideshow
       ];
     })
   ];
