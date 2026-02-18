@@ -12,7 +12,6 @@
     vlc # media player
     kdePackages.okular # pdf viewer
     brightnessctl # backlight control
-    vscode-fhs # Code editor in fhs compliant filesystem
     kicad # Schematic capture and PCB design
     zoom # Video conferencing
   ];
