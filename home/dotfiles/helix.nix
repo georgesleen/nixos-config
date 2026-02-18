@@ -37,6 +37,11 @@
         nil = {
           command = "nil";
         };
+        rust-analyzer = {
+          config = {
+            files.watcher = "server";
+          };
+        };
         harper = {
           command = "harper-ls";
           args = [ "--stdio" ];
