@@ -11,6 +11,15 @@ let
       sha256 = "sha256-gYyIVnXG9Atmik0c1FsRKO2idFnufwl26nOiH3DYPLY=";
     };
   };
+
+  copilotChat = pkgs.vscode-utils.buildVscodeMarketplaceExtension {
+    mktplcRef = {
+      name = "copilot-chat";
+      publisher = "github";
+      version = "0.38.2026021801";
+      sha256 = "sha256-h6iWqHq1ziXUDs1Qhj2q0JzcsLEmWpSw358nLgQK3ro=";
+    };
+  };
 in {
   environment.systemPackages = with pkgs; [
     (vscode-with-extensions.override {
@@ -24,7 +33,7 @@ in {
         vscode-extensions.ms-toolsai.vscode-jupyter-slideshow
         vscode-extensions.ms-python.python
         vscode-extensions.ms-python.vscode-pylance
-        vscode-extensions.github.copilot-chat
+        copilotChat
       ];
     })
   ];
