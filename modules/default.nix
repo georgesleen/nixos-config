@@ -13,6 +13,5 @@
     ./dev.nix
     ./lsp.nix
     ./gnome.nix
-    ./steam.nix
   ];
 }
