@@ -15,7 +15,9 @@ let
             --set XDG_CONFIG_HOME ${sandboxHome}/.config \
             --set XDG_DATA_HOME ${sandboxHome}/.local/share \
             --set XDG_STATE_HOME ${sandboxHome}/.local/state \
-            --set XDG_CACHE_HOME ${sandboxHome}/.cache
+            --set XDG_CACHE_HOME ${sandboxHome}/.cache \
+            --prefix JAVA_TOOL_OPTIONS " " "-Duser.home=${sandboxHome}" \
+            --prefix _JAVA_OPTIONS " " "-Duser.home=${sandboxHome}"
         done
       '';
     };
