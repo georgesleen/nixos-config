@@ -44,4 +44,7 @@
     enable = true;
     extraUpFlags = [ "--ssh" ];
   };
+
+  # Power device info for battery notifications
+  services.upower.enable = true;
 }
