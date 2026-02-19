@@ -30,7 +30,7 @@
           name = "typst";
           language-servers = [ "tinymist" "harper" ];
           formatter.command = "typstyle";
-          formatter.args = [ "--line-width" "120" "--wrap-text" ];
+          formatter.args = [ "--line-width" "80" "--wrap-text" ];
         }
       ];
 
