@@ -1,6 +1,8 @@
 { config, pkgs, lib, ... }:
 
 let
+  criticalPct = 8;
+  lowPct = 15;
   batteryNotify = pkgs.writeShellScript "battery-notify" ''
     set -euo pipefail
 
@@ -37,17 +39,23 @@ let
       exit 0
     fi
 
-    if [ "$pct" -le 5 ] && [ "$last" != "5" ]; then
-      "$notify_send" -u critical "Battery critical" "Battery at $pct% — hibernating now"
-      "$echo_bin" "5" > "$last_file"
-      systemctl --user stop battery-notify.timer || true
-      systemctl hibernate
+    if [ "$pct" -le ${toString criticalPct} ] && [ "$last" != "critical" ]; then
+      "$notify_send" -u critical "Battery critical" "Battery at $pct% — hibernating in 60 seconds unless plugged in"
+      "$echo_bin" "critical" > "$last_file"
+      sleep 60
+
+      pct=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "percentage" | "$awk_bin" '{print $2}' | "$tr_bin" -d '%')
+      state=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "state" | "$awk_bin" '{print $2}')
+
+      if [ -n "$pct" ] && [ "$state" = "discharging" ] && [ "$pct" -le ${toString criticalPct} ]; then
+        systemctl hibernate
+      fi
       exit 0
     fi
 
-    if [ "$pct" -le 15 ] && [ "$last" != "15" ]; then
+    if [ "$pct" -le ${toString lowPct} ] && [ "$last" != "low" ]; then
       "$notify_send" -u normal "Battery low" "Battery at $pct%"
-      "$echo_bin" "15" > "$last_file"
+      "$echo_bin" "low" > "$last_file"
       exit 0
     fi
   '';
@@ -69,7 +77,7 @@ in
     };
     Timer = {
       OnBootSec = "2m";
-      OnUnitActiveSec = "2m";
+      OnUnitActiveSec = "30s";
     };
     Install = {
       WantedBy = [ "timers.target" ];
