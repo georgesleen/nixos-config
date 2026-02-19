@@ -34,12 +34,27 @@ let
       last="$("$cat_bin" "$last_file")"
     fi
 
-    if [ "$state" != "discharging" ]; then
+    level="none"
+    if [ "$state" = "discharging" ]; then
+      if [ "$pct" -le ${toString criticalPct} ]; then
+        level="critical"
+      elif [ "$pct" -le ${toString lowPct} ]; then
+        level="low"
+      fi
+    fi
+
+    if [ "$level" = "none" ]; then
       "$echo_bin" "none" > "$last_file"
       exit 0
     fi
 
-    if [ "$pct" -le ${toString criticalPct} ] && [ "$last" != "critical" ]; then
+    if [ "$level" = "low" ] && [ "$last" != "low" ]; then
+      "$notify_send" -u normal "Battery low" "Battery at $pct%"
+      "$echo_bin" "low" > "$last_file"
+      exit 0
+    fi
+
+    if [ "$level" = "critical" ] && [ "$last" != "critical" ]; then
       "$notify_send" -u critical "Battery critical" "Battery at $pct% — hibernating in 60 seconds unless plugged in"
       "$echo_bin" "critical" > "$last_file"
       sleep 60
@@ -50,12 +65,6 @@ let
       if [ -n "$pct" ] && [ "$state" = "discharging" ] && [ "$pct" -le ${toString criticalPct} ]; then
         systemctl hibernate
       fi
-      exit 0
-    fi
-
-    if [ "$pct" -le ${toString lowPct} ] && [ "$last" != "low" ]; then
-      "$notify_send" -u normal "Battery low" "Battery at $pct%"
-      "$echo_bin" "low" > "$last_file"
       exit 0
     fi
   '';
