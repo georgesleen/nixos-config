@@ -12,7 +12,9 @@
   '';
 
   home.activation.distroboxAssemble = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    export PATH=${pkgs.podman}/bin:${pkgs.docker}/bin:$PATH
+    # Home Manager activation can run with a restricted PATH under systemd.
+    # Rootless podman/distrobox needs newuidmap/newgidmap from /run/wrappers/bin.
+    export PATH=/run/wrappers/bin:${pkgs.podman}/bin:${pkgs.docker}/bin:$PATH
     export DISTROBOX_CONTAINER_MANAGER=podman
     ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "$HOME/.config/distrobox/distrobox.ini"
   '';
