@@ -150,6 +150,9 @@
       "networkmanager"
       "wheel"
       "plugdev"
+      "dialout"
+      "uucp"
+      "podman"
     ];
     packages = with pkgs; [
       #  thunderbird
