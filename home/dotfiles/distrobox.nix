@@ -9,12 +9,15 @@ let
   additionalFlags = "--privileged --device /dev/bus/usb:/dev/bus/usb --group-add keep-groups";
 in
 {
-  xdg.configFile."distrobox/distrobox.ini".text = ''
+  xdg.configFile."distrobox/distrobox.ini" = {
+    force = true;
+    text = ''
     [${boxName}]
     image=${boxImage}
     home=${boxHome}
     additional_flags=${additionalFlags}
   '';
+  };
 
   home.packages = [
     (pkgs.writeShellScriptBin "distrobox-${boxName}-recreate" ''
@@ -67,4 +70,32 @@ in
 
     ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "${distroboxCfgFile}"
   '';
+
+  systemd.user.services."distrobox-${boxName}-ensure" = {
+    Unit = {
+      Description = "Ensure ${boxName} distrobox exists";
+      After = [ "default.target" ];
+    };
+    Service = {
+      Type = "oneshot";
+      ExecStart = pkgs.writeShellScript "distrobox-${boxName}-ensure" ''
+        set -euo pipefail
+        export PATH=/run/wrappers/bin:${pkgs.podman}/bin:${pkgs.distrobox}/bin:$PATH
+        export DISTROBOX_CONTAINER_MANAGER=podman
+        export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+
+        if ! command -v podman >/dev/null 2>&1; then
+          exit 0
+        fi
+        if ! podman info >/dev/null 2>&1; then
+          exit 0
+        fi
+
+        ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "${distroboxCfgFile}"
+      '';
+    };
+    Install = {
+      WantedBy = [ "default.target" ];
+    };
+  };
 }

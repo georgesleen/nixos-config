@@ -51,6 +51,7 @@
           {
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
+            home-manager.backupFileExtension = "hm-backup";
             home-manager.users.george-sleen = import ./home/george-sleen.nix;
 
             # Optionally, use home-manager.extraSpecialArgs to pass arguments to home.nix
