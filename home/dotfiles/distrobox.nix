@@ -1,14 +1,46 @@
 { config, pkgs, lib, ... }:
 
+let
+  boxName = "ubuntu-24-04";
+  boxImage = "ubuntu:24.04";
+  boxHome = "$HOME/Virtualization/home/${boxName}";
+  distroboxCfgDir = "$HOME/.config/distrobox";
+  distroboxCfgFile = "${distroboxCfgDir}/distrobox.ini";
+  additionalFlags = "--privileged --device /dev/bus/usb:/dev/bus/usb --group-add keep-groups";
+in
 {
   xdg.configFile."distrobox/distrobox.ini".text = ''
-    [ubuntu-24-04]
-    image=ubuntu:24.04
-    home=/home/george-sleen/Virtualization/home/ubuntu-24-04
+    [${boxName}]
+    image=${boxImage}
+    home=${boxHome}
+    additional_flags=${additionalFlags}
   '';
 
+  home.packages = [
+    (pkgs.writeShellScriptBin "distrobox-${boxName}-recreate" ''
+      set -euo pipefail
+      export PATH=/run/wrappers/bin:${pkgs.podman}/bin:${pkgs.distrobox}/bin:$PATH
+      export DISTROBOX_CONTAINER_MANAGER=podman
+
+      mkdir -p "${boxHome}"
+      ${pkgs.distrobox}/bin/distrobox rm -f "${boxName}" >/dev/null 2>&1 || true
+      ${pkgs.distrobox}/bin/distrobox create \
+        --name "${boxName}" \
+        --image "${boxImage}" \
+        --home "${boxHome}" \
+        --additional-flags "${additionalFlags}"
+    '')
+
+    (pkgs.writeShellScriptBin "distrobox-${boxName}-enter" ''
+      set -euo pipefail
+      export PATH=/run/wrappers/bin:${pkgs.podman}/bin:${pkgs.distrobox}/bin:$PATH
+      export DISTROBOX_CONTAINER_MANAGER=podman
+      exec ${pkgs.distrobox}/bin/distrobox enter "${boxName}"
+    '')
+  ];
+
   home.activation.distroboxHome = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    mkdir -p "$HOME/Virtualization/home/ubuntu-24-04"
+    mkdir -p "${boxHome}"
   '';
 
   home.activation.distroboxAssemble = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
@@ -33,6 +65,6 @@
       exit 0
     fi
 
-    ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "$HOME/.config/distrobox/distrobox.ini"
+    ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "${distroboxCfgFile}"
   '';
 }
