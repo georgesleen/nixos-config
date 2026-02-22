@@ -33,10 +33,15 @@
     # verilog
     svls
     verible
+    verilator
+    iverilog
 
     # vhdl
     vhdl-ls
     ghdl-llvm
+
+    # hdl waveform viewing
+    gtkwave
 
     # typst
     typst
