@@ -36,6 +36,7 @@
 
     # vhdl
     vhdl-ls
+    ghdl-llvm
 
     # typst
     typst
