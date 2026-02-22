@@ -38,7 +38,7 @@
 
     # vhdl
     vhdl-ls
-    ghdl-llvm
+    ghdl
 
     # hdl waveform viewing
     gtkwave
