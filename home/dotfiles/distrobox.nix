@@ -68,7 +68,12 @@ in
       exit 0
     fi
 
-    ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "${distroboxCfgFile}"
+    if podman container exists "${boxName}" >/dev/null 2>&1; then
+      echo "[home-manager] distrobox ${boxName} already exists; skipping create"
+      exit 0
+    fi
+
+    ${pkgs.distrobox}/bin/distrobox assemble create --file "${distroboxCfgFile}"
   '';
 
   systemd.user.services."distrobox-${boxName}-ensure" = {
@@ -91,7 +96,11 @@ in
           exit 0
         fi
 
-        ${pkgs.distrobox}/bin/distrobox assemble create --replace --file "${distroboxCfgFile}"
+        if podman container exists "${boxName}" >/dev/null 2>&1; then
+          exit 0
+        fi
+
+        ${pkgs.distrobox}/bin/distrobox assemble create --file "${distroboxCfgFile}"
       '';
     };
     Install = {
