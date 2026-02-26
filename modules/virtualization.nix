@@ -42,7 +42,6 @@ in
     spice-gtk
     usbredir
     distrobox
-    docker
     podman
     virglrenderer
     mesa
