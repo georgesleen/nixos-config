@@ -39,6 +39,19 @@ let
     set -euo pipefail
 
     installer_dir="''${1:-$PWD}"
+    if [ ! -d "$installer_dir" ]; then
+      echo "matlab-install: installer directory not found: $installer_dir" >&2
+      exit 1
+    fi
+
+    if [ ! -x "$installer_dir/install" ]; then
+      echo "matlab-install: expected executable not found: $installer_dir/install" >&2
+      exit 1
+    fi
+
+    echo "matlab-install: launching installer from $installer_dir"
+    echo "matlab-install: DISPLAY=''${DISPLAY:-<unset>} WAYLAND_DISPLAY=''${WAYLAND_DISPLAY:-<unset>}"
+
     exec ${matlab-fhs}/bin/matlab-fhs -lc 'cd "$1" && exec ./install' -- "$installer_dir"
   '';
 in
