@@ -41,7 +41,6 @@ in
   environment.systemPackages = with pkgs; [
     spice-gtk
     usbredir
-    distrobox
     podman
     virglrenderer
     mesa

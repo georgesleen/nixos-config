@@ -8,7 +8,6 @@
     ./dotfiles/bashrc.nix
     ./dotfiles/battery.nix
     ./dotfiles/dconf.nix
-    ./dotfiles/distrobox.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
     ./dotfiles/i3status.nix
