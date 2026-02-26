@@ -147,13 +147,14 @@
       };
       config = ''
         (defsrc
-          caps)
+          caps ralt)
 
         (defalias
-          capmod (tap-hold-next-release 200 esc lmet))
+          capesc esc
+          rmod lmet)
 
         (deflayer base
-          @capmod)
+          @capesc @rmod)
       '';
     };
   };
