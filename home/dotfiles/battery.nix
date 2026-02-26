@@ -13,6 +13,8 @@ let
     mkdir_bin="${pkgs.coreutils}/bin/mkdir"
     cat_bin="${pkgs.coreutils}/bin/cat"
     echo_bin="${pkgs.coreutils}/bin/echo"
+    sleep_bin="${pkgs.coreutils}/bin/sleep"
+    systemctl_bin="${pkgs.systemd}/bin/systemctl"
 
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
@@ -54,16 +56,19 @@ let
       exit 0
     fi
 
-    if [ "$level" = "critical" ] && [ "$last" != "critical" ]; then
-      "$notify_send" -u critical "Battery critical" "Battery at $pct% — hibernating in 60 seconds unless plugged in"
-      "$echo_bin" "critical" > "$last_file"
-      sleep 60
+    if [ "$level" = "critical" ]; then
+      if [ "$last" != "critical" ]; then
+        "$notify_send" -u critical "Battery critical" "Battery at $pct% - hibernating in 60 seconds unless plugged in"
+        "$echo_bin" "critical" > "$last_file"
+      fi
+
+      "$sleep_bin" 60
 
       pct=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "percentage" | "$awk_bin" '{print $2}' | "$tr_bin" -d '%')
       state=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "state" | "$awk_bin" '{print $2}')
 
       if [ -n "$pct" ] && [ "$state" = "discharging" ] && [ "$pct" -le ${toString criticalPct} ]; then
-        systemctl hibernate
+        "$systemctl_bin" hibernate
       fi
       exit 0
     fi
