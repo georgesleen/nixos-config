@@ -26,6 +26,7 @@ let
       nss
       nspr
       alsa-lib
+      pam
     ];
     runScript = "bash";
   };
