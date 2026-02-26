@@ -137,6 +137,27 @@
     variant = "";
   };
 
+  services.kmonad = {
+    enable = true;
+    keyboards.internal = {
+      device = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+      defcfg = {
+        enable = true;
+        fallthrough = true;
+      };
+      config = ''
+        (defsrc
+          caps)
+
+        (defalias
+          capmod (tap-hold-next-release 200 esc lmet))
+
+        (deflayer base
+          @capmod)
+      '';
+    };
+  };
+
   # Enable CUPS to print documents.
   services.printing.enable = true;
 

@@ -17,7 +17,7 @@
     };
 
     "org/gnome/desktop/input-sources" = {
-      xkb-options = [ "caps:swapescape" ];
+      xkb-options = [ ];
     };
 
     "org/virt-manager/virt-manager/connections" = {

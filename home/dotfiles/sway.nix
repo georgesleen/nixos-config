@@ -10,13 +10,12 @@ in
   wayland.windowManager.sway = {
     enable = true;
     config = let
-      mod = "Mod1";
+      mod = "Mod4";
     in {
       modifier = mod;
       terminal = "kitty";
       menu = "i3-dmenu-desktop --dmenu='dmenu -i'";
       floating.modifier = mod;
-      input."*".xkb_options = "caps:swapescape";
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
       input."type:touchpad".pointer_accel = "0.7";

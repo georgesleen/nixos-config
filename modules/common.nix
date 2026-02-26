@@ -30,14 +30,7 @@
 
   security.pki.installCACerts = true;
 
-  # Swap caps and esc
-  services.xserver.xkb = {
-    layout = "us";
-    options = "caps:swapescape";
-  };
-
-  # Also swap caps and esc in TTY
-  console.useXkbConfig = true;
+  services.xserver.xkb.layout = "us";
 
   # Tailscale daemon
   services.tailscale = {
