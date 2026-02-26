@@ -7,7 +7,7 @@
 
   environment.systemPackages = with pkgs; [
     # llm cli
-    inputs.codex-cli-nix.packages.${pkgs.system}.default
+    inputs.codex-cli-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
 
     # c/c++
     gcc

@@ -5,17 +5,17 @@ let
   matlab-fhs = pkgs.buildFHSEnv {
     name = "matlab-fhs";
     targetPkgs = p: with p; [
-      xorg.libX11
-      xorg.libXext
-      xorg.libXmu
-      xorg.libXt
-      xorg.libXi
-      xorg.libXrender
-      xorg.libXrandr
-      xorg.libXcursor
-      xorg.libXfixes
-      xorg.libSM
-      xorg.libICE
+      libx11
+      libxext
+      libxmu
+      libxt
+      libxi
+      libxrender
+      libxrandr
+      libxcursor
+      libxfixes
+      libsm
+      libice
       glib
       zlib
       stdenv.cc.cc.lib
