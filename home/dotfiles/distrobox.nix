@@ -24,6 +24,21 @@ in
       NoDisplay=false
     '';
   };
+  xdg.dataFile."applications/${boxName}-enter.desktop" = {
+    force = true;
+    text = ''
+      [Desktop Entry]
+      Name=Ubuntu-24-04 (Enter)
+      GenericName=Terminal entering Ubuntu-24-04
+      Comment=Terminal entering Ubuntu-24-04
+      Type=Application
+      Exec=distrobox-${boxName}-enter
+      Terminal=true
+      Categories=System;Utility;
+      Keywords=distrobox;
+      NoDisplay=false
+    '';
+  };
 
   xdg.configFile."distrobox/distrobox.ini" = {
     force = true;
@@ -59,10 +74,67 @@ in
       unset LD_LIBRARY_PATH LD_PRELOAD NIX_LD NIX_LD_LIBRARY_PATH NIX_CFLAGS_COMPILE NIX_LDFLAGS
       exec ${pkgs.distrobox}/bin/distrobox enter "${boxName}"
     '')
+
+    (pkgs.writeShellScriptBin "distrobox-${boxName}-desktop-refresh" ''
+      set -euo pipefail
+      appdir="$HOME/.local/share/applications"
+      mkdir -p "$appdir"
+
+      # Keep this launcher stable even if distrobox re-generates desktop files.
+      cat > "$appdir/${boxName}.desktop" <<EOF
+[Desktop Entry]
+Name=Ubuntu-24-04
+GenericName=Terminal entering Ubuntu-24-04
+Comment=Terminal entering Ubuntu-24-04
+Type=Application
+Exec=distrobox-${boxName}-enter
+Terminal=true
+Categories=System;Utility;
+Keywords=distrobox;
+NoDisplay=false
+EOF
+
+      # Clean stale app exports pointing to missing local wrapper scripts.
+      for file in "$appdir"/stm32cubeide-distrobox.desktop "$appdir"/stm32cubemx-distrobox.desktop; do
+        [ -f "$file" ] || continue
+        target="$(sed -n 's/^Exec=//p' "$file" | head -n1)"
+        case "$target" in
+          "$HOME"/.local/bin/*)
+            if [ ! -x "$target" ]; then
+              rm -f "$file"
+            fi
+            ;;
+        esac
+      done
+    '')
   ];
 
   home.activation.distroboxHome = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     mkdir -p "${boxHome}"
+    appdir="$HOME/.local/share/applications"
+    mkdir -p "$appdir"
+    cat > "$appdir/${boxName}.desktop" <<EOF
+[Desktop Entry]
+Name=Ubuntu-24-04
+GenericName=Terminal entering Ubuntu-24-04
+Comment=Terminal entering Ubuntu-24-04
+Type=Application
+Exec=distrobox-${boxName}-enter
+Terminal=true
+Categories=System;Utility;
+Keywords=distrobox;
+NoDisplay=false
+EOF
+
+    for file in "$appdir"/stm32cubeide-distrobox.desktop "$appdir"/stm32cubemx-distrobox.desktop; do
+      [ -f "$file" ] || continue
+      target="$(sed -n 's/^Exec=//p' "$file" | head -n1)"
+      case "$target" in
+        "$HOME"/.local/bin/*)
+          [ -x "$target" ] || rm -f "$file"
+          ;;
+      esac
+    done
   '';
 
   home.activation.distroboxAssemble = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
