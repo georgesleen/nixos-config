@@ -9,6 +9,22 @@ let
   additionalFlags = "--privileged --device /dev/bus/usb:/dev/bus/usb --group-add keep-groups";
 in
 {
+  xdg.dataFile."applications/${boxName}.desktop" = {
+    force = true;
+    text = ''
+      [Desktop Entry]
+      Name=Ubuntu-24-04
+      GenericName=Terminal entering Ubuntu-24-04
+      Comment=Terminal entering Ubuntu-24-04
+      Type=Application
+      Exec=distrobox-${boxName}-enter
+      Terminal=true
+      Categories=System;Utility;
+      Keywords=distrobox;
+      NoDisplay=false
+    '';
+  };
+
   xdg.configFile."distrobox/distrobox.ini" = {
     force = true;
     text = ''
@@ -38,6 +54,9 @@ in
       set -euo pipefail
       export PATH=/run/wrappers/bin:${pkgs.podman}/bin:${pkgs.distrobox}/bin:$PATH
       export DISTROBOX_CONTAINER_MANAGER=podman
+      # Avoid leaking host linker overrides into the container; they can break
+      # third-party binaries (for example MATLAB installers) in Ubuntu.
+      unset LD_LIBRARY_PATH LD_PRELOAD NIX_LD NIX_LD_LIBRARY_PATH NIX_CFLAGS_COMPILE NIX_LDFLAGS
       exec ${pkgs.distrobox}/bin/distrobox enter "${boxName}"
     '')
   ];
