@@ -9,15 +9,52 @@
 
 let
   hugepages = 1024;
+  vmPerfHook = pkgs.writeShellScript "libvirt-qemu-vm-perf-hook" ''
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    vm_name="''${1:-}"
+    op="''${2:-}"
+    subop="''${3:-}"
+
+    # Only toggle host performance policy for the Windows VM.
+    if [[ "$vm_name" != "win11" ]]; then
+      exit 0
+    fi
+
+    set_governor() {
+      local target="$1"
+      for policy in /sys/devices/system/cpu/cpufreq/policy*/scaling_governor; do
+        [[ -w "$policy" ]] || continue
+        echo "$target" > "$policy"
+      done
+      logger -t libvirt-qemu-hook "win11 ($op/$subop): set CPU governor to $target"
+    }
+
+    case "$op/$subop" in
+      prepare/begin|start/begin|started/begin)
+        set_governor performance
+        ;;
+      stopped/end|release/end|shutdown/end)
+        set_governor powersave
+        ;;
+      *)
+        ;;
+    esac
+  '';
 in
 {
   programs.virt-manager.enable = true;
 
   virtualisation.libvirtd = {
     enable = true;
+    hooks.qemu = {
+      "50-win11-performance" = "${vmPerfHook}";
+    };
     qemu = {
       package = pkgs.qemu_kvm;
       swtpm.enable = true;
+      vhostUserPackages = [ pkgs.virtiofsd ];
       verbatimConfig = ''
         cputype = "host-passthrough"
       '';
@@ -40,6 +77,7 @@ in
 
   environment.systemPackages = with pkgs; [
     spice-gtk
+    remmina
     usbredir
     podman
     virglrenderer
