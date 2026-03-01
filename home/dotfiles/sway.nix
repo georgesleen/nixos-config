@@ -10,7 +10,7 @@ in
   wayland.windowManager.sway = {
     enable = true;
     config = let
-      mod = "Mod4";
+      mod = "Mod1";
     in {
       modifier = mod;
       terminal = "kitty";

@@ -147,14 +147,13 @@
       };
       config = ''
         (defsrc
-          caps ralt)
+          caps)
 
         (defalias
-          capesc esc
-          rmod lmet)
+          capesc esc)
 
         (deflayer base
-          @capesc @rmod)
+          @capesc)
       '';
     };
   };

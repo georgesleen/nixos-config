@@ -10,7 +10,6 @@
 let
   hugepages = 1024;
   vmPerfHook = pkgs.writeShellScript "libvirt-qemu-vm-perf-hook" ''
-    #!/usr/bin/env bash
     set -euo pipefail
 
     vm_name="''${1:-}"
@@ -28,7 +27,7 @@ let
         [[ -w "$policy" ]] || continue
         echo "$target" > "$policy"
       done
-      logger -t libvirt-qemu-hook "win11 ($op/$subop): set CPU governor to $target"
+      ${pkgs.util-linux}/bin/logger -t libvirt-qemu-hook "win11 ($op/$subop): set CPU governor to $target" || true
     }
 
     case "$op/$subop" in
