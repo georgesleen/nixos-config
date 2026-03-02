@@ -2,6 +2,10 @@
 
 { pkgs, ... }:
 
+let
+  libreoffice = pkgs."libreoffice-fresh";
+in
+
 {
   imports = [
     ./common.nix

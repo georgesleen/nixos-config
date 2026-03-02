@@ -18,7 +18,6 @@
 
     # python
     uv
-    python3
     python313
 
     # rust
