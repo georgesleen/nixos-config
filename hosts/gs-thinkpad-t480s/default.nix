@@ -7,6 +7,7 @@
 {
   imports = [
     ../../modules/default.nix
+    ../../modules/laptop.nix
     ./hardware-configuration.nix
     ./power.nix
   ];

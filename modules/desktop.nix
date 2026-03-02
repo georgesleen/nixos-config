@@ -1,4 +1,4 @@
-# Laptop-specific additions
+# Desktop-specific additions
 
 { pkgs, ... }:
 
@@ -8,6 +8,6 @@
   ];
 
   environment.systemPackages = with pkgs; [
-    brightnessctl # backlight control
+    # Desktop-only packages can be added here.
   ];
 }
