@@ -19,7 +19,7 @@
     shellAliases = {
       btrfslist = "sudo btrfs-list /home";
       btrfsqcycle = "sudo btrfs quota rescan -w / && sudo btrfs-list /home && sudo btrfs quota disable /";
-      gitlog = "git log --graph --decorate --abbrev-commit --all --pretty=format:'%h %an %s'";
+      gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an)%Creset'";
     };
   };
 
