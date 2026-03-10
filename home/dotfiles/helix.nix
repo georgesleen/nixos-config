@@ -19,6 +19,7 @@
           name = "python";
           language-servers = [ "pylsp" ];
           formatter.command = "black";
+          formatter.args = [ "--quiet" "-" ];
         }
         {
           name = "markdown";
