@@ -191,12 +191,12 @@ in
     indicator-idle-visible
     clock
     timestr=%H:%M
-    datestr=%A, %B %d
+    datestr=%a, %b %d
     show-failed-attempts
     font=JetBrains Mono
     font-size=24
-    indicator-radius=110
-    indicator-thickness=8
+    indicator-radius=130
+    indicator-thickness=10
     effect-vignette=0.35:0.35
     inside-color=00000066
     inside-clear-color=1f7a8c88
@@ -208,12 +208,12 @@ in
     ring-caps-lock-color=b08968ff
     ring-ver-color=588157ff
     ring-wrong-color=bc4749ff
-    key-hl-color=a3b18aff
+    key-hl-color=4ea8deff
     bs-hl-color=bc4749ff
-    caps-lock-key-hl-color=b08968ff
-    caps-lock-bs-hl-color=b08968ff
+    caps-lock-key-hl-color=4ea8deff
+    caps-lock-bs-hl-color=4ea8deff
     line-uses-ring
-    separator-color=f8f5f0aa
+    separator-color=0b132bff
     layout-bg-color=00000066
     layout-border-color=00000000
     layout-text-color=f8f5f0ff
