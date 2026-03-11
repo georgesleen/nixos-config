@@ -5,7 +5,39 @@ let
     path = ../../assets/background.png;
     name = "background.png";
   };
-  swaylockCmd = "${pkgs.swaylock}/bin/swaylock -f";
+  swaylockCmd =
+    "${pkgs.swaylock}/bin/swaylock -f"
+    + " --image ${swayBg}"
+    + " --scaling fill"
+    + " --indicator"
+    + " --indicator-idle-visible"
+    + " --show-failed-attempts"
+    + " --show-keyboard-layout"
+    + " --font \"JetBrains Mono\""
+    + " --font-size 24"
+    + " --indicator-radius 110"
+    + " --indicator-thickness 8"
+    + " --inside-color 00000066"
+    + " --inside-clear-color 1f7a8c88"
+    + " --inside-caps-lock-color b0896888"
+    + " --inside-ver-color 58815788"
+    + " --inside-wrong-color bc474988"
+    + " --ring-color f2efe9aa"
+    + " --ring-clear-color 1f7a8cff"
+    + " --ring-caps-lock-color b08968ff"
+    + " --ring-ver-color 588157ff"
+    + " --ring-wrong-color bc4749ff"
+    + " --key-hl-color a3b18aff"
+    + " --line-uses-ring"
+    + " --separator-color 00000000"
+    + " --layout-bg-color 00000066"
+    + " --layout-border-color 00000000"
+    + " --layout-text-color f8f5f0ff"
+    + " --text-color f8f5f0ff"
+    + " --text-clear-color f8f5f0ff"
+    + " --text-caps-lock-color f8f5f0ff"
+    + " --text-ver-color f8f5f0ff"
+    + " --text-wrong-color f8f5f0ff";
   dpmsOffCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms off\"";
   dpmsOnCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms on\"";
 in
