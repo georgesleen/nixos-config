@@ -21,6 +21,7 @@ in
     vlc # media player
     kdePackages.okular # pdf viewer
     kicad # schematic capture and PCB design
+    easyeda2kicad # rip symbols from jlc for kicad
     zed-editor # code editor
     zoom # video conferencing
   ];

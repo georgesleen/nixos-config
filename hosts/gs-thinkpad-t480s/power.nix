@@ -53,6 +53,12 @@
     ${pkgs.systemd}/bin/systemctl try-restart NetworkManager.service
   '';
 
+  # Ask active desktop sessions to lock before suspend/hibernate.
+  powerManagement.powerDownCommands = ''
+    ${pkgs.systemd}/bin/loginctl lock-sessions
+    ${pkgs.coreutils}/bin/sleep 1
+  '';
+
   # Enable iPhone tethering
   services.usbmuxd.enable = true;
   systemd.services.usbmuxd.serviceConfig = {

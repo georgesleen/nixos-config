@@ -5,6 +5,9 @@ let
     path = ../../assets/background.png;
     name = "background.png";
   };
+  swaylockCmd = "${pkgs.swaylock}/bin/swaylock -f";
+  dpmsOffCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms off\"";
+  dpmsOnCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms on\"";
 in
 {
   wayland.windowManager.sway = {
@@ -45,7 +48,7 @@ in
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
         "${mod}+Shift+q" = "kill";
-        "${mod}+Shift+x" = "exec swaylock -f";
+        "${mod}+Shift+x" = "exec ${swaylockCmd}";
 
         "${mod}+h" = "focus left";
         "${mod}+j" = "focus down";
@@ -135,9 +138,14 @@ in
 
   services.swayidle = {
     enable = true;
+    events = {
+      before-sleep = swaylockCmd;
+      lock = swaylockCmd;
+      after-resume = dpmsOnCmd;
+    };
     timeouts = [
-      { timeout = 600; command = "swaylock -f"; }
-      { timeout = 900; command = "swaymsg \"output * dpms off\""; resumeCommand = "swaymsg \"output * dpms on\""; }
+      { timeout = 1800; command = swaylockCmd; }
+      { timeout = 1801; command = dpmsOffCmd; resumeCommand = dpmsOnCmd; }
     ];
   };
 
