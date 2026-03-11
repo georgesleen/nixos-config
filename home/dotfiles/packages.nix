@@ -19,7 +19,7 @@
     mako
     libnotify
     swayidle
-    swaylock
+    swaylock-effects
     xdg-desktop-portal-wlr
     clipman
     i3status
