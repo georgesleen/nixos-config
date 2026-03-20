@@ -14,6 +14,7 @@
     ./dotfiles/i3blocks.nix
     ./dotfiles/kitty.nix
     ./dotfiles/packages.nix
+    ./dotfiles/rclone.nix
     ./dotfiles/sandboxed.nix
     ./dotfiles/sway.nix
     ./dotfiles/tmux.nix
