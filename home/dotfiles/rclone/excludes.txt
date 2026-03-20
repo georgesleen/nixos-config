@@ -1,75 +1,79 @@
+# Keep only PDFs under ENPH 353
++ /sem7_2025W1/ENPH 353/**.pdf
+- /sem7_2025W1/ENPH 353/**
+
 # Python
-.venv/**
-__pycache__/**
-*.pyc
+- .venv/**
+- __pycache__/**
+- *.pyc
 
 # Nix / direnv
-.direnv/**
+- .direnv/**
 
 # Git
-.git/**
+- .git/**
 
 # IDE metadata
-.idea/**
-.vs/**
-.ipynb_checkpoints/**
+- .idea/**
+- .vs/**
+- .ipynb_checkpoints/**
 
 # Node
-node_modules/**
+- node_modules/**
 
 # Build outputs
-build/**
-dist/**
-target/**
-bin/**
-out/**
-x64/**
-result
-result-*
+- build/**
+- dist/**
+- target/**
+- bin/**
+- out/**
+- x64/**
+- result
+- result-*
 
 # W&B
-wandb/**
-**/wandb/**
+- wandb/**
+- **/wandb/**
 
 # ROS / catkin / colcon
-devel/**
-install/**
-log/**
-**/ros_ws/build/**
-**/ros_ws/devel/**
-**/ros_ws/install/**
-**/ros_ws/log/**
+- devel/**
+- install/**
+- log/**
+- **/ros_ws/build/**
+- **/ros_ws/devel/**
+- **/ros_ws/install/**
+- **/ros_ws/log/**
 
 # Quartus generated files
-db/**
-incremental_db/**
-output_files/**
-simulation/**
-greybox_tmp/**
-.qsys_edit/**
-ip_upgrade_port_diff_reports/**
-*.qws
-*.rpt
-*.summary
-*.smsg
-*.jdi
-*.sld
-*.pin
-*.sof
-*.pof
-*.cdf
-*.done
-*.ddb
+- db/**
+- incremental_db/**
+- output_files/**
+- simulation/**
+- greybox_tmp/**
+- .qsys_edit/**
+- ip_upgrade_port_diff_reports/**
+- *.qws
+- *.rpt
+- *.summary
+- *.smsg
+- *.jdi
+- *.sld
+- *.pin
+- *.sof
+- *.pof
+- *.cdf
+- *.done
+- *.ddb
 
 # Compiled/editor artifacts
-*.class
-*.obj
-*.tlog
-*.vsidx
-*.ipch
-*.suo
-*.user
+- *.class
+- *.obj
+- *.tlog
+- *.vsidx
+- *.ipch
+- *.suo
+- *.user
 
 # VM disk images
-*.qcow
-*.qcow2
+- *.qcow
+- *.qcow2

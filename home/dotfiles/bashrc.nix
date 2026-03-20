@@ -57,6 +57,12 @@
       }
 
       export PATH="$PATH:$HOME/bin:$HOME/.local/bin:$HOME/go/bin"
+      shopt -s cdspell
+      shopt -s histappend
+      HISTCONTROL=ignoredups:erasedups
+      HISTSIZE=100000
+      HISTFILESIZE=200000
+      PROMPT_COMMAND="history -a''${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
       eval "$(direnv hook bash)"
       PS1="\[\e[38;2;0;199;129m\]\u@\h:\w\[\e[0m\]\$ "
       if [[ -n "$IN_NIX_SHELL" ]]; then

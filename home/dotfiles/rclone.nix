@@ -8,7 +8,7 @@ let
     "bisync"
     localPath
     remotePath
-    "--filters-file"
+    "--filter-from"
     filtersFile
     "--create-empty-src-dirs"
     "--resilient"
