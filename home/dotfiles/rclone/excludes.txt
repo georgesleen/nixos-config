@@ -69,3 +69,7 @@ ip_upgrade_port_diff_reports/**
 *.ipch
 *.suo
 *.user
+
+# VM disk images
+*.qcow
+*.qcow2
