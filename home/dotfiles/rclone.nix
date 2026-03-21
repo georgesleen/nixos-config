@@ -10,7 +10,6 @@ let
     remotePath
     "--filter-from"
     filtersFile
-    "--create-empty-src-dirs"
     "--resilient"
     "--recover"
     "--max-lock"

@@ -3,41 +3,59 @@
 - /sem7_2025W1/ENPH 353/**
 
 # Python
+- .venv/
 - .venv/**
+- __pycache__/
 - __pycache__/**
 - *.pyc
 
 # Nix / direnv
+- .direnv/
 - .direnv/**
 
 # Git
+- .git/
 - .git/**
 
 # IDE metadata
+- .idea/
 - .idea/**
+- .vs/
 - .vs/**
+- .ipynb_checkpoints/
 - .ipynb_checkpoints/**
 
 # Node
+- node_modules/
 - node_modules/**
 
 # Build outputs
+- build/
 - build/**
+- dist/
 - dist/**
+- target/
 - target/**
+- bin/
 - bin/**
+- out/
 - out/**
+- x64/
 - x64/**
 - result
 - result-*
 
 # W&B
+- wandb/
 - wandb/**
 - **/wandb/**
 
 # ROS / catkin / colcon
+- devel/
 - devel/**
+- install/
 - install/**
+- log/
 - log/**
 - **/ros_ws/build/**
 - **/ros_ws/devel/**
@@ -45,12 +63,19 @@
 - **/ros_ws/log/**
 
 # Quartus generated files
+- db/
 - db/**
+- incremental_db/
 - incremental_db/**
+- output_files/
 - output_files/**
+- simulation/
 - simulation/**
+- greybox_tmp/
 - greybox_tmp/**
+- .qsys_edit/
 - .qsys_edit/**
+- ip_upgrade_port_diff_reports/
 - ip_upgrade_port_diff_reports/**
 - *.qws
 - *.rpt
