@@ -63,6 +63,14 @@
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          yoloTestingLibraries = with pkgs; [
+            stdenv.cc.cc.lib
+            zlib
+            glib
+            libGL
+            libxcb
+            libx11
+          ];
         in
         {
           default = pkgs.mkShell {
@@ -70,6 +78,17 @@
               pkgs.nix
               pkgs.pre-commit
             ];
+          };
+
+          yolo-testing = pkgs.mkShell {
+            packages = with pkgs; [
+              python313
+              uv
+            ];
+
+            shellHook = ''
+              export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath yoloTestingLibraries}''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+            '';
           };
         }
       );
