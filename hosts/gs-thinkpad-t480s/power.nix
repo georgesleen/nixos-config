@@ -8,9 +8,9 @@
     HandleLidSwitchDocked = "ignore";
   };
 
-  systemd.sleep.extraConfig = ''
-    HibernateDelaySec=45min
-  '';
+  systemd.sleep.settings.Sleep = {
+    HibernateDelaySec = "45min";
+  };
 
   # Enable hibernate resume from swap.
   boot.resumeDevice = "/dev/disk/by-uuid/9300b555-a316-4f12-8d44-2990a19f107e";
