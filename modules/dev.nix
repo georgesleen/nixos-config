@@ -8,6 +8,7 @@
   environment.systemPackages = with pkgs; [
     # llm cli
     inputs.codex-cli-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
+    claude-code
 
     # c/c++
     gcc
