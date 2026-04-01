@@ -17,7 +17,7 @@
   boot.kernelParams = lib.mkAfter [
     "resume=UUID=9300b555-a316-4f12-8d44-2990a19f107e"
     "pcie_aspm=power"
-    "usbcore.autosuspend=1"
+    "usbcore.autosuspend=-1"
   ];
 
   # Battery charge thresholds (ThinkPad)
@@ -29,16 +29,6 @@
     };
   };
   services.power-profiles-daemon.enable = false;
-
-  # Powertop auto-tune at boot
-  systemd.services.powertop-autotune = {
-    description = "Powertop auto-tune";
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig = {
-      Type = "oneshot";
-      ExecStart = "${pkgs.powertop}/bin/powertop --auto-tune";
-    };
-  };
 
   # Bluetooth enabled but power off on boot (enable when needed)
   hardware.bluetooth.enable = true;
