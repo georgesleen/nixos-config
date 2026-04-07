@@ -9,6 +9,8 @@
     # llm cli
     inputs.codex-cli-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
     claude-code
+    gemini-cli
+    bubblewrap
 
     # c/c++
     gcc
