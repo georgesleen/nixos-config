@@ -28,7 +28,7 @@
     networkmanager_dmenu
     harper
     marksman
-    nodePackages.prettier
+    prettier
     blueman
   ];
 }
