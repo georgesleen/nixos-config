@@ -106,7 +106,7 @@ let
     set -euo pipefail
     load="$(${pkgs.coreutils}/bin/uptime | awk -F'load average: ' '{split($2,a,","); print a[1]}')"
     cores="$(${pkgs.coreutils}/bin/nproc)"
-    echo "<span color='#fab387'>󰻠 $load/$cores""c</span>"
+    echo "<span color='#fab387'>󰍛 $load/$cores""c</span>"
   '';
   memoryBlock = pkgs.writeShellScript "i3blocks-memory" ''
     set -euo pipefail
@@ -115,7 +115,7 @@ let
     total="$(echo "$line" | awk '{print $2}')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "<span color='#cba6f7'>󰍛 $used_fmt/$total_fmt MiB</span>"
+    echo "<span color='#cba6f7'>󰒋 $used_fmt/$total_fmt MiB</span>"
   '';
   diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
     set -euo pipefail

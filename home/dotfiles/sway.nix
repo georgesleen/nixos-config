@@ -39,19 +39,19 @@ in
           statusCommand = "${pkgs.i3blocks}/bin/i3blocks -c ${config.xdg.configHome}/i3blocks/config";
           fonts = {
             names = [ "JetBrainsMono Nerd Font" ];
-            size = 10.0;
+            size = 11.0;
           };
           colors = {
             background = "#1e1e2ecc";
             statusline = "#cdd6f4ff";
             separator = "#45475aff";
           };
-          extraConfig = "modifier ${mod}";
+          extraConfig = "modifier ${mod}\n          height 26";
         }
       ];
       keybindings = {
         "${mod}+Return" = "exec kitty";
-        "${mod}+d" = "exec i3-dmenu-desktop --dmenu='dmenu -i'";
+        "${mod}+d" = "exec i3-dmenu-desktop --dmenu='dmenu -i' --term=kitty";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
