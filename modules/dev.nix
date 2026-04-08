@@ -7,7 +7,7 @@
 
   environment.systemPackages = with pkgs; [
     # llm cli
-    inputs.codex-cli-nix.packages.${pkgs.stdenv.hostPlatform.system}.default
+    codex
     claude-code
     gemini-cli
     bubblewrap
@@ -15,7 +15,6 @@
     # c/c++
     gcc
     clang
-    clang-tools
     gnumake
     cmake
 
@@ -33,13 +32,10 @@
     tio
 
     # verilog
-    svls
-    verible
     verilator
     iverilog
 
     # vhdl
-    vhdl-ls
     ghdl
 
     # hdl waveform viewing

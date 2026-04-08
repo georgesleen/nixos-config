@@ -21,9 +21,19 @@ in
 {
   # Enable for night-theme-switcher
   services.geoclue2.enable = true;
-  
+
   # Append packages without referencing config.environment.systemPackages
   environment.systemPackages = lib.mkAfter ([ pkgs.gnome-extension-manager ] ++ extensions);
+
+  environment.gnome.excludePackages = with pkgs; [
+    epiphany
+    geary
+    gnome-calendar
+    gnome-contacts
+    gnome-maps
+    gnome-music
+    gnome-weather
+  ];
 
   home-manager.users.george-sleen = {
     dconf.enable = true;

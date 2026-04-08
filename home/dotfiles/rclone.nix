@@ -1,9 +1,9 @@
-{ pkgs, lib, ... }:
+{ config, pkgs, lib, ... }:
 
 let
-  localPath = "/home/george-sleen/Shared/classes";
+  localPath = "${config.home.homeDirectory}/Shared/classes";
   remotePath = "gdrive:_laptop/classes";
-  filtersFile = "/home/george-sleen/.config/rclone/excludes.txt";
+  filtersFile = "${config.xdg.configHome}/rclone/excludes.txt";
   commonArgs = [
     "bisync"
     localPath

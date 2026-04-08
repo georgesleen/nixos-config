@@ -5,13 +5,15 @@
 {
   # Import all module files here
   imports = [
-    ./fonts.nix
+    ./audio.nix
     ./btrfs.nix
-    ./virtualization.nix
     ./dev.nix
-    ./lsp.nix
+    ./fonts.nix
     ./gnome.nix
-    ./vscode.nix
+    ./lsp.nix
+    ./sway.nix
     ./system-python.nix
+    ./virtualization.nix
+    ./vscode.nix
   ];
 }

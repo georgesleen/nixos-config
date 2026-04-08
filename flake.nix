@@ -17,9 +17,6 @@
 
     # Waveforms
     waveforms.url = "github:liff/waveforms-flake";
-
-    # Always up-to-date Codex CLI
-    codex-cli-nix.url = "github:sadjow/codex-cli-nix";
   };
 
   outputs =
@@ -28,7 +25,6 @@
       nixpkgs,
       home-manager,
       waveforms,
-      codex-cli-nix,
       ...
     }:
     let

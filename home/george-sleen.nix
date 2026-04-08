@@ -7,16 +7,18 @@
   imports = [
     ./dotfiles/bashrc.nix
     ./dotfiles/battery.nix
+    ./dotfiles/darkman.nix
     ./dotfiles/dconf.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
-    ./dotfiles/i3status.nix
     ./dotfiles/i3blocks.nix
     ./dotfiles/kitty.nix
+    ./dotfiles/mako.nix
     ./dotfiles/packages.nix
     ./dotfiles/rclone.nix
     ./dotfiles/sandboxed.nix
     ./dotfiles/sway.nix
+    ./dotfiles/swayidle.nix
     ./dotfiles/tmux.nix
     ./dotfiles/xresources.nix
   ];

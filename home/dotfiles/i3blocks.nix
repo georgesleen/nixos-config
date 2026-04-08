@@ -17,7 +17,8 @@ let
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
     set -euo pipefail
-    out="$(${pkgs.iw}/bin/iw dev wlp61s0 link || true)"
+    dev=$(${pkgs.iw}/bin/iw dev | awk '/Interface/ {print $2; exit}')
+    out="$(${pkgs.iw}/bin/iw dev "$dev" link || true)"
     ssid="$(printf "%s\n" "$out" | awk '/SSID/ {print $2}')"
     sig="$(printf "%s\n" "$out" | awk '/signal/ {print $2}')"
     if [ -z "$ssid" ]; then
