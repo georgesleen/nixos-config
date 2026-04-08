@@ -16,6 +16,38 @@ let
   swaylockCmd = "${swaylockPackage}/bin/swaylock -f -C ${swaylockConfig}";
   dpmsOffCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms off\"";
   dpmsOnCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms on\"";
+  volUpScript = pkgs.writeShellScript "vol-up" ''
+    ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+    vol=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%d%%", $2 * 100}')
+    ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-volume "Volume" "$vol"
+  '';
+  volDownScript = pkgs.writeShellScript "vol-down" ''
+    ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+    vol=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%d%%", $2 * 100}')
+    ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-volume "Volume" "$vol"
+  '';
+  volMuteScript = pkgs.writeShellScript "vol-mute" ''
+    ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+    raw=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@)
+    if echo "$raw" | grep -q MUTED; then
+      ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-volume "Volume" "Muted"
+    else
+      vol=$(echo "$raw" | awk '{printf "%d%%", $2 * 100}')
+      ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-volume "Volume" "Unmuted ($vol)"
+    fi
+  '';
+  brightnessUpScript = pkgs.writeShellScript "brightness-up" ''
+    ${pkgs.brightnessctl}/bin/brightnessctl set 5%+
+    cur=$(${pkgs.brightnessctl}/bin/brightnessctl get)
+    max=$(${pkgs.brightnessctl}/bin/brightnessctl max)
+    ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "$((cur * 100 / max))%"
+  '';
+  brightnessDownScript = pkgs.writeShellScript "brightness-down" ''
+    ${pkgs.brightnessctl}/bin/brightnessctl set 5%-
+    cur=$(${pkgs.brightnessctl}/bin/brightnessctl get)
+    max=$(${pkgs.brightnessctl}/bin/brightnessctl max)
+    ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "$((cur * 100 / max))%"
+  '';
 in
 {
   wayland.windowManager.sway = {
@@ -109,16 +141,16 @@ in
         "${mod}+a" = "focus parent";
         "${mod}+r" = "mode resize";
 
-        "--locked XF86AudioRaiseVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+";
-        "--locked XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
-        "--locked XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
-        "--locked ${mod}+XF86AudioRaiseVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+";
-        "--locked ${mod}+XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
-        "--locked ${mod}+XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
-        "--locked XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
-        "--locked XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
-        "--locked ${mod}+XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
-        "--locked ${mod}+XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
+        "--locked XF86AudioRaiseVolume" = "exec ${volUpScript}";
+        "--locked XF86AudioLowerVolume" = "exec ${volDownScript}";
+        "--locked XF86AudioMute" = "exec ${volMuteScript}";
+        "--locked ${mod}+XF86AudioRaiseVolume" = "exec ${volUpScript}";
+        "--locked ${mod}+XF86AudioLowerVolume" = "exec ${volDownScript}";
+        "--locked ${mod}+XF86AudioMute" = "exec ${volMuteScript}";
+        "--locked XF86MonBrightnessUp" = "exec ${brightnessUpScript}";
+        "--locked XF86MonBrightnessDown" = "exec ${brightnessDownScript}";
+        "--locked ${mod}+XF86MonBrightnessUp" = "exec ${brightnessUpScript}";
+        "--locked ${mod}+XF86MonBrightnessDown" = "exec ${brightnessDownScript}";
         "Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; grim - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
         "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
       };

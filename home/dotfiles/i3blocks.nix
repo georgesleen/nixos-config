@@ -104,8 +104,9 @@ let
   '';
   brightnessBlock = pkgs.writeShellScript "i3blocks-brightness" ''
     set -euo pipefail
-    pct="$(${pkgs.brightnessctl}/bin/brightnessctl -m | awk -F, '{print $5}')"
-    echo "<span color='#f9e2af'>󰃟 $pct</span>"
+    cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
+    max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
+    echo "<span color='#f9e2af'>󰃟 $((cur * 100 / max))%</span>"
   '';
   loadBlock = pkgs.writeShellScript "i3blocks-load" ''
     set -euo pipefail
