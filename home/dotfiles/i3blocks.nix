@@ -6,14 +6,14 @@ let
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "Pwr n/a"
+      echo "<span color='#f9e2af'>󱐋 n/a</span>"
       exit 0
     fi
     rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{print $2, $3}')
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    echo "Pwr $rate"
+    echo "<span color='#f9e2af'>󱐋 $rate</span>"
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
     set -euo pipefail
@@ -21,20 +21,20 @@ let
     ssid="$(printf "%s\n" "$out" | awk '/SSID/ {print $2}')"
     sig="$(printf "%s\n" "$out" | awk '/signal/ {print $2}')"
     if [ -z "$ssid" ]; then
-      echo "W: down"
+      echo "<span color='#6c7086'>󰤭 down</span>"
       exit 0
     fi
     q=$((2*(sig+100)))
     if [ "$q" -lt 0 ]; then q=0; fi
     if [ "$q" -gt 100 ]; then q=100; fi
-    echo "W: $ssid $q%"
+    echo "<span color='#89b4fa'>󰤨 $ssid $q%</span>"
   '';
   batteryBlock = pkgs.writeShellScript "i3blocks-battery" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "Bat n/a"
+      echo "<span color='#6c7086'>󰂑 n/a</span>"
       exit 0
     fi
     info="$("$upower_bin" -i "$bat")"
@@ -74,17 +74,39 @@ let
     fi
     tte_fmt="$(fmt_time "$tte_hours")"
     ttf_fmt="$(fmt_time "$ttf_hours")"
-    case "$state" in
-      charging) echo "Bat $pct (chg) $ttf_fmt" ;;
-      fully-charged) echo "Bat $pct (full)" ;;
-      *) echo "Bat $pct $tte_fmt" ;;
-    esac
+    pct_num="$(echo "$pct" | tr -d '%')"
+    if [ "$state" = "charging" ]; then
+      icon="󰂄"
+      color="#a6e3a1"
+      label="$pct (chg) $ttf_fmt"
+    elif [ "$state" = "fully-charged" ]; then
+      icon="󰁹"
+      color="#a6e3a1"
+      label="$pct (full)"
+    elif [ "$pct_num" -le 15 ]; then
+      icon="󰁺"
+      color="#f38ba8"
+      label="$pct $tte_fmt"
+    elif [ "$pct_num" -le 30 ]; then
+      icon="󰁼"
+      color="#fab387"
+      label="$pct $tte_fmt"
+    elif [ "$pct_num" -le 60 ]; then
+      icon="󰁾"
+      color="#f9e2af"
+      label="$pct $tte_fmt"
+    else
+      icon="󰂁"
+      color="#a6e3a1"
+      label="$pct $tte_fmt"
+    fi
+    echo "<span color='$color'>$icon $label</span>"
   '';
   loadBlock = pkgs.writeShellScript "i3blocks-load" ''
     set -euo pipefail
     load="$(${pkgs.coreutils}/bin/uptime | awk -F'load average: ' '{split($2,a,","); print a[1]}')"
     cores="$(${pkgs.coreutils}/bin/nproc)"
-    echo "Load $load/$cores""c"
+    echo "<span color='#fab387'>󰻠 $load/$cores""c</span>"
   '';
   memoryBlock = pkgs.writeShellScript "i3blocks-memory" ''
     set -euo pipefail
@@ -93,7 +115,7 @@ let
     total="$(echo "$line" | awk '{print $2}')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "Mem $used_fmt/$total_fmt MiB"
+    echo "<span color='#cba6f7'>󰍛 $used_fmt/$total_fmt MiB</span>"
   '';
   diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
     set -euo pipefail
@@ -102,24 +124,26 @@ let
     total="$(echo "$line" | awk '{print $2}' | tr -d 'G')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "Disk $used_fmt/$total_fmt GiB"
+    echo "<span color='#89dceb'>󰋊 $used_fmt/$total_fmt GiB</span>"
   '';
   volumeBlock = pkgs.writeShellScript "i3blocks-volume" ''
     set -euo pipefail
-    vol="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | awk '{print $2}')"
-    if [ -z "$vol" ]; then
-      echo "Vol n/a"
+    raw="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null)"
+    if [ -z "$raw" ]; then
+      echo "<span color='#6c7086'>󰖁 n/a</span>"
       exit 0
     fi
-    pct="$(echo "$vol" | awk '{printf "%d", $1 * 100}')"
-    mute="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null | rg -q MUTED && echo " (muted)" || echo "")"
-    echo "Vol $pct%$mute"
+    pct="$(echo "$raw" | awk '{printf "%d", $2 * 100}')"
+    if echo "$raw" | ${pkgs.ripgrep}/bin/rg -q MUTED; then
+      echo "<span color='#6c7086'>󰖁 $pct% (muted)</span>"
+    else
+      echo "<span color='#a6e3a1'>󰕾 $pct%</span>"
+    fi
   '';
 in
 {
   xdg.configFile."i3blocks/config".text = ''
-    command=${pkgs.i3blocks}/bin/i3blocks
-    separator_block_width=15
+    separator_block_width=18
     markup=pango
 
     [wireless]

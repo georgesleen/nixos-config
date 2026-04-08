@@ -38,13 +38,13 @@ in
           position = "top";
           statusCommand = "${pkgs.i3blocks}/bin/i3blocks -c ${config.xdg.configHome}/i3blocks/config";
           fonts = {
-            names = [ "JetBrains Mono" ];
+            names = [ "JetBrainsMono Nerd Font" ];
             size = 10.0;
           };
           colors = {
-            background = "#000000AA";
-            statusline = "#ffffffff";
-            separator = "#666666ff";
+            background = "#1e1e2ecc";
+            statusline = "#cdd6f4ff";
+            separator = "#45475aff";
           };
           extraConfig = "modifier ${mod}";
         }
@@ -92,6 +92,12 @@ in
         "${mod}+Shift+8" = "move container to workspace number 8";
         "${mod}+Shift+9" = "move container to workspace number 9";
 
+        "${mod}+0" = "workspace number 10";
+        "${mod}+Shift+0" = "move container to workspace number 10";
+
+        "${mod}+minus" = "scratchpad show";
+        "${mod}+Shift+minus" = "move scratchpad";
+
         "${mod}+b" = "splith";
         "${mod}+v" = "splitv";
         "${mod}+s" = "layout stacking";
@@ -100,11 +106,11 @@ in
         "${mod}+a" = "focus parent";
         "${mod}+r" = "mode resize";
 
-        "XF86AudioRaiseVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+";
-        "XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
-        "XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
-        "XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
-        "XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
+        "--locked XF86AudioRaiseVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+";
+        "--locked XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
+        "--locked XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+        "--locked XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
+        "--locked XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
         "Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; grim - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
         "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
       };

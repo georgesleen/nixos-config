@@ -10,9 +10,7 @@
 
   home.packages = with pkgs; [
     nil # Nix LSP
-    waybar
     dmenu
-    i3
     grim
     slurp
     wl-clipboard

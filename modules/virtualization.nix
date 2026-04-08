@@ -76,7 +76,6 @@ in
 
   environment.systemPackages = with pkgs; [
     spice-gtk
-    remmina
     usbredir
     podman
     virglrenderer
