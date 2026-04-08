@@ -102,6 +102,11 @@ let
     fi
     echo "<span color='$color'>$icon $label</span>"
   '';
+  brightnessBlock = pkgs.writeShellScript "i3blocks-brightness" ''
+    set -euo pipefail
+    pct="$(${pkgs.brightnessctl}/bin/brightnessctl -m | awk -F, '{print $5}')"
+    echo "<span color='#f9e2af'>󰃟 $pct</span>"
+  '';
   loadBlock = pkgs.writeShellScript "i3blocks-load" ''
     set -euo pipefail
     load="$(${pkgs.coreutils}/bin/uptime | awk -F'load average: ' '{split($2,a,","); print a[1]}')"
@@ -152,6 +157,10 @@ in
 
     [volume]
     command=${volumeBlock}
+    interval=2
+
+    [brightness]
+    command=${brightnessBlock}
     interval=2
 
     [load]

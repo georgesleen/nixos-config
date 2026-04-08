@@ -46,7 +46,10 @@ in
             statusline = "#cdd6f4ff";
             separator = "#45475aff";
           };
-          extraConfig = "modifier ${mod}\n          height 26";
+          extraConfig = ''
+            modifier ${mod}
+            height 26
+          '';
         }
       ];
       keybindings = {
@@ -109,8 +112,13 @@ in
         "--locked XF86AudioRaiseVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+";
         "--locked XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
         "--locked XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+        "--locked ${mod}+XF86AudioRaiseVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+";
+        "--locked ${mod}+XF86AudioLowerVolume" = "exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
+        "--locked ${mod}+XF86AudioMute" = "exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
         "--locked XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
         "--locked XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
+        "--locked ${mod}+XF86MonBrightnessUp" = "exec brightnessctl set 5%+";
+        "--locked ${mod}+XF86MonBrightnessDown" = "exec brightnessctl set 5%-";
         "Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; grim - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
         "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
       };
