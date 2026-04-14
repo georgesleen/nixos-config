@@ -42,7 +42,7 @@ in
     in {
       modifier = mod;
       terminal = "kitty";
-      menu = "i3-dmenu-desktop --dmenu='dmenu -i'";
+      menu = "j4-dmenu-desktop --no-generic --dmenu='dmenu -i'";
       floating.modifier = mod;
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
@@ -71,7 +71,7 @@ in
       ];
       keybindings = {
         "${mod}+Return" = "exec kitty";
-        "${mod}+d" = "exec i3-dmenu-desktop --dmenu='dmenu -i' --term=kitty";
+        "${mod}+d" = "exec j4-dmenu-desktop --no-generic --dmenu='dmenu -i' --term=kitty";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
@@ -156,6 +156,8 @@ in
       };
     };
     extraConfig = ''
+      workspace 1
+
       # Remove borders/title bars.
       default_border none
       default_floating_border none

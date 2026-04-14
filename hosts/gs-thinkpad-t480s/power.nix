@@ -16,16 +16,37 @@
   boot.resumeDevice = "/dev/disk/by-uuid/9300b555-a316-4f12-8d44-2990a19f107e";
   boot.kernelParams = lib.mkAfter [
     "resume=UUID=9300b555-a316-4f12-8d44-2990a19f107e"
-    "pcie_aspm=power"
-    "usbcore.autosuspend=-1"
+    "pcie_aspm=force"
   ];
 
   # Battery charge thresholds (ThinkPad)
   services.tlp = {
     enable = true;
     settings = {
+      # Battery charge thresholds
       START_CHARGE_THRESH_BAT0 = 80;
       STOP_CHARGE_THRESH_BAT0 = 85;
+
+      # CPU power savings on battery
+      CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
+      CPU_SCALING_GOVERNOR_ON_AC = "powersave";
+      CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
+      CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance";
+      CPU_BOOST_ON_BAT = 0;
+      CPU_BOOST_ON_AC = 1;
+
+      # Runtime PM for PCI/USB devices
+      RUNTIME_PM_ON_BAT = "auto";
+      RUNTIME_PM_ON_AC = "on";
+      USB_AUTOSUSPEND = 1;
+
+      # SATA link power management
+      SATA_LINKPWR_ON_BAT = "med_power_with_dipm";
+      SATA_LINKPWR_ON_AC = "med_power_with_dipm";
+
+      # Wi-Fi power saving
+      WIFI_PWR_ON_BAT = "on";
+      WIFI_PWR_ON_AC = "off";
     };
   };
   services.power-profiles-daemon.enable = false;
