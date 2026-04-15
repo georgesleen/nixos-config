@@ -30,6 +30,15 @@
       lock-delay = lib.hm.gvariant.mkUint32 0;
     };
 
+    "org/gnome/settings-daemon/plugins/power" = {
+      # Suspend after 15 minutes of inactivity on battery
+      sleep-inactive-battery-type = "suspend";
+      sleep-inactive-battery-timeout = 900;
+      # Suspend after 30 minutes of inactivity on AC
+      sleep-inactive-ac-type = "suspend";
+      sleep-inactive-ac-timeout = 1800;
+    };
+
     "org/virt-manager/virt-manager/connections" = {
       autoconnect = [ "qemu:///system" ];
       uris = [ "qemu:///system" ];
