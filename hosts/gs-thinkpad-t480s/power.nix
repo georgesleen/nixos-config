@@ -3,9 +3,28 @@
 {
   services.logind.settings.Login = {
     CriticalPowerAction = "hibernate";
-    HandleLidSwitch = "suspend-then-hibernate";
-    HandleLidSwitchExternalPower = "suspend-then-hibernate";
+    # Lid switch handled by acpid with debounce (see below).
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
     HandleLidSwitchDocked = "ignore";
+  };
+
+  # Debounced lid switch handler — cancels and re-arms a 3-second timer on
+  # every lid event.  A brief magnetic false-close (pencil magnet, etc.) gets
+  # cancelled by the immediate re-open before the timer fires.
+  services.acpid = {
+    enable = true;
+    lidEventCommands = ''
+      # Cancel any pending debounce timer.
+      ${pkgs.systemd}/bin/systemctl stop lid-suspend-debounce.timer 2>/dev/null || true
+
+      if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID0/state; then
+        ${pkgs.systemd}/bin/systemd-run \
+          --unit=lid-suspend-debounce \
+          --on-active=3s \
+          ${pkgs.systemd}/bin/systemctl suspend-then-hibernate
+      fi
+    '';
   };
 
   systemd.sleep.settings.Sleep = {
