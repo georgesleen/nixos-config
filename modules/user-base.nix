@@ -25,5 +25,7 @@ in
     easyeda2kicad # rip symbols from jlc for kicad
     zed-editor # code editor
     zoom # video conferencing
+    pandoc # Markdown Renderer
+    texlive.combined.scheme-medium # LaTeX engine
   ];
 }

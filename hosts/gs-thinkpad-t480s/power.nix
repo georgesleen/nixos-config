@@ -61,6 +61,7 @@
 
   # Refresh DNS and Wi-Fi stack after resume to avoid stale enterprise auth/DNS state.
   powerManagement.resumeCommands = ''
+    ${pkgs.systemd}/bin/systemctl stop systemd-suspend-then-hibernate.service 2>/dev/null || true
     ${pkgs.systemd}/bin/systemctl try-restart dnscrypt-proxy.service
     ${pkgs.systemd}/bin/systemctl try-restart NetworkManager.service
   '';
