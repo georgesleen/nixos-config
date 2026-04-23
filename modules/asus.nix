@@ -1,6 +1,9 @@
 { pkgs, ... }:
 
 {
+  environment.systemPackages = with pkgs; [
+    asusctl
+  ];
   # asusd bind-mounts /etc/asusd into its private namespace — create it if absent
   systemd.tmpfiles.rules = [
     "d /etc/asusd 0755 root root -"
