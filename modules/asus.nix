@@ -1,6 +1,11 @@
 { pkgs, ... }:
 
 {
+  # asusd bind-mounts /etc/asusd into its private namespace — create it if absent
+  systemd.tmpfiles.rules = [
+    "d /etc/asusd 0755 root root -"
+  ];
+
   # ASUS system daemon: fan curves, battery charge limits, keyboard RGB, power profiles
   services.asusd.enable = true;
 
