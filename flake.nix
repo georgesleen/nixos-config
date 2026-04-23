@@ -55,6 +55,27 @@
         ];
       };
 
+      
+      nixosConfigurations.gs-zephyrus-14 = nixpkgs.lib.nixosSystem {
+        specialArgs = { inherit inputs; };
+        modules = [
+          ./hosts/gs-zephyrus-14
+          waveforms.nixosModule
+
+          # Make home-manager as a module of nixos
+          # so that home-manager configuration will be deployed automatically when executing 'nixos-rebuild switch'
+          home-manager.nixosModules.home-manager
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.backupFileExtension = "hm-backup";
+            home-manager.users.george-sleen = import ./home/george-sleen.nix;
+
+            # Optionally, use home-manager.extraSpecialArgs to pass arguments to home.nix
+          }
+        ];
+      };
+      
       devShells = forAllSystems (
         system:
         let
