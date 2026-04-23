@@ -4,6 +4,7 @@
   imports = [
     ../../modules/default.nix
     ../../modules/laptop.nix
+    ../../modules/asus.nix
     ./hardware-configuration.nix
     ./power.nix
   ];
@@ -75,7 +76,7 @@
   services.kmonad = {
     enable = true;
     keyboards.internal = {
-      device = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
+      device = "/dev/input/by-path/pci-0000:04:00.3-usb-0:3:1.0-event-kbd";
       defcfg = {
         enable = true;
         fallthrough = true;
@@ -96,7 +97,6 @@
   # Services
   services.printing.enable = true;
   services.openssh.enable = true;
-  services.qemuGuest.enable = true;
   programs.dconf.enable = true;
   programs.firefox.enable = true;
   nixpkgs.config.allowUnfree = true;
@@ -116,6 +116,15 @@
       "uucp"
       "podman"
     ];
+  };
+
+  # Touchpad: two-finger click/tap for right-click (Zephyrus clickpad has no button zones)
+  home-manager.users.george-sleen = {
+    dconf.settings."org/gnome/desktop/peripherals/touchpad" = {
+      click-method = "fingers";
+      tap-to-click = true;
+      two-finger-scrolling-enabled = true;
+    };
   };
 
   # Host-specific packages

@@ -20,7 +20,6 @@
     "pcie_aspm=force"
   ];
 
-  # Battery charge thresholds (ThinkPad)
   services.tlp = {
     enable = true;
     settings = {
