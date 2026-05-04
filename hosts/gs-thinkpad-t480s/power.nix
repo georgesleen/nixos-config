@@ -79,8 +79,11 @@
   networking.networkmanager.wifi.powersave = true;
 
   # Refresh DNS and Wi-Fi stack after resume to avoid stale enterprise auth/DNS state.
+  # Skip when waking only to transition into hibernate (lid still closed).
   powerManagement.resumeCommands = ''
-    ${pkgs.systemd}/bin/systemctl stop systemd-suspend-then-hibernate.service 2>/dev/null || true
+    if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID0/state; then
+      exit 0
+    fi
     ${pkgs.systemd}/bin/systemctl try-restart dnscrypt-proxy.service
     ${pkgs.systemd}/bin/systemctl try-restart NetworkManager.service
   '';
