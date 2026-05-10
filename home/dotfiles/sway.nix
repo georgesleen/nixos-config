@@ -24,6 +24,19 @@ let
     fi
   '';
 
+  micMuteScript = pkgs.writeShellScript "micmute" ''
+    ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+    raw=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@)
+    led=/sys/class/leds/platform::micmute/brightness
+    if echo "$raw" | grep -q MUTED; then
+      [ -w "$led" ] && echo 1 > "$led"
+      ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-micmute "Microphone" "Muted"
+    else
+      [ -w "$led" ] && echo 0 > "$led"
+      ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-micmute "Microphone" "Unmuted"
+    fi
+  '';
+
   brightnessScript = pkgs.writeShellScript "brightness" ''
     case "$1" in
       up)   ${pkgs.brightnessctl}/bin/brightnessctl set 5%+ ;;
@@ -129,9 +142,11 @@ in
         "--locked XF86AudioRaiseVolume" = "exec ${volumeScript} up";
         "--locked XF86AudioLowerVolume" = "exec ${volumeScript} down";
         "--locked XF86AudioMute" = "exec ${volumeScript} mute";
+        "--locked XF86AudioMicMute" = "exec ${micMuteScript}";
         "--locked ${mod}+XF86AudioRaiseVolume" = "exec ${volumeScript} up";
         "--locked ${mod}+XF86AudioLowerVolume" = "exec ${volumeScript} down";
         "--locked ${mod}+XF86AudioMute" = "exec ${volumeScript} mute";
+        "--locked ${mod}+XF86AudioMicMute" = "exec ${micMuteScript}";
         "--locked XF86MonBrightnessUp" = "exec ${brightnessScript} up";
         "--locked XF86MonBrightnessDown" = "exec ${brightnessScript} down";
         "--locked ${mod}+XF86MonBrightnessUp" = "exec ${brightnessScript} up";

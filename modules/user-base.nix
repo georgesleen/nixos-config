@@ -24,7 +24,7 @@ in
     ngspice # circuit simulator used with kicad
     easyeda2kicad # rip symbols from jlc for kicad
     zed-editor # code editor
-    zoom # video conferencing
+    zoom-us # video conferencing
     pandoc # Markdown Renderer
     texlive.combined.scheme-medium # LaTeX engine
   ];
