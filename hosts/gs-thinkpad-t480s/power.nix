@@ -18,7 +18,7 @@
       # Cancel any pending debounce timer.
       ${pkgs.systemd}/bin/systemctl stop lid-suspend-debounce.timer 2>/dev/null || true
 
-      if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID0/state; then
+      if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
         ${pkgs.systemd}/bin/systemd-run \
           --unit=lid-suspend-debounce \
           --on-active=3s \
@@ -81,7 +81,7 @@
   # Refresh DNS and Wi-Fi stack after resume to avoid stale enterprise auth/DNS state.
   # Skip when waking only to transition into hibernate (lid still closed).
   powerManagement.resumeCommands = ''
-    if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID0/state; then
+    if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
       exit 0
     fi
     ${pkgs.systemd}/bin/systemctl try-restart dnscrypt-proxy.service
