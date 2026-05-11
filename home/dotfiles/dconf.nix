@@ -17,7 +17,10 @@
     };
 
     "org/gnome/desktop/input-sources" = {
-      xkb-options = [ ];
+      # Remap caps to esc on all keyboards in GNOME sessions. Mirrors the
+      # system-level `services.xserver.xkb.options` setting, which GNOME
+      # would otherwise override.
+      xkb-options = [ "caps:escape" ];
     };
 
     "org/gnome/desktop/session" = {
