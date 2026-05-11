@@ -55,7 +55,7 @@ in
     in {
       modifier = mod;
       terminal = "kitty";
-      menu = "j4-dmenu-desktop --no-generic --dmenu='dmenu -i'";
+      menu = "tofi-drun --drun-launch=true";
       floating.modifier = mod;
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
@@ -84,7 +84,7 @@ in
       ];
       keybindings = {
         "${mod}+Return" = "exec kitty";
-        "${mod}+d" = "exec j4-dmenu-desktop --no-generic --dmenu='dmenu -i' --term=kitty";
+        "${mod}+d" = "exec tofi-drun --drun-launch=true";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
@@ -172,6 +172,10 @@ in
     };
     extraConfig = ''
       workspace 1
+
+      # Turn off the internal panel when the lid closes (e.g. while docked).
+      bindswitch --reload --locked lid:on  output eDP-1 disable
+      bindswitch --reload --locked lid:off output eDP-1 enable
 
       # Remove borders/title bars.
       default_border none

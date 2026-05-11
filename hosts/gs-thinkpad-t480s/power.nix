@@ -19,6 +19,12 @@
       ${pkgs.systemd}/bin/systemctl stop lid-suspend-debounce.timer 2>/dev/null || true
 
       if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
+        # If a Thunderbolt dock is connected, treat the laptop as a desktop:
+        # don't suspend or hibernate on lid close.
+        for f in /sys/bus/thunderbolt/devices/*-*/authorized; do
+          [ -e "$f" ] && [ "$(${pkgs.coreutils}/bin/cat "$f")" = "1" ] && exit 0
+        done
+
         ${pkgs.systemd}/bin/systemd-run \
           --unit=lid-suspend-debounce \
           --on-active=3s \
@@ -29,7 +35,7 @@
 
   systemd.sleep.settings.Sleep = {
     HibernateDelaySec = "45min";
-    HibernateMode = "shutdown";
+    HibernateMode = "platform";
   };
 
   # Enable hibernate resume from swap.
@@ -102,4 +108,12 @@
   };
 
   powerManagement.enable = true;
+
+  # Enable wake-from-suspend for USB devices behind a Thunderbolt controller
+  # so a dock's power button (or attached keyboard) can wake the laptop.
+  # Matches via the PCI `removable` attribute, which the kernel sets on
+  # hot-pluggable PCIe devices — i.e. any USB controller attached over TB.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="usb", ATTRS{removable}=="removable", ATTR{power/wakeup}="enabled"
+  '';
 }

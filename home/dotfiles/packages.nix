@@ -10,8 +10,7 @@
 
   home.packages = with pkgs; [
     nil # Nix LSP
-    dmenu
-    j4-dmenu-desktop
+    tofi
     grim
     slurp
     wl-clipboard
