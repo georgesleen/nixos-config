@@ -28,5 +28,6 @@
     marksman
     prettier
     bluetuith
+    pulsemixer
   ];
 }
