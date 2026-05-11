@@ -27,6 +27,6 @@
     harper
     marksman
     prettier
-    blueman
+    bluetuith
   ];
 }
