@@ -60,6 +60,8 @@ in
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
       input."type:touchpad".pointer_accel = "0.7";
+      # Remap caps to esc on every keyboard sway sees (internal + USB).
+      input."type:keyboard".xkb_options = "caps:escape";
       output."*".bg = "${swayBg} fill";
       bars = [
         {
