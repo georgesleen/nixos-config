@@ -65,32 +65,11 @@
   security.pam.services.gdm.enableGnomeKeyring = true;
   security.pam.services.gdm-password.enableGnomeKeyring = true;
 
-  # Keyboard
+  # Keyboard — remap caps to esc on all keyboards (internal + any external).
   services.xserver.xkb = {
     layout = "us";
     variant = "";
-  };
-
-  # Caps → Esc via KMonad
-  services.kmonad = {
-    enable = true;
-    keyboards.internal = {
-      device = "/dev/input/by-path/platform-i8042-serio-0-event-kbd";
-      defcfg = {
-        enable = true;
-        fallthrough = true;
-      };
-      config = ''
-        (defsrc
-          caps)
-
-        (defalias
-          capesc esc)
-
-        (deflayer base
-          @capesc)
-      '';
-    };
+    options = "caps:escape";
   };
 
   # Services

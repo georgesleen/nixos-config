@@ -10,7 +10,7 @@
 
   systemd.sleep.settings.Sleep = {
     HibernateDelaySec = "45min";
-    HibernateMode = "shutdown";
+    HibernateMode = "platform";
   };
 
   # Enable hibernate resume from swap.

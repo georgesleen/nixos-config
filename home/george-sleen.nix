@@ -12,6 +12,7 @@
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
     ./dotfiles/i3blocks.nix
+    ./dotfiles/kanshi.nix
     ./dotfiles/kitty.nix
     ./dotfiles/mako.nix
     ./dotfiles/packages.nix
@@ -19,6 +20,7 @@
     ./dotfiles/sandboxed.nix
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
+    ./dotfiles/tofi.nix
     ./dotfiles/tmux.nix
     ./dotfiles/xresources.nix
   ];
