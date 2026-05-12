@@ -17,6 +17,16 @@ let
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
     set -euo pipefail
+    for iface in /sys/class/net/*; do
+      name="$(basename "$iface")"
+      [ "$name" = "lo" ] && continue
+      [ -d "$iface/wireless" ] && continue
+      [ "$(cat "$iface/type" 2>/dev/null)" = "1" ] || continue
+      if [ "$(cat "$iface/carrier" 2>/dev/null)" = "1" ]; then
+        echo "<span color='#a6e3a1'>󰈁 $name</span>"
+        exit 0
+      fi
+    done
     dev=$(${pkgs.iw}/bin/iw dev | awk '/Interface/ {print $2; exit}')
     out="$(${pkgs.iw}/bin/iw dev "$dev" link || true)"
     ssid="$(printf "%s\n" "$out" | awk '/SSID/ {print $2}')"
