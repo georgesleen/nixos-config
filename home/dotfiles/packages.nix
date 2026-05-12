@@ -17,7 +17,7 @@
     };
     bluetooth = {
       name = "Bluetooth";
-      exec = "kitty -e bluetuith";
+      exec = "kitty -e bluetui";
       terminal = false;
       categories = [ "Settings" ];
     };
@@ -48,7 +48,7 @@
     harper
     marksman
     prettier
-    bluetuith
+    bluetui
     pulsemixer
   ];
 }
