@@ -8,9 +8,7 @@
 
   services.xserver.videoDrivers = [ "nvidia" ];
 
-  programs.sway.package = pkgs.sway.override {
-    extraOptions = [ "--unsupported-gpu" ];
-  };
+  programs.sway.extraOptions = [ "--unsupported-gpu" ];
 
   hardware.nvidia = {
     modesetting.enable = true;
