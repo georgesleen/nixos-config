@@ -48,8 +48,13 @@ let
   '';
 in
 {
+  xdg.configFile."xdg-terminals.list".text = "kitty.desktop\n";
+
   wayland.windowManager.sway = {
     enable = true;
+    extraSessionCommands = ''
+      export TERMINAL=kitty
+    '';
     config = let
       mod = "Mod1";
     in {

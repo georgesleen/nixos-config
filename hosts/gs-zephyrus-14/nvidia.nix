@@ -9,6 +9,7 @@
   services.xserver.videoDrivers = [ "nvidia" ];
 
   programs.sway.extraOptions = [ "--unsupported-gpu" ];
+  home-manager.users.george-sleen.wayland.windowManager.sway.extraOptions = [ "--unsupported-gpu" ];
 
   hardware.nvidia = {
     modesetting.enable = true;
