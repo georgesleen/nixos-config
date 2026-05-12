@@ -7,6 +7,7 @@
     ../../modules/asus.nix
     ./hardware-configuration.nix
     ./power.nix
+    ./nvidia.nix
   ];
 
   nix.settings.experimental-features = [
