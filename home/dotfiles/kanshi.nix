@@ -28,6 +28,8 @@ let
         }
       ];
       exec = [
+        ''${swaymsg} "output eDP-1 position 0 0"''
+        ''${swaymsg} "output \"${externalCriteria}\" position 1920 0"''
         ''${swaymsg} "${assignWorkspaces "eDP-1" externalCriteria}"''
         ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
       ];
