@@ -1,9 +1,10 @@
-{ config, pkgs, ... }:
+{ config, pkgs, user, ... }:
 
 {
   imports = [
     ../../modules/default.nix
     ../../modules/laptop.nix
+    ../../modules/thinkpad.nix
     ./hardware-configuration.nix
     ./power.nix
   ];
@@ -55,15 +56,18 @@
   i18n.defaultLocale = "en_CA.UTF-8";
 
   # Display / Desktop
-  services.xserver.enable = true;
-  services.displayManager.gdm.enable = true;
-  services.displayManager.gdm.wayland = true;
-  services.desktopManager.gnome.enable = true;
+  services.greetd = {
+    enable = true;
+    settings.default_session = {
+      command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd sway";
+      user = "greeter";
+    };
+  };
 
-  # Keyring (unlock on login outside GNOME)
+  # gnome-keyring as a standalone secret service (no gnome-shell needed)
   services.gnome.gnome-keyring.enable = true;
-  security.pam.services.gdm.enableGnomeKeyring = true;
-  security.pam.services.gdm-password.enableGnomeKeyring = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
+  security.pam.services.login.enableGnomeKeyring = true;
 
   # Keyboard — remap caps to esc on all keyboards (internal + any external).
   services.xserver.xkb = {
@@ -83,13 +87,8 @@
   # USB permissions
   users.groups.plugdev = { };
 
-  # Allow `input` group to control the mic-mute LED (used by sway micmute binding)
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::micmute", RUN+="${pkgs.coreutils}/bin/chgrp input /sys/class/leds/%k/brightness", RUN+="${pkgs.coreutils}/bin/chmod g+w /sys/class/leds/%k/brightness"
-  '';
-
   # User account
-  users.users.george-sleen = {
+  users.users.${user} = {
     isNormalUser = true;
     description = "George Sleen";
     extraGroups = [

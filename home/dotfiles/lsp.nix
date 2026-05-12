@@ -1,9 +1,9 @@
-# LSPs
+# Language servers, formatters, and linters used by Helix and VSCode.
 
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
-  environment.systemPackages = with pkgs; [
+  home.packages = with pkgs; [
     # nix
     nil
     nixfmt

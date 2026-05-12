@@ -9,11 +9,8 @@
     ./btrfs.nix
     ./dev.nix
     ./fonts.nix
-    ./gnome.nix
-    ./lsp.nix
     ./sway.nix
-    ./system-python.nix
+    ./sway-extras.nix
     ./virtualization.nix
-    ./vscode.nix
   ];
 }

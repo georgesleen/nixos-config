@@ -1,5 +1,8 @@
 { config, pkgs, ... }:
 
+let
+  wlCopy = "${pkgs.wl-clipboard}/bin/wl-copy";
+in
 {
   programs.tmux = {
     enable = true;
@@ -20,13 +23,13 @@
 
       # Yank in copy-mode: vi-style
       bind -T copy-mode-vi Space send -X begin-selection
-      bind -T copy-mode-vi Enter send -X copy-pipe-and-cancel "xclip -selection clipboard -i"
+      bind -T copy-mode-vi Enter send -X copy-pipe-and-cancel "${wlCopy}"
 
       # Also allow y to yank
-      bind -T copy-mode-vi y send -X copy-pipe-and-cancel "xclip -selection clipboard -i"
+      bind -T copy-mode-vi y send -X copy-pipe-and-cancel "${wlCopy}"
 
       # Allow mouse drag → clipboard copy
-      bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "xclip -selection clipboard -i"
+      bind -T copy-mode-vi MouseDragEnd1Pane send-keys -X copy-pipe-and-cancel "${wlCopy}"
 
       # Helix/vim-style pane navigation
       bind h select-pane -L

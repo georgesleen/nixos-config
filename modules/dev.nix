@@ -48,10 +48,4 @@
   services.udev.packages = [
     pkgs.stlink
   ];
-
-  services.udev.extraRules = ''
-    # STMicroelectronics ST-LINK debug probes
-    SUBSYSTEM=="usb", ATTRS{idVendor}=="0483", MODE="0666", GROUP="plugdev", TAG+="uaccess"
-    KERNEL=="hidraw*", ATTRS{idVendor}=="0483", MODE="0666", GROUP="plugdev", TAG+="uaccess"
-  '';
 }

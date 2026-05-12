@@ -4,11 +4,13 @@
   config,
   pkgs,
   lib,
+  user,
   ...
 }:
 
 let
   hugepages = 1024;
+  perfVMs = [ "win11" ];
   vmPerfHook = pkgs.writeShellScript "libvirt-qemu-vm-perf-hook" ''
     set -euo pipefail
 
@@ -16,10 +18,10 @@ let
     op="''${2:-}"
     subop="''${3:-}"
 
-    # Only toggle host performance policy for the Windows VM.
-    if [[ "$vm_name" != "win11" ]]; then
-      exit 0
-    fi
+    case "$vm_name" in
+      ${lib.concatMapStringsSep "|" lib.escapeShellArg perfVMs}) ;;
+      *) exit 0 ;;
+    esac
 
     log() { ${pkgs.util-linux}/bin/logger -t libvirt-qemu-hook "win11 ($op/$subop): $*" || true; }
 
@@ -77,12 +79,12 @@ in
     };
   };
 
-  users.users.george-sleen.extraGroups = [ "libvirtd" ];
-  users.groups.libvirtd.members = [ "george-sleen" ];
+  users.users.${user}.extraGroups = [ "libvirtd" ];
+  users.groups.libvirtd.members = [ user ];
 
-  boot.kernelModules = [ "kvm-intel" ];
-  # Hugepages and scheduler tuning left to runtime (e.g. libvirt hooks)
-  # to avoid wasting 2 GB of pinned RAM when no VM is running.
+  # kvm-intel / kvm-amd are declared per host in hardware-configuration.nix.
+  # Hugepages and scheduler tuning left to runtime (libvirt hooks) to avoid
+  # pinning 2 GB of RAM when no VM is running.
 
   hardware.graphics = {
     enable = true;
@@ -105,21 +107,5 @@ in
 
   networking.firewall.trustedInterfaces = [ "virbr0" ];
 
-  systemd.services.libvirt-default-network = {
-    description = "Ensure libvirt default network is enabled and running";
-    after = [ "libvirtd.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig.Type = "oneshot";
-    path = [ pkgs.libvirt ];
-    script = ''
-      virsh -c qemu:///system net-autostart default || true
-      virsh -c qemu:///system net-info default | grep -q "Active: *yes" || \
-        virsh -c qemu:///system net-start default
-    '';
-  };
-
   hardware.uinput.enable = true;
-  services.udev.extraRules = ''
-    SUBSYSTEM=="usb", MODE="0666"
-  '';
 }

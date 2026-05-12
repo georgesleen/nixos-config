@@ -1,27 +1,30 @@
-{ config, pkgs, ... }:
+{ config, pkgs, user, ... }:
 
 {
-  home.username = "george-sleen";
-  home.homeDirectory = "/home/george-sleen";
+  home.username = user;
+  home.homeDirectory = "/home/${user}";
 
   imports = [
     ./dotfiles/bashrc.nix
     ./dotfiles/battery.nix
     ./dotfiles/darkman.nix
     ./dotfiles/dconf.nix
+    ./dotfiles/fuzzel.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
     ./dotfiles/i3blocks.nix
     ./dotfiles/kanshi.nix
     ./dotfiles/kitty.nix
+    ./dotfiles/lsp.nix
     ./dotfiles/mako.nix
     ./dotfiles/packages.nix
+    ./dotfiles/python.nix
     ./dotfiles/rclone.nix
     ./dotfiles/sandboxed.nix
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
-    ./dotfiles/tofi.nix
     ./dotfiles/tmux.nix
+    ./dotfiles/vscode.nix
     ./dotfiles/xresources.nix
   ];
 

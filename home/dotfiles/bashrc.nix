@@ -9,20 +9,9 @@
         local target_path mime ext output_path
         target_path="''${1:-.}"
 
-        if [[ -n "''${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1; then
-          mime="$(wl-paste --list-types 2>/dev/null | grep -E '^image/' | head -n1)"
-          if [[ -z "$mime" ]]; then
-            echo "Clipboard does not contain an image." >&2
-            return 1
-          fi
-        elif command -v xclip >/dev/null 2>&1; then
-          mime="$(xclip -selection clipboard -t TARGETS -o 2>/dev/null | tr ' ' '\n' | grep -E '^image/' | head -n1)"
-          if [[ -z "$mime" ]]; then
-            echo "Clipboard does not contain an image." >&2
-            return 1
-          fi
-        else
-          echo "No clipboard tool available. Install wl-clipboard or xclip." >&2
+        mime="$(wl-paste --list-types 2>/dev/null | grep -E '^image/' | head -n1)"
+        if [[ -z "$mime" ]]; then
+          echo "Clipboard does not contain an image." >&2
           return 1
         fi
 
@@ -47,11 +36,7 @@
           mkdir -p "$(dirname "$output_path")"
         fi
 
-        if [[ -n "''${WAYLAND_DISPLAY:-}" ]] && command -v wl-paste >/dev/null 2>&1; then
-          wl-paste --no-newline --type "$mime" > "$output_path"
-        else
-          xclip -selection clipboard -t "$mime" -o > "$output_path"
-        fi
+        wl-paste --no-newline --type "$mime" > "$output_path"
 
         echo "$output_path"
       }

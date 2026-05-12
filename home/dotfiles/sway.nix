@@ -37,6 +37,14 @@ let
     fi
   '';
 
+  # Multiple input devices on this host (built-in kb, dock HID, Dell receiver,
+  # etc.) cause bindsym to fire several times per keystroke. flock collapses
+  # the duplicate launches to a single fuzzel instance.
+  launcherScript = pkgs.writeShellScript "launcher" ''
+    exec ${pkgs.util-linux}/bin/flock -n "/run/user/$(id -u)/fuzzel-launcher.lock" \
+      ${pkgs.fuzzel}/bin/fuzzel
+  '';
+
   brightnessScript = pkgs.writeShellScript "brightness" ''
     case "$1" in
       up)   ${pkgs.brightnessctl}/bin/brightnessctl set 5%+ ;;
@@ -46,6 +54,22 @@ let
     max=$(${pkgs.brightnessctl}/bin/brightnessctl max)
     ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "$((cur * 100 / max))%"
   '';
+
+  screenshotScript = pkgs.writeShellApplication {
+    name = "screenshot";
+    runtimeInputs = with pkgs; [ grim slurp wl-clipboard libnotify coreutils ];
+    text = ''
+      dir="${config.home.homeDirectory}/Screenshots"
+      mkdir -p "$dir"
+      f="$dir/$(date +%F_%H-%M-%S).png"
+      case "''${1:-full}" in
+        full)   grim - ;;
+        region) slurp -d | grim -g - - ;;
+        *) echo "usage: screenshot [full|region]" >&2; exit 2 ;;
+      esac | tee "$f" | wl-copy
+      notify-send "Screenshot saved" "$f"
+    '';
+  };
 in
 {
   xdg.configFile."xdg-terminals.list".text = "kitty.desktop\n";
@@ -60,7 +84,7 @@ in
     in {
       modifier = mod;
       terminal = "kitty";
-      menu = "tofi-drun --drun-launch=true";
+      menu = "${launcherScript}";
       floating.modifier = mod;
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
@@ -70,8 +94,7 @@ in
       output."*".bg = "${swayBg} fill";
       bars = [
         {
-          mode = "hide";
-          hiddenState = "hide";
+          mode = "dock";
           position = "top";
           statusCommand = "${pkgs.i3blocks}/bin/i3blocks -c ${config.xdg.configHome}/i3blocks/config";
           fonts = {
@@ -84,19 +107,19 @@ in
             separator = "#45475aff";
           };
           extraConfig = ''
-            modifier ${mod}
             height 26
           '';
         }
       ];
       keybindings = {
         "${mod}+Return" = "exec kitty";
-        "${mod}+d" = "exec tofi-drun --drun-launch=true";
+        "Control+${mod}+t" = "exec kitty";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
         "${mod}+Shift+q" = "kill";
         "${mod}+Shift+x" = "exec ${swaylockCmd}";
+        "${mod}+d" = "exec ${launcherScript}";
 
         "${mod}+h" = "focus left";
         "${mod}+j" = "focus down";
@@ -107,6 +130,9 @@ in
         "${mod}+Shift+j" = "move down";
         "${mod}+Shift+k" = "move up";
         "${mod}+Shift+l" = "move right";
+
+        "${mod}+Ctrl+h" = "move workspace to output left";
+        "${mod}+Ctrl+l" = "move workspace to output right";
 
         "${mod}+f" = "fullscreen toggle";
         "${mod}+space" = "focus mode_toggle";
@@ -158,8 +184,8 @@ in
         "--locked XF86MonBrightnessDown" = "exec ${brightnessScript} down";
         "--locked ${mod}+XF86MonBrightnessUp" = "exec ${brightnessScript} up";
         "--locked ${mod}+XF86MonBrightnessDown" = "exec ${brightnessScript} down";
-        "Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; grim - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
-        "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
+        "Print" = "exec ${screenshotScript}/bin/screenshot full";
+        "Shift+Print" = "exec ${screenshotScript}/bin/screenshot region";
       };
       startup = [ ];
       modes = {

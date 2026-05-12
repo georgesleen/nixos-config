@@ -6,10 +6,22 @@ let
   internalWorkspaces = [ 1 3 5 7 9 ];
   externalWorkspaces = [ 2 4 6 8 10 ];
 
-  assignWorkspaces = internal: external: lib.concatStringsSep ", " (
-    (map (n: "workspace ${toString n} output \\\"${internal}\\\"") internalWorkspaces)
-    ++ (map (n: "workspace ${toString n} output \\\"${external}\\\"") externalWorkspaces)
-  );
+  # `workspace N output OUT` is creation-time only — it doesn't migrate a
+  # workspace that already exists on the wrong head. Pair it with a
+  # `[workspace=N] move workspace to output OUT` so kanshi's exec also
+  # rehomes any existing workspaces on dock/undock.
+  assignWorkspaces = internal: external:
+    let
+      rule  = out: n: "workspace ${toString n} output \\\"${out}\\\"";
+      force = out: n: "[workspace=\\\"${toString n}\\\"] move workspace to output \\\"${out}\\\"";
+      rules =
+        (map (rule  internal) internalWorkspaces)
+        ++ (map (rule  external) externalWorkspaces);
+      moves =
+        (map (force internal) internalWorkspaces)
+        ++ (map (force external) externalWorkspaces);
+    in
+      lib.concatStringsSep ", " (rules ++ moves);
 
   swaymsg = "${pkgs.sway}/bin/swaymsg";
 

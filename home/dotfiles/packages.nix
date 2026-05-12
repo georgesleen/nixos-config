@@ -2,8 +2,6 @@
 
 {
   home.sessionVariables = {
-    XDG_DATA_HOME = "$HOME/.local/share";
-    XDG_DATA_DIRS = "/usr/local/share:/usr/share:$HOME/.local/share";
     EDITOR = "hx";
     VISUAL = "hx";
   };
@@ -17,7 +15,7 @@
     };
     bluetooth = {
       name = "Bluetooth";
-      exec = "kitty -e bluetui";
+      exec = "kitty -e bluetuith";
       terminal = false;
       categories = [ "Settings" ];
     };
@@ -30,8 +28,6 @@
   };
 
   home.packages = with pkgs; [
-    nil # Nix LSP
-    tofi
     grim
     slurp
     wl-clipboard
@@ -41,14 +37,10 @@
     swaylock-effects
     xdg-desktop-portal-wlr
     clipman
-    i3status
     i3blocks
     iw
-    networkmanager_dmenu
-    harper
-    marksman
     prettier
-    bluetui
+    bluetuith
     pulsemixer
   ];
 }
