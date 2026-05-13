@@ -6,14 +6,14 @@
 {
   environment.systemPackages = with pkgs; [
     yazi                   # TUI file manager
-    nemo-with-extensions   # GUI file manager (Mint's defaults)
+    nautilus               # GUI file manager
     qalculate-gtk          # calculator (also exposes `qalc` CLI)
     imv                    # image viewer
     networkmanagerapplet   # nm-applet + nm-connection-editor
     udiskie                # removable-media automount
   ];
 
-  # gvfs: trash, network mounts, MTP.
+  # gvfs: trash, network mounts, MTP (also used by nautilus).
   services.gvfs.enable = true;
 
   # polkit agent for sway (gnome-shell normally provided this).
