@@ -55,7 +55,7 @@ in
     in {
       modifier = mod;
       terminal = "kitty";
-      menu = "tofi-drun --drun-launch=true";
+      menu = "j4-dmenu-desktop --dmenu=bemenu --term=kitty";
       floating.modifier = mod;
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
@@ -87,7 +87,7 @@ in
       keybindings = {
         "${mod}+Return" = "exec kitty";
         "Control+${mod}+t" = "exec kitty";
-        "${mod}+d" = "exec tofi-drun --drun-launch=true";
+        "${mod}+d" = "exec j4-dmenu-desktop --dmenu=bemenu --term=kitty";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";

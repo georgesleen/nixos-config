@@ -29,7 +29,8 @@
 
   home.packages = with pkgs; [
     nil # Nix LSP
-    tofi
+    bemenu
+    j4-dmenu-desktop
     grim
     slurp
     wl-clipboard
