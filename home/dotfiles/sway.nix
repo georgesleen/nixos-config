@@ -86,6 +86,7 @@ in
       ];
       keybindings = {
         "${mod}+Return" = "exec kitty";
+        "Control+${mod}+t" = "exec kitty";
         "${mod}+d" = "exec tofi-drun --drun-launch=true";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
@@ -102,6 +103,9 @@ in
         "${mod}+Shift+j" = "move down";
         "${mod}+Shift+k" = "move up";
         "${mod}+Shift+l" = "move right";
+
+        "${mod}+Ctrl+h" = "move workspace to output left";
+        "${mod}+Ctrl+l" = "move workspace to output right";
 
         "${mod}+f" = "fullscreen toggle";
         "${mod}+space" = "focus mode_toggle";
@@ -156,7 +160,10 @@ in
         "Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; grim - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
         "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
       };
-      startup = [ ];
+      startup = [
+        { command = "${pkgs.networkmanagerapplet}/bin/nm-applet --indicator"; }
+        { command = "${pkgs.udiskie}/bin/udiskie --tray"; }
+      ];
       modes = {
         resize = {
           "h" = "resize shrink width 10 px or 10 ppt";

@@ -15,27 +15,29 @@
   services.acpid = {
     enable = true;
     lidEventCommands = ''
-      # Cancel any pending debounce timer.
       ${pkgs.systemd}/bin/systemctl stop lid-suspend-debounce.timer 2>/dev/null || true
 
       if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
-        # If a Thunderbolt dock is connected, treat the laptop as a desktop:
-        # don't suspend or hibernate on lid close.
+        # If a Thunderbolt dock is connected, treat the laptop as a desktop.
         for f in /sys/bus/thunderbolt/devices/*-*/authorized; do
           [ -e "$f" ] && [ "$(${pkgs.coreutils}/bin/cat "$f")" = "1" ] && exit 0
         done
 
+        # On battery this firmware does not reliably fire the RTC wake
+        # that suspend-then-hibernate needs, so jump straight to S4.
+        # On AC: plain S3 — fast resume, drain is harmless.
+        if ${pkgs.gnugrep}/bin/grep -q 1 /sys/class/power_supply/AC/online 2>/dev/null; then
+          action=suspend
+        else
+          action=hibernate
+        fi
+
         ${pkgs.systemd}/bin/systemd-run \
           --unit=lid-suspend-debounce \
           --on-active=3s \
-          ${pkgs.systemd}/bin/systemctl suspend-then-hibernate
+          ${pkgs.systemd}/bin/systemctl "$action"
       fi
     '';
-  };
-
-  systemd.sleep.settings.Sleep = {
-    HibernateDelaySec = "45min";
-    HibernateMode = "platform";
   };
 
   # Enable hibernate resume from swap.

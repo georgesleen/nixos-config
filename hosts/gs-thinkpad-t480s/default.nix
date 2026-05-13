@@ -55,15 +55,18 @@
   i18n.defaultLocale = "en_CA.UTF-8";
 
   # Display / Desktop
-  services.xserver.enable = true;
-  services.displayManager.gdm.enable = true;
-  services.displayManager.gdm.wayland = true;
-  services.desktopManager.gnome.enable = true;
+  services.greetd = {
+    enable = true;
+    settings.default_session = {
+      command = "${pkgs.greetd.tuigreet}/bin/tuigreet --time --remember --cmd sway";
+      user = "greeter";
+    };
+  };
 
-  # Keyring (unlock on login outside GNOME)
+  # gnome-keyring as a standalone secret service (no gnome-shell needed)
   services.gnome.gnome-keyring.enable = true;
-  security.pam.services.gdm.enableGnomeKeyring = true;
-  security.pam.services.gdm-password.enableGnomeKeyring = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
+  security.pam.services.login.enableGnomeKeyring = true;
 
   # Keyboard — remap caps to esc on all keyboards (internal + any external).
   services.xserver.xkb = {
