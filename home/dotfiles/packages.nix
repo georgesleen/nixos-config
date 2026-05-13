@@ -2,8 +2,6 @@
 
 {
   home.sessionVariables = {
-    XDG_DATA_HOME = "$HOME/.local/share";
-    XDG_DATA_DIRS = "/usr/local/share:/usr/share:$HOME/.local/share";
     EDITOR = "hx";
     VISUAL = "hx";
   };
@@ -17,7 +15,7 @@
     };
     bluetooth = {
       name = "Bluetooth";
-      exec = "kitty -e bluetui";
+      exec = "kitty -e bluetuith";
       terminal = false;
       categories = [ "Settings" ];
     };
@@ -48,7 +46,7 @@
     harper
     marksman
     prettier
-    bluetui
+    bluetuith
     pulsemixer
   ];
 }
