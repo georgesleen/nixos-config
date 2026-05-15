@@ -5,6 +5,7 @@
 {
   imports = [
     ./user-base.nix
+    ./laptop-power.nix
     ./steam.nix
   ];
 

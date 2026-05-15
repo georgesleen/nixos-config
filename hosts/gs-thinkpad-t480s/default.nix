@@ -4,6 +4,7 @@
   imports = [
     ../../modules/default.nix
     ../../modules/laptop.nix
+    ../../modules/thinkpad.nix
     ./hardware-configuration.nix
     ./power.nix
   ];
@@ -85,11 +86,6 @@
 
   # USB permissions
   users.groups.plugdev = { };
-
-  # Allow `input` group to control the mic-mute LED (used by sway micmute binding)
-  services.udev.extraRules = ''
-    ACTION=="add", SUBSYSTEM=="leds", KERNEL=="platform::micmute", RUN+="${pkgs.coreutils}/bin/chgrp input /sys/class/leds/%k/brightness", RUN+="${pkgs.coreutils}/bin/chmod g+w /sys/class/leds/%k/brightness"
-  '';
 
   # User account
   users.users.${user} = {
