@@ -38,10 +38,8 @@
     swaylock-effects
     xdg-desktop-portal-wlr
     clipman
-    i3status
     i3blocks
     iw
-    networkmanager_dmenu
     harper
     marksman
     prettier
