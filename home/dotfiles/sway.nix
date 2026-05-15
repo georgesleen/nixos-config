@@ -54,6 +54,22 @@ let
     max=$(${pkgs.brightnessctl}/bin/brightnessctl max)
     ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "$((cur * 100 / max))%"
   '';
+
+  screenshotScript = pkgs.writeShellApplication {
+    name = "screenshot";
+    runtimeInputs = with pkgs; [ grim slurp wl-clipboard libnotify coreutils ];
+    text = ''
+      dir="${config.home.homeDirectory}/Screenshots"
+      mkdir -p "$dir"
+      f="$dir/$(date +%F_%H-%M-%S).png"
+      case "''${1:-full}" in
+        full)   grim - ;;
+        region) slurp -d | grim -g - - ;;
+        *) echo "usage: screenshot [full|region]" >&2; exit 2 ;;
+      esac | tee "$f" | wl-copy
+      notify-send "Screenshot saved" "$f"
+    '';
+  };
 in
 {
   wayland.windowManager.sway = {
@@ -163,8 +179,8 @@ in
         "--locked XF86MonBrightnessDown" = "exec ${brightnessScript} down";
         "--locked ${mod}+XF86MonBrightnessUp" = "exec ${brightnessScript} up";
         "--locked ${mod}+XF86MonBrightnessDown" = "exec ${brightnessScript} down";
-        "Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; grim - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
-        "Shift+Print" = "exec sh -c 'mkdir -p ~/Screenshots; f=~/Screenshots/$(date +%F_%H-%M-%S).png; slurp -d | grim -g - - | tee \"$f\" | wl-copy; notify-send \"Screenshot saved\" \"$f\"'";
+        "Print" = "exec ${screenshotScript}/bin/screenshot full";
+        "Shift+Print" = "exec ${screenshotScript}/bin/screenshot region";
       };
       startup = [ ];
       modes = {
