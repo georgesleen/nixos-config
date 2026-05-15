@@ -37,6 +37,14 @@ let
     fi
   '';
 
+  # Multiple input devices on this host (built-in kb, dock HID, Dell receiver,
+  # etc.) cause bindsym to fire several times per keystroke. flock collapses
+  # the duplicate launches to a single fuzzel instance.
+  launcherScript = pkgs.writeShellScript "launcher" ''
+    exec ${pkgs.util-linux}/bin/flock -n "/run/user/$(id -u)/fuzzel-launcher.lock" \
+      ${pkgs.fuzzel}/bin/fuzzel
+  '';
+
   brightnessScript = pkgs.writeShellScript "brightness" ''
     case "$1" in
       up)   ${pkgs.brightnessctl}/bin/brightnessctl set 5%+ ;;
@@ -55,7 +63,7 @@ in
     in {
       modifier = mod;
       terminal = "kitty";
-      menu = "j4-dmenu-desktop --dmenu=bemenu --term=kitty";
+      menu = "${launcherScript}";
       floating.modifier = mod;
       input."type:touchpad".natural_scroll = "enabled";
       input."type:touchpad".accel_profile = "flat";
@@ -65,8 +73,7 @@ in
       output."*".bg = "${swayBg} fill";
       bars = [
         {
-          mode = "hide";
-          hiddenState = "hide";
+          mode = "dock";
           position = "top";
           statusCommand = "${pkgs.i3blocks}/bin/i3blocks -c ${config.xdg.configHome}/i3blocks/config";
           fonts = {
@@ -79,7 +86,6 @@ in
             separator = "#45475aff";
           };
           extraConfig = ''
-            modifier ${mod}
             height 26
           '';
         }
@@ -87,12 +93,12 @@ in
       keybindings = {
         "${mod}+Return" = "exec kitty";
         "Control+${mod}+t" = "exec kitty";
-        "${mod}+d" = "exec j4-dmenu-desktop --dmenu=bemenu --term=kitty";
         "${mod}+Shift+e" = "exec swaymsg exit";
         "${mod}+Shift+c" = "reload";
         "${mod}+Shift+r" = "restart";
         "${mod}+Shift+q" = "kill";
         "${mod}+Shift+x" = "exec ${swaylockCmd}";
+        "${mod}+d" = "exec ${launcherScript}";
 
         "${mod}+h" = "focus left";
         "${mod}+j" = "focus down";

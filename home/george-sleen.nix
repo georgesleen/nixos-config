@@ -20,7 +20,7 @@
     ./dotfiles/sandboxed.nix
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
-    ./dotfiles/bemenu.nix
+    ./dotfiles/fuzzel.nix
     ./dotfiles/tmux.nix
     ./dotfiles/xresources.nix
   ];
