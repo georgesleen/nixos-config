@@ -106,18 +106,5 @@ in
 
   networking.firewall.trustedInterfaces = [ "virbr0" ];
 
-  systemd.services.libvirt-default-network = {
-    description = "Ensure libvirt default network is enabled and running";
-    after = [ "libvirtd.service" ];
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig.Type = "oneshot";
-    path = [ pkgs.libvirt ];
-    script = ''
-      virsh -c qemu:///system net-autostart default || true
-      virsh -c qemu:///system net-info default | grep -q "Active: *yes" || \
-        virsh -c qemu:///system net-start default
-    '';
-  };
-
   hardware.uinput.enable = true;
 }
