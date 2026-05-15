@@ -23,7 +23,7 @@ let
       [ -d "$iface/wireless" ] && continue
       [ "$(cat "$iface/type" 2>/dev/null)" = "1" ] || continue
       if [ "$(cat "$iface/carrier" 2>/dev/null)" = "1" ]; then
-        echo "<span color='#a6e3a1'>󰈁 $name</span>"
+        echo "<span color='#a6e3a1'>󰲝 $name</span>"
         exit 0
       fi
     done
