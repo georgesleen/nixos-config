@@ -9,6 +9,7 @@
 
 let
   hugepages = 1024;
+  perfVMs = [ "win11" ];
   vmPerfHook = pkgs.writeShellScript "libvirt-qemu-vm-perf-hook" ''
     set -euo pipefail
 
@@ -16,10 +17,10 @@ let
     op="''${2:-}"
     subop="''${3:-}"
 
-    # Only toggle host performance policy for the Windows VM.
-    if [[ "$vm_name" != "win11" ]]; then
-      exit 0
-    fi
+    case "$vm_name" in
+      ${lib.concatMapStringsSep "|" lib.escapeShellArg perfVMs}) ;;
+      *) exit 0 ;;
+    esac
 
     log() { ${pkgs.util-linux}/bin/logger -t libvirt-qemu-hook "win11 ($op/$subop): $*" || true; }
 
@@ -119,7 +120,4 @@ in
   };
 
   hardware.uinput.enable = true;
-  services.udev.extraRules = ''
-    SUBSYSTEM=="usb", MODE="0666"
-  '';
 }
