@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, user, ... }:
 
 {
   imports = [
@@ -88,7 +88,7 @@
   users.groups.plugdev = { };
 
   # User account
-  users.users.george-sleen = {
+  users.users.${user} = {
     isNormalUser = true;
     description = "George Sleen";
     extraGroups = [

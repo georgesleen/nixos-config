@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ config, pkgs, user, ... }:
 
 {
   imports = [
@@ -92,7 +92,7 @@
   '';
 
   # User account
-  users.users.george-sleen = {
+  users.users.${user} = {
     isNormalUser = true;
     description = "George Sleen";
     extraGroups = [

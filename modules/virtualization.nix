@@ -4,6 +4,7 @@
   config,
   pkgs,
   lib,
+  user,
   ...
 }:
 
@@ -78,12 +79,12 @@ in
     };
   };
 
-  users.users.george-sleen.extraGroups = [ "libvirtd" ];
-  users.groups.libvirtd.members = [ "george-sleen" ];
+  users.users.${user}.extraGroups = [ "libvirtd" ];
+  users.groups.libvirtd.members = [ user ];
 
-  boot.kernelModules = [ "kvm-intel" ];
-  # Hugepages and scheduler tuning left to runtime (e.g. libvirt hooks)
-  # to avoid wasting 2 GB of pinned RAM when no VM is running.
+  # kvm-intel / kvm-amd are declared per host in hardware-configuration.nix.
+  # Hugepages and scheduler tuning left to runtime (libvirt hooks) to avoid
+  # pinning 2 GB of RAM when no VM is running.
 
   hardware.graphics = {
     enable = true;

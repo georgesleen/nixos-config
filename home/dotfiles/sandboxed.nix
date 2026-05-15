@@ -1,7 +1,7 @@
 { config, pkgs, lib, ... }:
 
 let
-  sandboxHome = "/home/george-sleen/Virtualization/home/nixos";
+  sandboxHome = "${config.home.homeDirectory}/Virtualization/home/nixos";
 
   wrapSandboxed = pkg:
     pkgs.symlinkJoin {

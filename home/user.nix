@@ -1,8 +1,8 @@
-{ config, pkgs, ... }:
+{ config, pkgs, user, ... }:
 
 {
-  home.username = "george-sleen";
-  home.homeDirectory = "/home/george-sleen";
+  home.username = user;
+  home.homeDirectory = "/home/${user}";
 
   imports = [
     ./dotfiles/bashrc.nix
