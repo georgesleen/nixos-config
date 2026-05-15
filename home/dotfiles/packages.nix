@@ -28,7 +28,6 @@
   };
 
   home.packages = with pkgs; [
-    nil # Nix LSP
     grim
     slurp
     wl-clipboard
@@ -40,8 +39,6 @@
     clipman
     i3blocks
     iw
-    harper
-    marksman
     prettier
     bluetuith
     pulsemixer

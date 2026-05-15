@@ -9,19 +9,22 @@
     ./dotfiles/battery.nix
     ./dotfiles/darkman.nix
     ./dotfiles/dconf.nix
+    ./dotfiles/fuzzel.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
     ./dotfiles/i3blocks.nix
     ./dotfiles/kanshi.nix
     ./dotfiles/kitty.nix
+    ./dotfiles/lsp.nix
     ./dotfiles/mako.nix
     ./dotfiles/packages.nix
+    ./dotfiles/python.nix
     ./dotfiles/rclone.nix
     ./dotfiles/sandboxed.nix
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
-    ./dotfiles/fuzzel.nix
     ./dotfiles/tmux.nix
+    ./dotfiles/vscode.nix
     ./dotfiles/xresources.nix
   ];
 
