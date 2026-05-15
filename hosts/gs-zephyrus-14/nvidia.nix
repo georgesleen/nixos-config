@@ -11,11 +11,14 @@
   programs.sway.extraOptions = [ "--unsupported-gpu" ];
   home-manager.users.george-sleen.wayland.windowManager.sway.extraOptions = [ "--unsupported-gpu" ];
 
-  # Explicitly tell Sway to use both GPUs (AMD first for rendering, Nvidia second for outputs)
-  environment.sessionVariables = {
-    WLR_DRM_DEVICES = "/dev/dri/by-path/pci-0000:04:00.0-card:/dev/dri/by-path/pci-0000:01:00.0-card";
-    WLR_NO_HARDWARE_CURSORS = "1";
-  };
+  environment.systemPackages = [
+    (pkgs.writeShellScriptBin "sway-nvidia" ''
+      export WLR_NO_HARDWARE_CURSORS=1
+      # Resolve by-path symlinks to actual cardN devices to avoid wlroots splitting by colons in the path
+      export WLR_DRM_DEVICES="$(readlink -f /dev/dri/by-path/pci-0000:04:00.0-card):$(readlink -f /dev/dri/by-path/pci-0000:01:00.0-card)"
+      exec ${pkgs.sway}/bin/sway --unsupported-gpu "$@"
+    '')
+  ];
 
   hardware.nvidia = {
     modesetting.enable = true;
