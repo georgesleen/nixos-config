@@ -87,6 +87,8 @@ in
 
   wayland.windowManager.sway = {
     enable = true;
+    package = pkgs.swayfx;
+    checkConfig = false;
     extraSessionCommands = ''
       export TERMINAL=kitty
     '';
@@ -229,6 +231,7 @@ in
       bindswitch --reload --locked lid:on  output eDP-1 disable
       bindswitch --reload --locked lid:off output eDP-1 enable
 
+      corner_radius 2
       default_border pixel 2
       default_floating_border pixel 2
       client.focused #b4befe #b4befe #1e1e2e #b4befe #b4befe

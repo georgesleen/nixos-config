@@ -39,3 +39,11 @@ This is a NixOS flake-based system configuration for a single host (`gs-thinkpad
 **nixpkgs channel:** `nixos-unstable` — expect cutting-edge package versions.
 
 **`flake.nix` also exposes a `yolo-testing` devShell** with Python 3.13 + uv and LD_LIBRARY_PATH set for running native binaries outside NixOS wrappers.
+
+## Git hooks
+
+`hooks/pre-commit` is tracked in the repo. `.envrc` wires it via `git config core.hooksPath hooks` when direnv loads (i.e. on `nix develop` / `direnv allow`). The hook formats staged `.nix` files with nixfmt and validates them with `nix-instantiate --parse`.
+
+## Workarounds
+
+- `home/dotfiles/sway.nix`: `checkConfig = false` — swayfx initializes its FX renderer during config validation, which requires a DRM FD unavailable in the Nix sandbox; stock sway doesn't have this issue.
