@@ -229,9 +229,10 @@ in
       bindswitch --reload --locked lid:on  output eDP-1 disable
       bindswitch --reload --locked lid:off output eDP-1 enable
 
-      # Remove borders/title bars.
-      default_border none
-      default_floating_border none
+      default_border pixel 2
+      default_floating_border pixel 2
+      client.focused #b4befe #b4befe #1e1e2e #b4befe #b4befe
+      gaps inner 6
 
       # Keep kitty transparent even when fullscreen.
       for_window [app_id="kitty"] opacity ${config.my.opacity}
