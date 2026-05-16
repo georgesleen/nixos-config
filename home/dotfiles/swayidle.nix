@@ -26,8 +26,15 @@ in
       after-resume = dpmsOnCmd;
     };
     timeouts = [
-      { timeout = 1800; command = swaylockCmd; }
-      { timeout = 1801; command = dpmsOffCmd; resumeCommand = dpmsOnCmd; }
+      {
+        timeout = 1800;
+        command = swaylockCmd;
+      }
+      {
+        timeout = 1801;
+        command = dpmsOffCmd;
+        resumeCommand = dpmsOnCmd;
+      }
     ];
   };
 

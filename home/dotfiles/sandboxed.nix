@@ -1,9 +1,15 @@
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 let
   sandboxHome = "${config.home.homeDirectory}/Virtualization/home/nixos";
 
-  wrapSandboxed = pkg:
+  wrapSandboxed =
+    pkg:
     pkgs.symlinkJoin {
       name = "${pkg.pname or pkg.name}-sandboxed";
       paths = [ pkg ];
@@ -27,8 +33,9 @@ in
     mkdir -p "$HOME/Virtualization/home/nixos"
   '';
 
-  home.packages =
-    (lib.optionals (pkgs ? "quartus-prime-lite") [
+  home.packages = (
+    lib.optionals (pkgs ? "quartus-prime-lite") [
       (wrapSandboxed pkgs."quartus-prime-lite")
-    ]);
+    ]
+  );
 }

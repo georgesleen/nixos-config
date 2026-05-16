@@ -5,15 +5,17 @@
 
 {
   home.packages = [
-    (pkgs.python313.withPackages (ps: with ps; [
-      numpy
-      matplotlib
-      pandas
-      scipy
-      jupyter
-      ipykernel
-      seaborn
-      scikit-learn
-    ]))
+    (pkgs.python313.withPackages (
+      ps: with ps; [
+        numpy
+        matplotlib
+        pandas
+        scipy
+        jupyter
+        ipykernel
+        seaborn
+        scikit-learn
+      ]
+    ))
   ];
 }

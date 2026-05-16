@@ -1,6 +1,11 @@
 # Development tools
 
-{ config, pkgs, inputs, ... }:
+{
+  config,
+  pkgs,
+  inputs,
+  ...
+}:
 
 {
   programs.nix-ld.enable = true;

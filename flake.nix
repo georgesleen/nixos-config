@@ -44,22 +44,23 @@
         home-manager.users.${user} = import ./home/user.nix;
       };
 
-      mkHost = hostPath: nixpkgs.lib.nixosSystem {
-        specialArgs = { inherit inputs user; };
-        modules = [
-          hostPath
-          waveforms.nixosModule
-          home-manager.nixosModules.home-manager
-          hmModule
-        ];
-      };
+      mkHost =
+        hostPath:
+        nixpkgs.lib.nixosSystem {
+          specialArgs = { inherit inputs user; };
+          modules = [
+            hostPath
+            waveforms.nixosModule
+            home-manager.nixosModules.home-manager
+            hmModule
+          ];
+        };
     in
     {
       nixosConfigurations = {
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s;
         gs-zephyrus-14 = mkHost ./hosts/gs-zephyrus-14;
       };
-
 
       devShells = forAllSystems (
         system:

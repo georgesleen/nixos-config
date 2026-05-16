@@ -1,6 +1,11 @@
 # Power-management bits shared by every laptop host.
 
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   powerManagement.enable = true;
