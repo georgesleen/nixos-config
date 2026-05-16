@@ -11,19 +11,16 @@ if ! command -v nix-instantiate >/dev/null 2>&1; then
   exit 1
 fi
 
-mapfile -t nix_files < <(git ls-files "*.nix")
-if [[ ${#nix_files[@]} -gt 0 ]]; then
-  echo "[pre-commit] formatting ${#nix_files[@]} nix files with nixfmt..."
-  nixfmt "${nix_files[@]}"
-  git add "${nix_files[@]}"
-fi
-
-staged="$(git diff --cached --name-only --diff-filter=ACM | rg '\.nix$' || true)"
-if [[ -z "$staged" ]]; then
+mapfile -t staged < <(git diff --cached --name-only --diff-filter=ACM | rg '\.nix$' || true)
+if [[ ${#staged[@]} -eq 0 ]]; then
   exit 0
 fi
 
+echo "[pre-commit] formatting ${#staged[@]} staged nix files with nixfmt..."
+nixfmt "${staged[@]}"
+git add "${staged[@]}"
+
 echo "[pre-commit] running nix parse on staged files..."
-for f in $staged; do
+for f in "${staged[@]}"; do
   nix-instantiate --parse "$f" >/dev/null
 done

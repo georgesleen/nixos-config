@@ -10,7 +10,7 @@
 {
   powerManagement.enable = true;
 
-  services.logind.settings.Login.CriticalPowerAction = "hibernate";
+  services.upower.criticalPowerAction = "Hibernate";
 
   boot.kernelParams = lib.mkAfter [ "pcie_aspm=force" ];
 
@@ -45,11 +45,16 @@
 
   networking.networkmanager.wifi.powersave = true;
 
-  # Lock desktop sessions before suspend/hibernate.
-  powerManagement.powerDownCommands = ''
-    ${pkgs.systemd}/bin/loginctl lock-sessions
-    ${pkgs.coreutils}/bin/sleep 1
-  '';
+  # Lock desktop sessions before suspend/hibernate. Done via a dedicated
+  # sleep hook (not powerManagement.powerDownCommands) so it doesn't also
+  # fire on shutdown, where D-Bus is gone and loginctl fails.
+  systemd.services.lock-before-sleep = {
+    description = "Lock desktop sessions before sleep";
+    wantedBy = [ "sleep.target" ];
+    before = [ "sleep.target" ];
+    serviceConfig.Type = "oneshot";
+    script = "${pkgs.systemd}/bin/loginctl lock-sessions";
+  };
 
   # iPhone tethering.
   services.usbmuxd.enable = true;

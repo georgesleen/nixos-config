@@ -51,10 +51,22 @@ in
       Description = "Bisync classes with Google Drive";
       After = [ "network-online.target" ];
       Wants = [ "network-online.target" ];
+      OnFailure = [ "rclone-classes-notify-failure.service" ];
     };
     Service = {
       Type = "oneshot";
       ExecStart = "${classesBisync}/bin/rclone-classes-bisync";
+    };
+  };
+
+  systemd.user.services.rclone-classes-notify-failure = {
+    Unit.Description = "Desktop notification for rclone-classes failures";
+    Service = {
+      Type = "oneshot";
+      ExecStart =
+        "${pkgs.libnotify}/bin/notify-send --urgency=critical --app-name=rclone --icon=dialog-error "
+        + ''"Google Drive bisync failed" ''
+        + ''"rclone-classes.service exited non-zero. Run: journalctl --user -u rclone-classes -e"'';
     };
   };
 
