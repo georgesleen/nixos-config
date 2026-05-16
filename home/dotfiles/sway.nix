@@ -218,6 +218,8 @@ in
     extraConfig = ''
       workspace 1
 
+      output eDP-1 subpixel rgb
+
       # Turn off the internal panel when the lid closes (kanshi handles
       # output enable/disable on hotplug, but cannot see the lid switch).
       bindswitch --reload --locked lid:on  output eDP-1 disable
