@@ -42,14 +42,6 @@ let
     fi
   '';
 
-  # Multiple input devices on this host (built-in kb, dock HID, Dell receiver,
-  # etc.) cause bindsym to fire several times per keystroke. flock collapses
-  # the duplicate launches to a single fuzzel instance.
-  launcherScript = pkgs.writeShellScript "launcher" ''
-    exec ${pkgs.util-linux}/bin/flock -n "/run/user/$(id -u)/fuzzel-launcher.lock" \
-      ${pkgs.fuzzel}/bin/fuzzel
-  '';
-
   brightnessScript = pkgs.writeShellScript "brightness" ''
     case "$1" in
       up)   ${pkgs.brightnessctl}/bin/brightnessctl set 5%+ ;;
@@ -99,7 +91,7 @@ in
       {
         modifier = mod;
         terminal = "kitty";
-        menu = "${launcherScript}";
+        menu = "${pkgs.fuzzel}/bin/fuzzel";
         floating.modifier = mod;
         input."type:touchpad".natural_scroll = "enabled";
         input."type:touchpad".accel_profile = "flat";
@@ -134,7 +126,7 @@ in
           "${mod}+Shift+r" = "restart";
           "${mod}+Shift+q" = "kill";
           "${mod}+Shift+x" = "exec ${swaylockCmd}";
-          "${mod}+d" = "exec ${launcherScript}";
+          "${mod}+d" = "exec ${pkgs.fuzzel}/bin/fuzzel";
 
           "${mod}+h" = "focus left";
           "${mod}+j" = "focus down";
@@ -231,11 +223,11 @@ in
       bindswitch --reload --locked lid:on  output eDP-1 disable
       bindswitch --reload --locked lid:off output eDP-1 enable
 
-      corner_radius 2
-      default_border pixel 2
+      corner_radius 4
+      default_border pixel 1
       default_floating_border pixel 2
       client.focused #b4befe #b4befe #1e1e2e #b4befe #b4befe
-      gaps inner 6
+      gaps inner 4
 
       # Keep kitty transparent even when fullscreen.
       for_window [app_id="kitty"] opacity ${config.my.opacity}
