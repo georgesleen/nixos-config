@@ -11,6 +11,7 @@
     imv # image viewer
     networkmanagerapplet # nm-applet + nm-connection-editor
     udiskie # removable-media automount
+    wdisplays # GUI display configurator (wlr-randr frontend)
   ];
 
   # gvfs: trash, network mounts, MTP (also used by nautilus).
