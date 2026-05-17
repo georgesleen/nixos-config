@@ -47,3 +47,4 @@ This is a NixOS flake-based system configuration for a single host (`gs-thinkpad
 ## Workarounds
 
 - `home/dotfiles/sway.nix`: `checkConfig = false` — swayfx initializes its FX renderer during config validation, which requires a DRM FD unavailable in the Nix sandbox; stock sway doesn't have this issue.
+- `modules/btrfs.nix`: `systemd.services.btrfs-disable-qgroups` oneshot — qgroups massively slow `btrfs-cleaner` (snapshot deletions can stall the system for 30+ min). The `btrfsqcycle` bash helper temporarily enables them so `btrfs-list` can show per-snapshot sizes; this service ensures they're off again after reboot if the helper was interrupted before its `quota disable` ran.

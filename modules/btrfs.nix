@@ -10,6 +10,20 @@
     btrfs-heatmap
   ];
 
+  systemd.services.btrfs-disable-qgroups = {
+    description = "Ensure btrfs qgroups are disabled on /";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "local-fs.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.btrfs-progs}/bin/btrfs quota disable /";
+      SuccessExitStatus = [
+        0
+        1
+      ];
+    };
+  };
+
   services.snapper = {
     configs = {
       home = {

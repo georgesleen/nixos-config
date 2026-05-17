@@ -57,10 +57,16 @@
         bind '"\C-?": backward-kill-word'
         bind '"\C-h": backward-kill-word'
       fi
+
+      btrfsqcycle() {
+        trap 'sudo btrfs quota disable /' EXIT INT TERM
+        sudo btrfs quota enable / && \
+          sudo btrfs quota rescan -w / && \
+          sudo btrfs-list /home
+      }
     '';
     shellAliases = {
       btrfslist = "sudo btrfs-list /home";
-      btrfsqcycle = "sudo btrfs quota rescan -w / && sudo btrfs-list /home && sudo btrfs quota disable /";
       gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an)%Creset'";
       logout = "swaymsg exit";
       pasteimg = "clipimg";

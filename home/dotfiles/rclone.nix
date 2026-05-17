@@ -63,10 +63,19 @@ in
     Unit.Description = "Desktop notification for rclone-classes failures";
     Service = {
       Type = "oneshot";
-      ExecStart =
-        "${pkgs.libnotify}/bin/notify-send --urgency=critical --app-name=rclone --icon=dialog-error "
-        + ''"Google Drive bisync failed" ''
-        + ''"rclone-classes.service exited non-zero. Run: journalctl --user -u rclone-classes -e"'';
+      ExecStart = pkgs.writeShellScript "rclone-classes-notify-failure" ''
+        if journalctl --user -u rclone-classes -n 200 --since "10 min ago" \
+             | grep -qE 'Error 401|Invalid Credentials|authError|oauth2: .*invalid_grant'; then
+          title="Google Drive auth expired"
+          body="Log in again: rclone config reconnect gdrive:"
+        else
+          title="Google Drive bisync failed"
+          body="Logs: journalctl --user -u rclone-classes -e"
+        fi
+        exec ${pkgs.libnotify}/bin/notify-send \
+          --urgency=critical --app-name=rclone --icon=dialog-error \
+          "$title" "$body"
+      '';
     };
   };
 
