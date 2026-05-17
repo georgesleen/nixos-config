@@ -16,6 +16,7 @@
     ./dotfiles/dconf.nix
     ./dotfiles/fuzzel.nix
     ./dotfiles/git.nix
+    ./dotfiles/gtk.nix
     ./dotfiles/helix.nix
     ./dotfiles/i3blocks.nix
     ./dotfiles/kanshi.nix
