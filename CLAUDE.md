@@ -48,3 +48,5 @@ This is a NixOS flake-based system configuration for a single host (`gs-thinkpad
 
 - `home/dotfiles/sway.nix`: `checkConfig = false` — swayfx initializes its FX renderer during config validation, which requires a DRM FD unavailable in the Nix sandbox; stock sway doesn't have this issue.
 - `modules/btrfs.nix`: `systemd.services.btrfs-disable-qgroups` oneshot — qgroups massively slow `btrfs-cleaner` (snapshot deletions can stall the system for 30+ min). The `btrfsqcycle` bash helper temporarily enables them so `btrfs-list` can show per-snapshot sizes; this service ensures they're off again after reboot if the helper was interrupted before its `quota disable` ran.
+- `modules/virtualization.nix`: `set_sched` removed from libvirt qemu hook — `sched_min_granularity_ns`/`sched_wakeup_granularity_ns` are CFS-only sysctls removed in Linux 6.6 when EEVDF replaced CFS; no equivalent knob exists.
+- `home/dotfiles/i3blocks.nix` wirelessBlock: `[ -e "$iface/device" ] || continue` — excludes virtual interfaces (virbr0, docker0, veth) that have type=1 and carrier=1 but no real hardware device sysfs entry.

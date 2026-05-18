@@ -21,6 +21,7 @@ let
       name="$(basename "$iface")"
       [ "$name" = "lo" ] && continue
       [ -d "$iface/wireless" ] && continue
+      [ -e "$iface/device" ] || continue
       [ "$(cat "$iface/type" 2>/dev/null)" = "1" ] || continue
       if [ "$(cat "$iface/carrier" 2>/dev/null)" = "1" ]; then
         echo "<span color='#a6e3a1'>󰲝 $name</span>"

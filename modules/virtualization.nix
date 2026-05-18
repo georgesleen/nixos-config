@@ -39,22 +39,14 @@ let
       log "set hugepages to $1"
     }
 
-    set_sched() {
-      ${pkgs.coreutils}/bin/echo "$1" > /proc/sys/kernel/sched_min_granularity_ns
-      ${pkgs.coreutils}/bin/echo "$2" > /proc/sys/kernel/sched_wakeup_granularity_ns
-      log "set scheduler granularity to $1/$2"
-    }
-
     case "$op/$subop" in
       prepare/begin|start/begin|started/begin)
         set_governor performance
         set_hugepages ${toString hugepages}
-        set_sched 10000000 15000000
         ;;
       stopped/end|release/end|shutdown/end)
         set_governor powersave
         set_hugepages 0
-        set_sched 3000000 4000000
         ;;
       *)
         ;;
