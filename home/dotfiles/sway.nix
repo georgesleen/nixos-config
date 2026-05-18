@@ -6,6 +6,7 @@
 }:
 
 let
+  borderWidth = 2;
   swayBg = builtins.path {
     path = ../../assets/background.png;
     name = "background.png";
@@ -93,6 +94,9 @@ in
         terminal = "kitty";
         menu = "${pkgs.fuzzel}/bin/fuzzel";
         floating.modifier = mod;
+        window.border = borderWidth;
+        window.hideEdgeBorders = "smart";
+        floating.border = borderWidth;
         input."type:touchpad".natural_scroll = "enabled";
         input."type:touchpad".accel_profile = "flat";
         input."type:touchpad".pointer_accel = "0.7";
@@ -225,11 +229,11 @@ in
       bindswitch --reload --locked lid:on  output eDP-1 disable
       bindswitch --reload --locked lid:off output eDP-1 enable
 
-      corner_radius 4
-      default_border pixel 1
-      default_floating_border pixel 2
+      corner_radius 0
+      for_window [app_id=".*"] border pixel ${toString borderWidth}
+      for_window [class=".*"] border pixel ${toString borderWidth}
       client.focused #b4befe #b4befe #1e1e2e #b4befe #b4befe
-      gaps inner 4
+      gaps inner 0
 
       # Keep kitty transparent even when fullscreen.
       for_window [app_id="kitty"] opacity ${config.my.opacity}
