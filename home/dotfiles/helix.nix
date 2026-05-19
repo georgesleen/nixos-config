@@ -5,7 +5,7 @@
     enable = true;
 
     settings = {
-      theme = "monokai_pro_machine";
+      theme = "nightfox";
     };
 
     languages = {
