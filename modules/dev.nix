@@ -32,6 +32,7 @@
 
     # embedded
     openocd
+    platformio-core
     stlink
     gcc-arm-embedded
     tio
@@ -52,5 +53,6 @@
 
   services.udev.packages = [
     pkgs.stlink
+    pkgs.platformio-core.udev
   ];
 }
