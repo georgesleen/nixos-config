@@ -1,0 +1,122 @@
+{
+  config,
+  pkgs,
+  user,
+  ...
+}:
+
+{
+  imports = [
+    ../../modules/default.nix
+    ../../modules/laptop.nix
+    ../../modules/thinkpad.nix
+    ./hardware-configuration.nix
+  ];
+
+  nix.settings.experimental-features = [
+    "nix-command"
+    "flakes"
+  ];
+
+  # Bootloader
+  boot.loader.grub.enable = false;
+  boot.loader.systemd-boot.enable = true;
+  boot.loader.efi.canTouchEfiVariables = true;
+  boot.kernelPackages = pkgs.linuxPackages_latest;
+
+  # GPU passthrough — RX580 (01:00.0 GPU + 01:00.1 HDMI audio) via VFIO
+  # vfio-pci.ids in kernel params claims the device before amdgpu can load
+  boot.kernelParams = [
+    "intel_iommu=on"
+    "iommu=pt"
+    "vfio-pci.ids=1002:67df,1002:aaf0"
+  ];
+  boot.initrd.kernelModules = [
+    "vfio_pci"
+    "vfio"
+    "vfio_iommu_type1"
+  ];
+
+  # Networking
+  networking.hostName = "gs-server";
+  networking.networkmanager.enable = true;
+  networking.networkmanager.dns = "none";
+  networking.nameservers = [
+    "127.0.0.1"
+    "::1"
+  ];
+
+  # DNS-over-HTTPS via Cloudflare
+  services.resolved.enable = false;
+  services.dnscrypt-proxy = {
+    enable = true;
+    settings = {
+      listen_addresses = [
+        "127.0.0.1:53"
+        "[::1]:53"
+      ];
+      server_names = [ "cloudflare" ];
+      doh_servers = true;
+      require_dnssec = true;
+      require_nolog = true;
+      require_nofilter = true;
+      cache = true;
+    };
+  };
+
+  # Locale
+  environment.variables = {
+    EDITOR = "hx";
+    VISUAL = "hx";
+  };
+  time.timeZone = "America/Vancouver";
+  i18n.defaultLocale = "en_CA.UTF-8";
+
+  # Display / Desktop
+  services.greetd = {
+    enable = true;
+    settings.default_session = {
+      command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd sway";
+      user = "greeter";
+    };
+  };
+
+  # gnome-keyring as a standalone secret service (no gnome-shell needed)
+  services.gnome.gnome-keyring.enable = true;
+  security.pam.services.greetd.enableGnomeKeyring = true;
+  security.pam.services.login.enableGnomeKeyring = true;
+
+  # Keyboard — remap caps to esc on all keyboards (internal + any external).
+  services.xserver.xkb = {
+    layout = "us";
+    variant = "";
+    options = "caps:escape";
+  };
+
+  # Services
+  services.printing.enable = true;
+  services.openssh.enable = true;
+  services.qemuGuest.enable = true;
+  programs.dconf.enable = true;
+  programs.firefox.enable = true;
+  nixpkgs.config.allowUnfree = true;
+
+  # USB permissions
+  users.groups.plugdev = { };
+
+  # User account
+  users.users.${user} = {
+    isNormalUser = true;
+    description = "George Sleen";
+    extraGroups = [
+      "networkmanager"
+      "wheel"
+      "plugdev"
+      "dialout"
+      "uucp"
+      "podman"
+    ];
+  };
+
+  system.stateVersion = "25.11";
+}

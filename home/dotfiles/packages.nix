@@ -42,5 +42,7 @@
     prettier
     bluetuith
     pulsemixer
+    wakeonlan
+    moonlight-qt
   ];
 }

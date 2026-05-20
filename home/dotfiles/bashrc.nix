@@ -71,6 +71,7 @@
       logout = "swaymsg exit";
       pasteimg = "clipimg";
       syncdrive = "rclone-classes-bisync";
+      wake-server = "wakeonlan 4c:cc:6a:fb:a9:73";
     };
   };
 

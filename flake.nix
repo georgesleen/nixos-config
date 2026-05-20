@@ -60,6 +60,7 @@
       nixosConfigurations = {
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s;
         gs-zephyrus-14 = mkHost ./hosts/gs-zephyrus-14;
+        gs-server = mkHost ./hosts/gs-server;
       };
 
       devShells = forAllSystems (
