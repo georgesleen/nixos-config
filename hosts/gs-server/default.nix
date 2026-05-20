@@ -24,6 +24,19 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
+  # GPU passthrough — RX580 (01:00.0 GPU + 01:00.1 HDMI audio) via VFIO
+  # vfio-pci.ids in kernel params claims the device before amdgpu can load
+  boot.kernelParams = [
+    "intel_iommu=on"
+    "iommu=pt"
+    "vfio-pci.ids=1002:67df,1002:aaf0"
+  ];
+  boot.initrd.kernelModules = [
+    "vfio_pci"
+    "vfio"
+    "vfio_iommu_type1"
+  ];
+
   # Networking
   networking.hostName = "gs-server";
   networking.networkmanager.enable = true;
