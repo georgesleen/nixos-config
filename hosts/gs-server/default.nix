@@ -102,10 +102,26 @@
   # USB permissions
   users.groups.plugdev = { };
 
+  # Passwordless shutdown for remote use
+  security.sudo.extraRules = [
+    {
+      users = [ "george-sleen" ];
+      commands = [
+        {
+          command = "/run/current-system/sw/bin/shutdown";
+          options = [ "NOPASSWD" ];
+        }
+      ];
+    }
+  ];
+
   # User account
   users.users.${user} = {
     isNormalUser = true;
     description = "George Sleen";
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDS8y5OdyR6OIy91fTAzt2GHg+aqm9H5F2l+G9/aWFJF george-sleen@GS-ThinkPad-T480s"
+    ];
     extraGroups = [
       "networkmanager"
       "wheel"

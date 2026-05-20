@@ -72,6 +72,7 @@
       pasteimg = "clipimg";
       syncdrive = "rclone-classes-bisync";
       wake-server = "wakeonlan 4c:cc:6a:fb:a9:73";
+      shutdown-server = "ssh gs-server sudo shutdown -h now";
     };
   };
 
