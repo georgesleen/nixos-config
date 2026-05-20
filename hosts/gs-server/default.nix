@@ -39,6 +39,7 @@
 
   # Networking
   networking.hostName = "gs-server";
+  networking.interfaces.enp0s31f6.wakeOnLan.enable = true;
   networking.networkmanager.enable = true;
   networking.networkmanager.dns = "none";
   networking.nameservers = [
