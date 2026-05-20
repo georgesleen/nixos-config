@@ -14,6 +14,7 @@
     tmux # terminal multiplexer
     usbutils # for lsusb
     pciutils # for lspci
+    ethtool # for network interface diagnostics
     tailscale # personal lan
     direnv # secrets and environment manager
     glib-networking # networking
