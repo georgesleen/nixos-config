@@ -40,16 +40,16 @@
   # Networking
   networking.hostName = "gs-server";
   networking.networkmanager.enable = true;
-  networking.networkmanager.ensureProfiles.profiles."Wired connection 1" = {
-    connection = {
-      id = "Wired connection 1";
-      uuid = "e704adb4-e7ea-3588-89c2-574440e088c3";
-      type = "ethernet";
-      interface-name = "enp0s31f6";
+
+  systemd.services.wol-enp0s31f6 = {
+    description = "Enable Wake-on-LAN for enp0s31f6";
+    after = [ "network.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.ethtool}/sbin/ethtool -s enp0s31f6 wol g";
+      RemainAfterExit = true;
     };
-    ethernet.wake-on-lan = "magic";
-    ipv4.method = "auto";
-    ipv6.method = "auto";
   };
   networking.networkmanager.dns = "none";
   networking.nameservers = [
