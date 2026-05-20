@@ -46,7 +46,8 @@
 
   systemd.services.wol-enp0s31f6 = {
     description = "Enable Wake-on-LAN for enp0s31f6";
-    after = [ "network.target" ];
+    after = [ "network-online.target" ];
+    wants = [ "network-online.target" ];
     wantedBy = [ "multi-user.target" ];
     serviceConfig = {
       Type = "oneshot";
