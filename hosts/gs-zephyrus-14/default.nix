@@ -8,6 +8,7 @@
 {
   imports = [
     ../../modules/default.nix
+    ../../modules/desktop.nix
     ../../modules/laptop.nix
     ../../modules/asus.nix
     ./hardware-configuration.nix

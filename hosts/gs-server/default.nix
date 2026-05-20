@@ -8,8 +8,6 @@
 {
   imports = [
     ../../modules/default.nix
-    ../../modules/laptop.nix
-    ../../modules/thinkpad.nix
     ./hardware-configuration.nix
   ];
 
@@ -24,18 +22,23 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
-  # GPU passthrough — RX580 (01:00.0 GPU + 01:00.1 HDMI audio) via VFIO
-  # vfio-pci.ids in kernel params claims the device before amdgpu can load
+  # GPU: amdgpu loads on the host for ROCm/compute.
+  # IOMMU stays on so the RX580 can be detached and handed to a VM at runtime
+  # via `virsh nodedev-detach pci_0000_01_00_0` (rebinds to vfio-pci).
+  # After the VM stops, `virsh nodedev-reattach` returns it to amdgpu.
   boot.kernelParams = [
     "intel_iommu=on"
     "iommu=pt"
-    "vfio-pci.ids=1002:67df,1002:aaf0"
   ];
   boot.initrd.kernelModules = [
     "vfio_pci"
     "vfio"
     "vfio_iommu_type1"
+    "amdgpu"
   ];
+
+  # ROCm / OpenCL on the host
+  hardware.amdgpu.opencl.enable = true;
 
   # Networking
   networking.hostName = "gs-server";
@@ -83,21 +86,7 @@
   time.timeZone = "America/Vancouver";
   i18n.defaultLocale = "en_CA.UTF-8";
 
-  # Display / Desktop
-  services.greetd = {
-    enable = true;
-    settings.default_session = {
-      command = "${pkgs.tuigreet}/bin/tuigreet --time --remember --cmd sway";
-      user = "greeter";
-    };
-  };
-
-  # gnome-keyring as a standalone secret service (no gnome-shell needed)
-  services.gnome.gnome-keyring.enable = true;
-  security.pam.services.greetd.enableGnomeKeyring = true;
-  security.pam.services.login.enableGnomeKeyring = true;
-
-  # Keyboard — remap caps to esc on all keyboards (internal + any external).
+  # Keyboard — caps:escape applies to any keyboard connected over SSH too
   services.xserver.xkb = {
     layout = "us";
     variant = "";
@@ -105,11 +94,8 @@
   };
 
   # Services
-  services.printing.enable = true;
   services.openssh.enable = true;
-  services.qemuGuest.enable = true;
   programs.dconf.enable = true;
-  programs.firefox.enable = true;
   nixpkgs.config.allowUnfree = true;
 
   # USB permissions
@@ -126,6 +112,8 @@
       "dialout"
       "uucp"
       "podman"
+      "video"
+      "render"
     ];
   };
 

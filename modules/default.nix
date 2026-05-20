@@ -1,16 +1,12 @@
-# Baseline modules shared across host types
+# Baseline modules shared across all hosts
 
 { config, pkgs, ... }:
 
 {
-  # Import all module files here
   imports = [
-    ./audio.nix
     ./btrfs.nix
+    ./common.nix
     ./dev.nix
-    ./fonts.nix
-    ./sway.nix
-    ./sway-extras.nix
     ./virtualization.nix
   ];
 }

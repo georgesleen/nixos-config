@@ -26,7 +26,6 @@
     ./dotfiles/packages.nix
     ./dotfiles/python.nix
     ./dotfiles/rclone.nix
-    ./dotfiles/sandboxed.nix
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
     ./dotfiles/tmux.nix

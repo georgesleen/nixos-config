@@ -36,31 +36,29 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
-      hmModule = {
-        home-manager.useGlobalPkgs = true;
-        home-manager.useUserPackages = true;
-        home-manager.backupFileExtension = "hm-backup";
-        home-manager.extraSpecialArgs = { inherit user; };
-        home-manager.users.${user} = import ./home/user.nix;
-      };
-
       mkHost =
-        hostPath:
+        hostPath: hmHome:
         nixpkgs.lib.nixosSystem {
           specialArgs = { inherit inputs user; };
           modules = [
             hostPath
             waveforms.nixosModule
             home-manager.nixosModules.home-manager
-            hmModule
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "hm-backup";
+              home-manager.extraSpecialArgs = { inherit user; };
+              home-manager.users.${user} = import hmHome;
+            }
           ];
         };
     in
     {
       nixosConfigurations = {
-        gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s;
-        gs-zephyrus-14 = mkHost ./hosts/gs-zephyrus-14;
-        gs-server = mkHost ./hosts/gs-server;
+        gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
+        gs-zephyrus-14 = mkHost ./hosts/gs-zephyrus-14 ./home/user.nix;
+        gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
       };
 
       devShells = forAllSystems (
