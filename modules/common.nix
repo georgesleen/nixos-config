@@ -23,6 +23,10 @@
     powertop # power monitoring/tuning
     unzip # archive extraction tool
     ffmpeg # Media tool
+    file # File detection
+    jq # JSON
+    ripgrep # More ergonomic grep
+    imagemagick # Images
   ];
 
   # Networking
