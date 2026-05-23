@@ -17,6 +17,12 @@
 
     # Waveforms
     waveforms.url = "github:liff/waveforms-flake";
+
+    # Declarative libvirt domains/networks/pools
+    NixVirt = {
+      url = "github:AshleyYakeley/NixVirt";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -25,6 +31,7 @@
       nixpkgs,
       home-manager,
       waveforms,
+      NixVirt,
       ...
     }:
     let

@@ -9,6 +9,7 @@
   imports = [
     ../../modules/default.nix
     ./hardware-configuration.nix
+    ./win11-vm.nix
   ];
 
   nix.settings.experimental-features = [
