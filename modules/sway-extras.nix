@@ -12,6 +12,8 @@
     networkmanagerapplet # nm-applet + nm-connection-editor
     udiskie # removable-media automount
     wdisplays # GUI display configurator (wlr-randr frontend)
+    remmina # remote-desktop client (RDP) for the win11 VM over Tailscale
+    freerdp # FreeRDP backend + sdl-freerdp/xfreerdp CLI for quick connects
   ];
 
   # gvfs: trash, network mounts, MTP (also used by nautilus).
