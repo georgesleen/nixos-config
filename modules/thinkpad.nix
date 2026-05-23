@@ -4,6 +4,13 @@
 { config, pkgs, ... }:
 
 {
+  # Intel Gen9.5 (UHD 620) VAAPI driver so hardware video decode works
+  # (e.g. Moonlight). Without iHD, libva finds no Intel driver under
+  # /run/opengl-driver and apps fall back to CPU decode. hardware.graphics
+  # itself is enabled in modules/virtualization.nix.
+  hardware.graphics.extraPackages = [ pkgs.intel-media-driver ];
+  environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
+
   # Lid handling is delegated to the debounced acpid script below.
   services.logind.settings.Login = {
     HandleLidSwitch = "ignore";
