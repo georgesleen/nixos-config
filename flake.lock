@@ -1,5 +1,25 @@
 {
   "nodes": {
+    "NixVirt": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1774166436,
+        "narHash": "sha256-Lr1R+tx8ZMiB+aBWyvCaeDaFGivhMMQEq9iGp4F43bI=",
+        "owner": "AshleyYakeley",
+        "repo": "NixVirt",
+        "rev": "bf291972bec36018f39e61b0915940628ba9054c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "AshleyYakeley",
+        "repo": "NixVirt",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -52,6 +72,7 @@
     },
     "root": {
       "inputs": {
+        "NixVirt": "NixVirt",
         "home-manager": "home-manager",
         "nixpkgs": "nixpkgs",
         "waveforms": "waveforms"
