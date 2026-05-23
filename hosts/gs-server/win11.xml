@@ -145,6 +145,9 @@
     <controller type='virtio-serial' index='0'>
       <address type='pci' domain='0x0000' bus='0x03' slot='0x00' function='0x0'/>
     </controller>
+    <channel type='spicevmc'>
+      <target type='virtio' name='com.redhat.spice.0'/>
+    </channel>
     <interface type='direct'>
       <mac address='52:54:00:cd:23:2a'/>
       <source dev='enp0s31f6' mode='bridge'/>
@@ -173,9 +176,16 @@
       <address type='pci' domain='0x0000' bus='0x00' slot='0x1b' function='0x0'/>
     </sound>
     <audio id='1' type='none'/>
+    <!-- QXL + SPICE: emulated framebuffer for the virt-manager console. The
+         RX 580 stays the Windows primary display and Sunshine is pinned to it
+         (output_name), so capture is unaffected by this secondary display. -->
     <video>
-      <model type='none'/>
+      <model type='qxl' ram='65536' vram='65536' vgamem='16384' heads='1'/>
     </video>
+    <graphics type='spice' autoport='yes'>
+      <listen type='address' address='127.0.0.1'/>
+      <image compression='off'/>
+    </graphics>
     <hostdev mode='subsystem' type='pci' managed='yes'>
       <source>
         <address domain='0x0000' bus='0x01' slot='0x00' function='0x0'/>
