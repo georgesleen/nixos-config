@@ -142,6 +142,7 @@ in
         ];
         keybindings = {
           "${mod}+Return" = "exec kitty";
+          "${mod}+Shift+Return" = "exec kitty --cwd last";
           "Control+${mod}+t" = "exec kitty";
           "${mod}+Shift+e" = "exec swaymsg exit";
           "${mod}+Shift+c" = "reload";
