@@ -7,6 +7,22 @@
 
 let
   borderWidth = 2;
+  # Remap left alt → Super_L (Mod4) so it is the sole sway modifier.
+  # Right alt stays as Alt_R (Mod1) and passes through to applications as a
+  # normal Alt key. Caps → Escape is embedded here instead of xkb_options.
+  customKeymap = pkgs.writeText "sway-keymap.xkb" ''
+    xkb_keymap {
+      xkb_keycodes { include "evdev+aliases(qwerty)" };
+      xkb_types    { include "complete" };
+      xkb_compat   { include "complete" };
+      xkb_symbols  {
+        include "pc+us+inet(evdev)"
+        key <CAPS> { [ Escape ] };
+        key <LALT> { [ Super_L, Super_L ] };
+      };
+      xkb_geometry { include "pc(pc104)" };
+    };
+  '';
   swayBg = builtins.path {
     path = ../../assets/background.png;
     name = "background.png";
@@ -87,7 +103,7 @@ in
     '';
     config =
       let
-        mod = "Mod1";
+        mod = "Mod4";
       in
       {
         modifier = mod;
@@ -101,7 +117,7 @@ in
         input."type:touchpad".accel_profile = "flat";
         input."type:touchpad".pointer_accel = "0.7";
         # Remap caps to esc on every keyboard sway sees (internal + USB).
-        input."type:keyboard".xkb_options = "caps:escape";
+        input."type:keyboard".xkb_file = "${customKeymap}";
         output."*".bg = "${swayBg} fill";
         bars = [
           {
