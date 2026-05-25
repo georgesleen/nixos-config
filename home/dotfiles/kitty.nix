@@ -25,7 +25,6 @@
         background_opacity = config.my.opacity;
         hide_window_decorations = "yes";
         window_padding_width = 4;
-        allow_remote_control = "yes";
       };
     };
   };

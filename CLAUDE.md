@@ -4,12 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Key Commands
 
+Replace `<host>` with one of: `gs-thinkpad-t480s`, `gs-zephyrus-14`, `gs-server`.
+
 ```bash
-# Apply system + home-manager changes
-sudo nixos-rebuild switch --flake .#gs-thinkpad-t480s
+# Apply system + home-manager changes (use the host you're on)
+sudo nixos-rebuild switch --flake .#<host>
 
 # Build without switching (dry run / check)
-sudo nixos-rebuild build --flake .#gs-thinkpad-t480s
+sudo nixos-rebuild build --flake .#<host>
 
 # Update flake inputs
 nix flake update
@@ -23,15 +25,15 @@ nix flake check
 
 ## Architecture
 
-This is a NixOS flake-based system configuration for a single host (`gs-thinkpad-t480s`, a ThinkPad T480s).
+This is a NixOS flake-based system configuration for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-zephyrus-14` (Asus Zephyrus G14), and `gs-server` (Framework-class server, win11 VM via libvirt/vfio).
 
-**Entry point:** `flake.nix` — defines inputs (nixpkgs unstable, home-manager, waveforms, codex-cli-nix) and wires together the host configuration with home-manager as a NixOS module.
+**Entry point:** `flake.nix` — defines inputs (nixpkgs unstable, home-manager, waveforms, codex-cli-nix) and exposes one `nixosConfigurations.<host>` per host. The `mkHost hostPath hmHome` helper wires a host's config together with home-manager as a NixOS module; the two laptops share `home/user.nix`, the server uses `home/user-server.nix`.
 
 **Layers:**
 
-- `hosts/gs-thinkpad-t480s/` — host-specific config (hardware, networking, boot, services, DNS-over-HTTPS via dnscrypt-proxy, caps→esc via xkb, power tuning)
-- `modules/` — reusable system-level modules imported by the host. `default.nix` is the aggregator; individual files cover fonts, btrfs, virtualization, dev tools, LSP, sway, VSCode, system Python, laptop settings, etc.
-- `home/george-sleen.nix` — home-manager entry point for the user; imports all dotfiles modules
+- `hosts/<host>/` — host-specific config (hardware, networking, boot, services, power tuning). The T480s adds DNS-over-HTTPS via dnscrypt-proxy and caps→esc via xkb; `gs-server` carries the win11 VM passthrough setup.
+- `modules/` — reusable system-level modules imported by the hosts. `default.nix` is the aggregator; individual files cover fonts, btrfs, virtualization, dev tools, LSP, sway, VSCode, system Python, laptop settings, etc.
+- `home/user.nix` / `home/user-server.nix` — home-manager entry points (laptops vs server); they import the dotfiles modules
 - `home/dotfiles/` — per-program home-manager configs (bash, git, helix, sway, kitty, tmux, i3blocks/i3status, rclone, etc.)
 
 **Desktop:** sway only (Wayland), launched via greetd. Standalone GNOME components (polkit-gnome agent, gnome-keyring, gsettings for GTK theming) are used but GNOME Shell/GDM are not installed.
@@ -55,3 +57,4 @@ This is a NixOS flake-based system configuration for a single host (`gs-thinkpad
 - win11 remote access: **RDP over Tailscale** (`100.99.102.88`) is the productivity path (Altium/Cadence/ANSYS/SPICE); the Sunshine/Moonlight GPU-streaming path is kept only for occasional gaming. Guest-side RDP tuning (Windows registry under `...\Terminal Services`, not in this repo): GPU rendering for RDP sessions (`bEnumerateHWBeforeSW=1`) + 'Adjust for best performance' (animations off) for responsiveness, and **AVC444 must stay disabled** (`AVC444ModePreferred=0`, `AVCHardwareEncodePreferred=0`) — the AMD HW encoder's AVC444 path produces severe chroma corruption in FreeRDP, so the session uses RFX/AVC420. A QXL+SPICE console was tried for virt-manager but **removed** (the second display degraded capture); the guest is back to a single display (`<model type='none'>`, RX 580 is the sole display). Sunshine's `output_name = {1e786bfd-...}` (RX 580 / XMD-EDID) is still pinned guest-side, harmless with one display.
 - win11 guest VirtIO NIC: **UDP Segmentation Offload must be disabled** or Sunshine→Moonlight gets video/audio dropped ("No video traffic received") while only the small control stream survives — recent virtio-net drivers "trunk"/coalesce outbound UDP and mangle the media. Fixed *in the guest* (persists in the Windows registry): `Set-NetAdapterAdvancedProperty -Name "Ethernet 2" -DisplayName "UDP Segmentation Offload (IPv4)"/(IPv6) -DisplayValue Disabled` (+ LSO V2). Not yet expressed declaratively — ideally encode offload-off in the `<interface><driver>` of `win11.xml` (libvirt USO knob support varies).
 - `home/dotfiles/sway.nix` customKeymap: Left Alt → `Hyper_L` in **Mod3** (sway modifier); right alt stays `Alt_R`/Mod1 so apps see it as real Alt. Sway can't distinguish left vs right when both share Mod1; using an otherwise-unused modifier group is the only pure-XKB way to isolate them. Win/Super stays Mod4 and is unaffected.
+- "open new kitty in last dir" (`Mod3+Shift+Return` in `home/dotfiles/sway.nix` + `PROMPT_COMMAND` in `home/dotfiles/bashrc.nix`): `kitty --cwd last` does **not** work — `--cwd`/`last` only exist for the kitty `launch` *action* (remote control, inside a running kitty), never the top-level CLI (which only has `-d`/`--working-directory` taking a real path). An invalid flag makes kitty exit non-zero and sway's `exec` silently shows nothing. Since each kitty is its own independent process (no central instance to query), bash writes `$PWD` to `$XDG_RUNTIME_DIR/kitty-last-dir` every prompt and the keybinding reads it (fallback `$HOME`). Caveat: stale by one prompt if you `cd` without hitting Enter.

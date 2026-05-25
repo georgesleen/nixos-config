@@ -142,7 +142,8 @@ in
         ];
         keybindings = {
           "${mod}+Return" = "exec kitty";
-          "${mod}+Shift+Return" = "exec kitty --cwd last";
+          "${mod}+Shift+Return" =
+            "exec kitty -d \"$(cat \"\${XDG_RUNTIME_DIR:-/tmp}/kitty-last-dir\" 2>/dev/null || echo \"$HOME\")\"";
           "Control+${mod}+t" = "exec kitty";
           "${mod}+Shift+e" = "exec swaymsg exit";
           "${mod}+Shift+c" = "reload";
