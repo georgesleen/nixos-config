@@ -87,7 +87,6 @@
   services.printing.enable = true;
   services.openssh.enable = true;
   programs.dconf.enable = true;
-  programs.firefox.enable = true;
   nixpkgs.config.allowUnfree = true;
 
   # USB permissions

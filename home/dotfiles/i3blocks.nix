@@ -126,6 +126,88 @@ let
     cores="$(${pkgs.coreutils}/bin/nproc)"
     echo "<span color='#fab387'>󰍛 $load/$cores""c</span>"
   '';
+  gpuBlock = pkgs.writeShellScript "i3blocks-gpu" ''
+    STATE="''${XDG_RUNTIME_DIR:-/tmp}/i3blocks-gpu-state"
+
+    # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
+    intel_busy() {
+      local rc6_path now rc6 dt drc6 busy prev_time prev_rc6
+      rc6_path=$(ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
+      [ -f "$rc6_path" ] || { echo 0; return; }
+      rc6=$(${pkgs.coreutils}/bin/cat "$rc6_path")
+      now=$(${pkgs.coreutils}/bin/date +%s%3N)
+      busy=0
+      if [ -f "$STATE" ]; then
+        read -r prev_time prev_rc6 < "$STATE" 2>/dev/null || true
+        dt=$(( now - ''${prev_time:-$now} ))
+        drc6=$(( rc6 - ''${prev_rc6:-$rc6} ))
+        if [ "$dt" -gt 0 ]; then
+          busy=$(( (100 * (dt - drc6)) / dt ))
+          [ "$busy" -lt 0 ] && busy=0
+          [ "$busy" -gt 100 ] && busy=100
+        fi
+      fi
+      printf '%s %s\n' "$now" "$rc6" > "$STATE"
+      echo "$busy"
+    }
+    intel_freq() {
+      local p
+      p=$(ls /sys/class/drm/card*/gt/gt0/rps_act_freq_mhz 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
+      [ -f "$p" ] && ${pkgs.coreutils}/bin/cat "$p" || echo 0
+    }
+
+    # AMD: direct sysfs busy percent
+    amd_busy() {
+      local p
+      p=$(ls /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | ${pkgs.coreutils}/bin/tail -1)
+      [ -f "$p" ] && ${pkgs.coreutils}/bin/cat "$p" || echo 0
+    }
+    amd_freq() {
+      local d name f
+      for d in /sys/class/hwmon/hwmon*; do
+        [ -d "$d" ] || continue
+        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
+        [ "$name" = "amdgpu" ] || continue
+        f="$d/freq1_input"
+        [ -f "$f" ] && echo $(( $(${pkgs.coreutils}/bin/cat "$f") / 1000000 )) && return
+      done
+      echo 0
+    }
+
+    # NVIDIA: nvidia-smi (optional — present only when nvidia driver is loaded)
+    nv_busy() {
+      nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null \
+        | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/tr -d ' ' || echo 0
+    }
+    nv_freq() {
+      nvidia-smi --query-gpu=clocks.current.graphics --format=csv,noheader,nounits 2>/dev/null \
+        | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/tr -d ' ' || echo 0
+    }
+
+    busy=0 freq=0
+    if ls /sys/class/drm/card*/device/gpu_busy_percent > /dev/null 2>&1; then
+      busy=$(amd_busy); freq=$(amd_freq)
+    elif ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms > /dev/null 2>&1; then
+      busy=$(intel_busy); freq=$(intel_freq)
+    elif command -v nvidia-smi > /dev/null 2>&1; then
+      busy=$(nv_busy); freq=$(nv_freq)
+    else
+      echo "<span color='#6c7086'>󰾲 GPU n/a</span>"
+      exit 0
+    fi
+
+    if [ "''${busy:-0}" -ge 80 ]; then color="#f38ba8"
+    elif [ "''${busy:-0}" -ge 50 ]; then color="#f9e2af"
+    else color="#89b4fa"
+    fi
+
+    freq_n=''${freq:-0}
+    if [ "$freq_n" -gt 0 ] 2>/dev/null; then
+      echo "<span color='$color'>󰾲 ''${busy}% @ ''${freq}MHz</span>"
+    else
+      echo "<span color='$color'>󰾲 ''${busy}%</span>"
+    fi
+  '';
   memoryBlock = pkgs.writeShellScript "i3blocks-memory" ''
     set -euo pipefail
     line="$(${pkgs.procps}/bin/free -m | awk '/Mem:/ {print $3, $2}')"
@@ -179,6 +261,10 @@ in
     [load]
     command=${loadBlock}
     interval=10
+
+    [gpu]
+    command=${gpuBlock}
+    interval=5
 
     [memory]
     command=${memoryBlock}
