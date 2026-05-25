@@ -28,6 +28,9 @@
 
   # Networking
   networking.hostName = "gs-thinkpad-t480s";
+  networking.hosts = {
+    "100.111.59.110" = [ "gs-server" ];
+  };
   networking.networkmanager.enable = true;
   networking.networkmanager.dns = "none";
   networking.nameservers = [
