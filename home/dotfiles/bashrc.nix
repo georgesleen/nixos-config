@@ -47,7 +47,8 @@
       HISTCONTROL=ignoredups:erasedups
       HISTSIZE=100000
       HISTFILESIZE=200000
-      PROMPT_COMMAND="history -a; printf %s \"$PWD\" >\"''${XDG_RUNTIME_DIR:-/tmp}/kitty-last-dir\"''${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+      PROMPT_COMMAND="history -a''${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
+      mark() { printf %s "$PWD" >"''${XDG_RUNTIME_DIR:-/tmp}/kitty-last-dir"; }
       eval "$(direnv hook bash)"
       PS1="\[\e[38;2;0;199;129m\]\u@\h:\w\[\e[0m\]\$ "
       if [[ -n "$IN_NIX_SHELL" ]]; then
