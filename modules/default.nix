@@ -7,6 +7,7 @@
     ./btrfs.nix
     ./common.nix
     ./dev.nix
+    ./dns.nix
     ./virtualization.nix
   ];
 }

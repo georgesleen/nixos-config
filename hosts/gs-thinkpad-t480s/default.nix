@@ -32,35 +32,8 @@
     "100.111.59.110" = [ "gs-server" ];
   };
   networking.networkmanager.enable = true;
-  networking.networkmanager.dns = "none";
-  networking.nameservers = [
-    "127.0.0.1"
-    "::1"
-  ];
-
-  # DNS-over-HTTPS via Cloudflare
-  services.resolved.enable = false;
-  services.dnscrypt-proxy = {
-    enable = true;
-    settings = {
-      listen_addresses = [
-        "127.0.0.1:53"
-        "[::1]:53"
-      ];
-      server_names = [ "cloudflare" ];
-      doh_servers = true;
-      require_dnssec = true;
-      require_nolog = true;
-      require_nofilter = true;
-      cache = true;
-    };
-  };
 
   # Locale
-  environment.variables = {
-    EDITOR = "hx";
-    VISUAL = "hx";
-  };
   time.timeZone = "America/Vancouver";
   i18n.defaultLocale = "en_CA.UTF-8";
 
