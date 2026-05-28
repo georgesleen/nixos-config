@@ -25,7 +25,6 @@
     ffmpeg # Media tool
     file # File detection
     jq # JSON
-    ripgrep # More ergonomic grep
     imagemagick # Images
   ];
 
