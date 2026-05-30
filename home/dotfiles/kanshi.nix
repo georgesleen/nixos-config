@@ -224,10 +224,9 @@ in
   };
 
   wayland.windowManager.sway.config.keybindings = {
-    # Mod1+Shift+m: swap which side the laptop is on (within the current
-    # docked kanshi profile).
-    "Mod1+Shift+m" = "exec ${toggleScript}";
-    # Mod1+Shift+p: pick display mode (extend / mirror / single-output).
-    "Mod1+Shift+p" = "exec ${modePickerScript}";
+    # swap which side the laptop is on (within the current docked kanshi profile).
+    "${config.my.modifier}+Shift+m" = "exec ${toggleScript}";
+    # pick display mode (extend / mirror / single-output).
+    "${config.my.modifier}+Shift+p" = "exec ${modePickerScript}";
   };
 }
