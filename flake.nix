@@ -64,7 +64,6 @@
     {
       nixosConfigurations = {
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
-        gs-zephyrus-14 = mkHost ./hosts/gs-zephyrus-14 ./home/user.nix;
         gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
       };
 

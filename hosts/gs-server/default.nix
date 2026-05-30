@@ -8,6 +8,7 @@
 {
   imports = [
     ../../modules/default.nix
+    ../../modules/steam.nix
     ./hardware-configuration.nix
     ./win11-vm.nix
   ];
