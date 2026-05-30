@@ -68,6 +68,7 @@
     '';
     shellAliases = {
       btrfslist = "sudo btrfs-list /home";
+      icat = "kitty +kitten icat";
       gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an)%Creset'";
       logout = "swaymsg exit";
       pasteimg = "clipimg";
