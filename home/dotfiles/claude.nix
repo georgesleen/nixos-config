@@ -12,4 +12,6 @@
       pr = "";
     };
   };
+
+  home.file.".claude/skills/setup-workflow/SKILL.md".source = ./claude/skills/setup-workflow/SKILL.md;
 }
