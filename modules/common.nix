@@ -43,6 +43,22 @@
     extraUpFlags = [ "--ssh" ];
   };
 
+  # Disable UDP Segmentation Offload on tailscale0. Same class of bug as the
+  # win11 VirtIO USO issue (see CLAUDE.md Workarounds): coalesced UDP fools
+  # latency-sensitive streamers (Steam Remote Play, Sunshine/Moonlight) into
+  # treating timing artifacts as packet loss and throttling to ~1 FPS.
+  systemd.services.tailscale-disable-uso = {
+    description = "Disable UDP segmentation offload on tailscale0";
+    after = [ "sys-subsystem-net-devices-tailscale0.device" ];
+    bindsTo = [ "sys-subsystem-net-devices-tailscale0.device" ];
+    wantedBy = [ "sys-subsystem-net-devices-tailscale0.device" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+      ExecStart = "${pkgs.ethtool}/bin/ethtool -K tailscale0 tx-udp-segmentation off";
+    };
+  };
+
   # Power device info for battery notifications
   services.upower.enable = true;
 }
