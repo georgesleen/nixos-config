@@ -33,6 +33,12 @@
   };
   networking.networkmanager.enable = true;
 
+  # Auto-restart wpa_supplicant on crash so NM can reconnect without a reboot.
+  systemd.services.wpa_supplicant.serviceConfig = {
+    Restart = "on-failure";
+    RestartSec = "3";
+  };
+
   # Locale
   time.timeZone = "America/Vancouver";
   i18n.defaultLocale = "en_CA.UTF-8";
@@ -85,6 +91,7 @@
   # Host-specific packages
   environment.systemPackages = with pkgs; [
     libimobiledevice
+    gnome-network-displays
   ];
 
   system.stateVersion = "25.11";
