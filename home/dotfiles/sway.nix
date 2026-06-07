@@ -136,7 +136,7 @@ in
                 size = 11.0;
               };
               colors = {
-                background = "#1e1e2ecc";
+                background = "#1e1e2eee";
                 statusline = "#cdd6f4ff";
                 separator = "#45475aff";
               };

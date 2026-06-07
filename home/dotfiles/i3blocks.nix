@@ -336,20 +336,20 @@ in
     command=${wirelessBlock}
     interval=10
 
-    [volume]
-    command=${volumeBlock}
-    interval=2
-
     [brightness]
     command=${brightnessBlock}
     interval=2
 
-    [gpu]
-    command=${gpuBlock}
-    interval=5
+    [volume]
+    command=${volumeBlock}
+    interval=2
 
     [cpu]
     command=${cpuBlock}
+    interval=5
+
+    [gpu]
+    command=${gpuBlock}
     interval=5
 
     [memory]
