@@ -14,6 +14,7 @@
 
   nixpkgs.hostPlatform = "aarch64-linux";
   nixpkgs.config.allowUnfree = true;
+  boot.zfs.forceImportRoot = false;
 
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
