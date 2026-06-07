@@ -1,5 +1,5 @@
 # ThinkPad-specific hardware quirks. Imported explicitly by ThinkPad hosts;
-# NOT pulled in by modules/default.nix.
+# not pulled in by any role.
 
 { config, pkgs, ... }:
 

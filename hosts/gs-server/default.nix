@@ -7,8 +7,10 @@
 
 {
   imports = [
-    ../../modules/default.nix
-    ../../modules/steam.nix
+    ../../modules/core
+    ../../modules/features/btrfs.nix
+    ../../modules/features/dev.nix
+    ../../modules/features/virtualization.nix
     ./hardware-configuration.nix
     ./win11-vm.nix
   ];

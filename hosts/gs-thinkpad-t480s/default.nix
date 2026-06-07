@@ -7,10 +7,16 @@
 
 {
   imports = [
-    ../../modules/default.nix
-    ../../modules/desktop.nix
-    ../../modules/laptop.nix
-    ../../modules/thinkpad.nix
+    ../../modules/core
+    ../../modules/features/btrfs.nix
+    ../../modules/features/desktop.nix
+    ../../modules/features/dev.nix
+    ../../modules/features/dns.nix
+    ../../modules/features/laptop-power.nix
+    ../../modules/features/steam.nix
+    ../../modules/features/user-packages.nix
+    ../../modules/features/virtualization.nix
+    ../../modules/hardware/thinkpad.nix
     ./hardware-configuration.nix
     ./power.nix
   ];
@@ -92,6 +98,7 @@
   environment.systemPackages = with pkgs; [
     libimobiledevice
     gnome-network-displays
+    brightnessctl
   ];
 
   system.stateVersion = "25.11";

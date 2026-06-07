@@ -7,10 +7,6 @@ let
 in
 
 {
-  imports = [
-    ./common.nix
-  ];
-
   environment.systemPackages = with pkgs; [
     libreoffice # office suite
     discord # messaging service
