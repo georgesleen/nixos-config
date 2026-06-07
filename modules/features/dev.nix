@@ -10,6 +10,8 @@
 {
   programs.nix-ld.enable = true;
 
+  boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
+
   environment.systemPackages = with pkgs; [
     # llm cli
     codex

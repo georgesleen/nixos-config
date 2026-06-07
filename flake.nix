@@ -18,6 +18,9 @@
     # Waveforms
     waveforms.url = "github:liff/waveforms-flake";
 
+    # For installing nixos on raspberry pi
+    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+
     # Declarative libvirt domains/networks/pools
     NixVirt = {
       url = "github:AshleyYakeley/NixVirt";
@@ -31,6 +34,7 @@
       nixpkgs,
       home-manager,
       waveforms,
+      nixos-hardware,
       NixVirt,
       ...
     }:
@@ -65,6 +69,21 @@
       nixosConfigurations = {
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
         gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
+
+        gs-pi4 = nixpkgs.lib.nixosSystem {
+          specialArgs = { inherit inputs user; };
+          modules = [
+            ./hosts/gs-pi4
+            home-manager.nixosModules.home-manager
+            {
+              home-manager.useGlobalPkgs = true;
+              home-manager.useUserPackages = true;
+              home-manager.backupFileExtension = "hm-backup";
+              home-manager.extraSpecialArgs = { inherit user; };
+              home-manager.users.${user} = import ./home/user-pi.nix;
+            }
+          ];
+        };
       };
 
       devShells = forAllSystems (
