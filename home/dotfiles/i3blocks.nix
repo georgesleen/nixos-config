@@ -13,7 +13,7 @@ let
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    echo "<span color='#719cd6'>󱐋 $rate</span>"
+    echo "<span color='#dbc074'>󱐋 $rate</span>"
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
     set -euo pipefail
@@ -24,7 +24,7 @@ let
       [ -e "$iface/device" ] || continue
       [ "$(cat "$iface/type" 2>/dev/null)" = "1" ] || continue
       if [ "$(cat "$iface/carrier" 2>/dev/null)" = "1" ]; then
-        echo "<span color='#719cd6'>󰲝 $name</span>"
+        echo "<span color='#63cdcf'>󰲝 $name</span>"
         exit 0
       fi
     done
@@ -39,7 +39,7 @@ let
     q=$((2*(sig+100)))
     if [ "$q" -lt 0 ]; then q=0; fi
     if [ "$q" -gt 100 ]; then q=100; fi
-    echo "<span color='#719cd6'>󰤨 $ssid $q%</span>"
+    echo "<span color='#63cdcf'>󰤨 $ssid $q%</span>"
   '';
   batteryBlock = pkgs.writeShellScript "i3blocks-battery" ''
     set -euo pipefail
@@ -89,11 +89,11 @@ let
     pct_num="$(echo "$pct" | tr -d '%')"
     if [ "$state" = "charging" ]; then
       icon="󰂄"
-      color="#719cd6"
+      color="#dbc074"
       label="$pct (chg) $ttf_fmt"
     elif [ "$state" = "fully-charged" ]; then
       icon="󰁹"
-      color="#719cd6"
+      color="#dbc074"
       label="$pct (full)"
     elif [ "$pct_num" -le 15 ]; then
       icon="󰁺"
@@ -109,7 +109,7 @@ let
       label="$pct $tte_fmt"
     else
       icon="󰂁"
-      color="#719cd6"
+      color="#dbc074"
       label="$pct $tte_fmt"
     fi
     echo "<span color='$color'>$icon $label</span>"
@@ -118,7 +118,7 @@ let
     set -euo pipefail
     cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
     max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
-    echo "<span color='#719cd6'>󰃟 $((cur * 100 / max))%</span>"
+    echo "<span color='#81b29a'>󰃟 $((cur * 100 / max))%</span>"
   '';
   cpuBlock = pkgs.writeShellScript "i3blocks-cpu" ''
     fmt_freq() {
@@ -306,7 +306,7 @@ let
       total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
       label="$used_fmt/$total_fmt MiB"
     fi
-    echo "<span color='#719cd6'>󰒋 $label</span>"
+    echo "<span color='#9d79d6'>󰒋 $label</span>"
   '';
   diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
     set -euo pipefail
@@ -321,7 +321,7 @@ let
       if (t >= tib) { printf "%.1f/%.1f TiB", u/tib, t/tib }
       else { printf "%.1f/%.1f GiB", u/gib, t/gib }
     }')"
-    echo "<span color='#719cd6'>󰋊 $label</span>"
+    echo "<span color='#9d79d6'>󰋊 $label</span>"
   '';
   volumeBlock = pkgs.writeShellScript "i3blocks-volume" ''
     set -euo pipefail
@@ -334,7 +334,7 @@ let
     if echo "$raw" | ${pkgs.ripgrep}/bin/rg -q MUTED; then
       echo "<span color='#738091'>󰖁 $pct% (muted)</span>"
     else
-      echo "<span color='#719cd6'>󰕾 $pct%</span>"
+      echo "<span color='#81b29a'>󰕾 $pct%</span>"
     fi
   '';
 in
