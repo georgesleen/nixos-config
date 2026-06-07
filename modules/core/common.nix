@@ -26,7 +26,7 @@
     file # File detection
     jq # JSON
     imagemagick # Images
-    grip # Render GitHub flavoured markdown
+    python313Packages.grip # Render GitHub flavoured markdown
   ];
 
   # Networking
