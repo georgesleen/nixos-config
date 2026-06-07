@@ -120,13 +120,70 @@ let
     max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
     echo "<span color='#f9e2af'>󰃟 $((cur * 100 / max))%</span>"
   '';
-  loadBlock = pkgs.writeShellScript "i3blocks-load" ''
-    set -euo pipefail
-    load="$(${pkgs.coreutils}/bin/uptime | awk -F'load average: ' '{split($2,a,","); print a[1]}')"
-    cores="$(${pkgs.coreutils}/bin/nproc)"
-    echo "<span color='#fab387'>󰍛 $load/$cores""c</span>"
+  cpuBlock = pkgs.writeShellScript "i3blocks-cpu" ''
+    fmt_freq() {
+      local mhz="$1"
+      if [ "$mhz" -ge 1000 ] 2>/dev/null; then
+        awk -v m="$mhz" 'BEGIN{printf "%.1f GHz", m/1000}'
+      else
+        echo "''${mhz} MHz"
+      fi
+    }
+
+    cpu_freq() {
+      local sum=0 count=0 f val
+      for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq; do
+        [ -f "$f" ] || continue
+        val=$(${pkgs.coreutils}/bin/cat "$f")
+        sum=$(( sum + val ))
+        count=$(( count + 1 ))
+      done
+      [ "$count" -gt 0 ] && echo $(( sum / count / 1000 )) || echo 0
+    }
+
+    cpu_temp() {
+      local d name f max=0 val
+      for d in /sys/class/hwmon/hwmon*; do
+        [ -d "$d" ] || continue
+        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
+        case "$name" in coretemp|k10temp|zenpower) ;; *) continue ;; esac
+        for f in "$d"/temp*_input; do
+          [ -f "$f" ] || continue
+          val=$(${pkgs.coreutils}/bin/cat "$f")
+          [ "$val" -gt "$max" ] && max="$val"
+        done
+      done
+      [ "$max" -gt 0 ] && echo $(( max / 1000 )) || echo ""
+    }
+
+    load=$(${pkgs.coreutils}/bin/uptime | awk -F'load average: ' '{split($2,a,","); print a[1]}')
+    cores=$(${pkgs.coreutils}/bin/nproc)
+    freq=$(cpu_freq)
+    temp=$(cpu_temp)
+
+    # Normalise load to 0-100 for colour thresholds
+    pct=$(awk -v l="$load" -v c="$cores" 'BEGIN{printf "%d", (l/c)*100}')
+    if [ "''${pct:-0}" -ge 80 ]; then color="#f38ba8"
+    elif [ "''${pct:-0}" -ge 50 ]; then color="#f9e2af"
+    else color="#89b4fa"
+    fi
+
+    label="$load/''${cores}c"
+    [ "$freq" -gt 0 ] 2>/dev/null && label="$label @ $(fmt_freq "$freq")"
+    [ -n "$temp" ] && label="$label ''${temp} °C"
+
+    echo "<span color='$color'>󰍛 $label</span>"
   '';
   gpuBlock = pkgs.writeShellScript "i3blocks-gpu" ''
+    fmt_freq() {
+      local mhz="$1"
+      if [ "$mhz" -ge 1000 ] 2>/dev/null; then
+        awk -v m="$mhz" 'BEGIN{printf "%.1f GHz", m/1000}'
+      else
+        echo "''${mhz} MHz"
+      fi
+    }
+
     STATE="''${XDG_RUNTIME_DIR:-/tmp}/i3blocks-gpu-state"
 
     # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
@@ -174,6 +231,32 @@ let
       echo 0
     }
 
+    amd_temp() {
+      local d name f max=0 val
+      for d in /sys/class/hwmon/hwmon*; do
+        [ -d "$d" ] || continue
+        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
+        [ "$name" = "amdgpu" ] || continue
+        for f in "$d"/temp*_input; do
+          [ -f "$f" ] || continue
+          val=$(${pkgs.coreutils}/bin/cat "$f")
+          [ "$val" -gt "$max" ] && max="$val"
+        done
+      done
+      [ "$max" -gt 0 ] && echo $(( max / 1000 )) || echo ""
+    }
+    intel_temp() {
+      local d name f
+      for d in /sys/class/hwmon/hwmon*; do
+        [ -d "$d" ] || continue
+        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
+        [ "$name" = "coretemp" ] || continue
+        f="$d/temp1_input"
+        [ -f "$f" ] && echo $(( $(${pkgs.coreutils}/bin/cat "$f") / 1000 )) && return
+      done
+      echo ""
+    }
+
     # NVIDIA: nvidia-smi (optional — present only when nvidia driver is loaded)
     nv_busy() {
       nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null \
@@ -183,30 +266,30 @@ let
       nvidia-smi --query-gpu=clocks.current.graphics --format=csv,noheader,nounits 2>/dev/null \
         | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/tr -d ' ' || echo 0
     }
+    nv_temp() {
+      nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null \
+        | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/tr -d ' ' || echo ""
+    }
 
-    busy=0 freq=0
+    busy=0 freq=0 temp=""
     if ls /sys/class/drm/card*/device/gpu_busy_percent > /dev/null 2>&1; then
-      busy=$(amd_busy); freq=$(amd_freq)
+      busy=$(amd_busy); freq=$(amd_freq); temp=$(amd_temp)
     elif ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms > /dev/null 2>&1; then
-      busy=$(intel_busy); freq=$(intel_freq)
+      busy=$(intel_busy); freq=$(intel_freq); temp=$(intel_temp)
     elif command -v nvidia-smi > /dev/null 2>&1; then
-      busy=$(nv_busy); freq=$(nv_freq)
+      busy=$(nv_busy); freq=$(nv_freq); temp=$(nv_temp)
     else
       echo "<span color='#6c7086'>󰾲 GPU n/a</span>"
       exit 0
     fi
 
-    if [ "''${busy:-0}" -ge 80 ]; then color="#f38ba8"
-    elif [ "''${busy:-0}" -ge 50 ]; then color="#f9e2af"
-    else color="#89b4fa"
-    fi
+    color="#89b4fa"
 
-    freq_n=''${freq:-0}
-    if [ "$freq_n" -gt 0 ] 2>/dev/null; then
-      echo "<span color='$color'>󰾲 ''${busy}% @ ''${freq}MHz</span>"
-    else
-      echo "<span color='$color'>󰾲 ''${busy}%</span>"
-    fi
+    label="''${busy}%"
+    [ "''${freq:-0}" -gt 0 ] 2>/dev/null && label="$label @ $(fmt_freq "''${freq:-0}")"
+    [ -n "$temp" ] && label="$label ''${temp} °C"
+
+    echo "<span color='$color'>󰾲 $label</span>"
   '';
   memoryBlock = pkgs.writeShellScript "i3blocks-memory" ''
     set -euo pipefail
@@ -258,12 +341,12 @@ in
     command=${brightnessBlock}
     interval=2
 
-    [load]
-    command=${loadBlock}
-    interval=10
-
     [gpu]
     command=${gpuBlock}
+    interval=5
+
+    [cpu]
+    command=${cpuBlock}
     interval=5
 
     [memory]
