@@ -26,6 +26,7 @@
     file # File detection
     jq # JSON
     imagemagick # Images
+    grip # Render GitHub flavoured markdown
   ];
 
   # Networking
