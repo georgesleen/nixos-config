@@ -7,10 +7,7 @@
 
 {
   imports = [
-    ../../modules/core
-    ../../modules/features/btrfs.nix
-    ../../modules/features/dev.nix
-    ../../modules/features/virtualization.nix
+    ../../modules/roles/server.nix
     ./hardware-configuration.nix
     ./win11-vm.nix
   ];
