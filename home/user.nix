@@ -11,6 +11,7 @@
 
   imports = [
     ./dotfiles/bashrc.nix
+    ./dotfiles/bashrc-desktop.nix
     ./dotfiles/battery.nix
     ./dotfiles/darkman.nix
     ./dotfiles/dconf.nix

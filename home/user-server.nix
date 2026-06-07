@@ -13,8 +13,7 @@
     ./dotfiles/bashrc.nix
     ./dotfiles/git.nix
     ./dotfiles/helix.nix
-    ./dotfiles/lsp.nix
-    ./dotfiles/python.nix
+    ./dotfiles/lsp-minimal.nix
     ./dotfiles/rclone.nix
     ./dotfiles/tmux.nix
   ];
