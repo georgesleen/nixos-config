@@ -21,6 +21,24 @@
         bind '"\C-?": backward-kill-word'
         bind '"\C-h": backward-kill-word'
       fi
+      pause-sleep() {
+        local pidfile="$XDG_RUNTIME_DIR/sleep-inhibitor.pid"
+        if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
+          echo "Sleep already inhibited (PID $(cat "$pidfile"))"
+          return 1
+        fi
+        systemd-inhibit --what=sleep --who=pause-sleep --why=paused --mode=block sleep infinity &
+        echo $! > "$pidfile"
+        echo "Sleep inhibited (PID $!)"
+      }
+      resume-sleep() {
+        local pidfile="$XDG_RUNTIME_DIR/sleep-inhibitor.pid"
+        if [[ ! -f "$pidfile" ]]; then
+          echo "No sleep inhibitor active"
+          return 1
+        fi
+        kill "$(cat "$pidfile")" && rm "$pidfile" && echo "Sleep resumed"
+      }
     '';
     shellAliases = {
       gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an)%Creset'";

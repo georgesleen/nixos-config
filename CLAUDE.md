@@ -23,6 +23,10 @@ nix develop
 nix flake check
 ```
 
+## Tips
+
+- **Prevent sleep during long builds** (e.g. cross-compiled SD card images): `pause-sleep` holds a logind inhibitor lock in the background; `resume-sleep` releases it. PID is tracked in `$XDG_RUNTIME_DIR/sleep-inhibitor.pid`. Verify with `systemd-inhibit --list`. Defined in `home/dotfiles/bashrc.nix`.
+
 ## Architecture
 
 This is a NixOS flake-based system configuration for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-zephyrus-14` (Asus Zephyrus G14), and `gs-server` (Framework-class server, win11 VM via libvirt/vfio).

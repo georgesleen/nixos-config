@@ -306,7 +306,7 @@ let
       total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
       label="$used_fmt/$total_fmt MiB"
     fi
-    echo "<span color='#9d79d6'>󰒋 $label</span>"
+    echo "<span color='#a4b5e8'>󰒋 $label</span>"
   '';
   diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
     set -euo pipefail
@@ -321,7 +321,7 @@ let
       if (t >= tib) { printf "%.1f/%.1f TiB", u/tib, t/tib }
       else { printf "%.1f/%.1f GiB", u/gib, t/gib }
     }')"
-    echo "<span color='#9d79d6'>󰋊 $label</span>"
+    echo "<span color='#c3b5e8'>󰋊 $label</span>"
   '';
   volumeBlock = pkgs.writeShellScript "i3blocks-volume" ''
     set -euo pipefail
