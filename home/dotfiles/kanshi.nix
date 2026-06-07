@@ -35,27 +35,66 @@ let
     10
   ];
 
-  # `workspace N output OUT` is creation-time only — it doesn't migrate a
-  # workspace that already exists on the wrong head. Pair it with a
-  # `[workspace=N] move workspace to output OUT` so kanshi's exec also
-  # rehomes any existing workspaces on dock/undock.
+  # Sets workspace-to-output creation rules. Does not move existing workspaces;
+  # the move scripts below handle that.
   assignSplit =
     internal: external:
     let
       rule = out: n: "workspace ${toString n} output \\\"${out}\\\"";
-      force = out: n: "[workspace=\\\"${toString n}\\\"] move workspace to output \\\"${out}\\\"";
-      rules = (map (rule internal) internalWorkspaces) ++ (map (rule external) externalWorkspaces);
-      moves = (map (force internal) internalWorkspaces) ++ (map (force external) externalWorkspaces);
     in
-    lib.concatStringsSep ", " (rules ++ moves);
+    lib.concatStringsSep ", " (
+      (map (rule internal) internalWorkspaces) ++ (map (rule external) externalWorkspaces)
+    );
 
   assignAllTo =
     out:
     let
       rule = n: "workspace ${toString n} output \\\"${out}\\\"";
-      force = n: "[workspace=\\\"${toString n}\\\"] move workspace to output \\\"${out}\\\"";
     in
-    lib.concatStringsSep ", " ((map rule allWorkspaces) ++ (map force allWorkspaces));
+    lib.concatStringsSep ", " (map rule allWorkspaces);
+
+  # Moves existing workspaces to their target outputs.
+  # sway IPC does not support [workspace="N"] criteria (only window containers
+  # use criteria); use focus+move instead. Saves and restores the focused
+  # workspace so the user doesn't land on a random workspace after dock/undock.
+  mkMoveScript =
+    name: wsOuts:
+    pkgs.writeShellScript name ''
+      current=$(${swaymsg} -t get_workspaces | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .name')
+      existing=$(${swaymsg} -t get_workspaces | ${pkgs.jq}/bin/jq -r '.[].name')
+      ${lib.concatStringsSep "\n" (
+        map (
+          { ws, out }:
+          ''echo "$existing" | grep -qx "${toString ws}" && ${swaymsg} "workspace ${toString ws}; move workspace to output \"${out}\""''
+        ) wsOuts
+      )}
+      [ -n "$current" ] && ${swaymsg} "workspace $current"
+    '';
+
+  splitMoveScript = mkMoveScript "kanshi-split-workspaces" (
+    (map (n: {
+      ws = n;
+      out = "eDP-1";
+    }) internalWorkspaces)
+    ++ (map (n: {
+      ws = n;
+      out = externalCriteria;
+    }) externalWorkspaces)
+  );
+
+  allToInternalScript = mkMoveScript "kanshi-all-to-internal" (
+    map (n: {
+      ws = n;
+      out = "eDP-1";
+    }) allWorkspaces
+  );
+
+  allToExternalScript = mkMoveScript "kanshi-all-to-external" (
+    map (n: {
+      ws = n;
+      out = externalCriteria;
+    }) allWorkspaces
+  );
 
   swaymsg = "${pkgs.sway}/bin/swaymsg";
   externalCriteria = "Acer Technologies SA240Y 0x90801B39";
@@ -80,11 +119,10 @@ let
         }
       ];
       exec = [
-        # Clear any prior mirror state before reasserting positions.
-        ''${swaymsg} "output \"${externalCriteria}\" mirror \"\""''
         ''${swaymsg} "output eDP-1 position 0 0"''
         ''${swaymsg} "output \"${externalCriteria}\" position 1920 0"''
         ''${swaymsg} "${assignSplit "eDP-1" externalCriteria}"''
+        "${splitMoveScript}"
         ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
       ];
     };
@@ -108,6 +146,7 @@ let
       exec = [
         ''${swaymsg} "output \"${externalCriteria}\" mirror eDP-1"''
         ''${swaymsg} "${assignAllTo "eDP-1"}"''
+        "${allToInternalScript}"
       ];
     };
   };
@@ -128,8 +167,8 @@ let
         }
       ];
       exec = [
-        ''${swaymsg} "output \"${externalCriteria}\" mirror \"\""''
         ''${swaymsg} "${assignAllTo externalCriteria}"''
+        "${allToExternalScript}"
         ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
       ];
     };
@@ -151,6 +190,7 @@ let
       ];
       exec = [
         ''${swaymsg} "${assignAllTo "eDP-1"}"''
+        "${allToInternalScript}"
       ];
     };
   };
@@ -166,6 +206,7 @@ let
       ];
       exec = [
         ''${swaymsg} "${assignAllTo "eDP-1"}"''
+        "${allToInternalScript}"
       ];
     };
   };
