@@ -6,14 +6,14 @@ let
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "<span color='#f9e2af'>󱐋 n/a</span>"
+      echo "<span color='#738091'>󱐋 n/a</span>"
       exit 0
     fi
     rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{print $2, $3}')
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    echo "<span color='#f9e2af'>󱐋 $rate</span>"
+    echo "<span color='#9d79d6'>󱐋 $rate</span>"
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
     set -euo pipefail
@@ -24,7 +24,7 @@ let
       [ -e "$iface/device" ] || continue
       [ "$(cat "$iface/type" 2>/dev/null)" = "1" ] || continue
       if [ "$(cat "$iface/carrier" 2>/dev/null)" = "1" ]; then
-        echo "<span color='#a6e3a1'>󰲝 $name</span>"
+        echo "<span color='#63cdcf'>󰲝 $name</span>"
         exit 0
       fi
     done
@@ -33,20 +33,20 @@ let
     ssid="$(printf "%s\n" "$out" | awk '/SSID/ {print $2}')"
     sig="$(printf "%s\n" "$out" | awk '/signal/ {print $2}')"
     if [ -z "$ssid" ]; then
-      echo "<span color='#6c7086'>󰤭 down</span>"
+      echo "<span color='#738091'>󰤭 down</span>"
       exit 0
     fi
     q=$((2*(sig+100)))
     if [ "$q" -lt 0 ]; then q=0; fi
     if [ "$q" -gt 100 ]; then q=100; fi
-    echo "<span color='#89b4fa'>󰤨 $ssid $q%</span>"
+    echo "<span color='#63cdcf'>󰤨 $ssid $q%</span>"
   '';
   batteryBlock = pkgs.writeShellScript "i3blocks-battery" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "<span color='#6c7086'>󰂑 n/a</span>"
+      echo "<span color='#738091'>󰂑 n/a</span>"
       exit 0
     fi
     info="$("$upower_bin" -i "$bat")"
@@ -89,27 +89,27 @@ let
     pct_num="$(echo "$pct" | tr -d '%')"
     if [ "$state" = "charging" ]; then
       icon="󰂄"
-      color="#a6e3a1"
+      color="#81b29a"
       label="$pct (chg) $ttf_fmt"
     elif [ "$state" = "fully-charged" ]; then
       icon="󰁹"
-      color="#a6e3a1"
+      color="#81b29a"
       label="$pct (full)"
     elif [ "$pct_num" -le 15 ]; then
       icon="󰁺"
-      color="#f38ba8"
+      color="#c94f6d"
       label="$pct $tte_fmt"
     elif [ "$pct_num" -le 30 ]; then
       icon="󰁼"
-      color="#fab387"
+      color="#f4a261"
       label="$pct $tte_fmt"
     elif [ "$pct_num" -le 60 ]; then
       icon="󰁾"
-      color="#f9e2af"
+      color="#dbc074"
       label="$pct $tte_fmt"
     else
       icon="󰂁"
-      color="#a6e3a1"
+      color="#81b29a"
       label="$pct $tte_fmt"
     fi
     echo "<span color='$color'>$icon $label</span>"
@@ -118,7 +118,7 @@ let
     set -euo pipefail
     cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
     max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
-    echo "<span color='#f9e2af'>󰃟 $((cur * 100 / max))%</span>"
+    echo "<span color='#dbc074'>󰃟 $((cur * 100 / max))%</span>"
   '';
   cpuBlock = pkgs.writeShellScript "i3blocks-cpu" ''
     fmt_freq() {
@@ -163,14 +163,14 @@ let
 
     # Normalise load to 0-100 for colour thresholds
     pct=$(awk -v l="$load" -v c="$cores" 'BEGIN{printf "%d", (l/c)*100}')
-    if [ "''${pct:-0}" -ge 80 ]; then color="#f38ba8"
-    elif [ "''${pct:-0}" -ge 50 ]; then color="#f9e2af"
-    else color="#89b4fa"
+    if [ "''${pct:-0}" -ge 80 ]; then color="#c94f6d"
+    elif [ "''${pct:-0}" -ge 50 ]; then color="#dbc074"
+    else color="#9d79d6"
     fi
 
     label="$load/''${cores}c"
     [ "$freq" -gt 0 ] 2>/dev/null && label="$label @ $(fmt_freq "$freq")"
-    [ -n "$temp" ] && label="$label ''${temp} °C"
+    [ -n "$temp" ] && label="$label (''${temp} °C)"
 
     echo "<span color='$color'>󰍛 $label</span>"
   '';
@@ -279,15 +279,18 @@ let
     elif command -v nvidia-smi > /dev/null 2>&1; then
       busy=$(nv_busy); freq=$(nv_freq); temp=$(nv_temp)
     else
-      echo "<span color='#6c7086'>󰾲 GPU n/a</span>"
+      echo "<span color='#738091'>󰾲 GPU n/a</span>"
       exit 0
     fi
 
-    color="#89b4fa"
+    if [ "''${busy:-0}" -ge 80 ]; then color="#c94f6d"
+    elif [ "''${busy:-0}" -ge 50 ]; then color="#dbc074"
+    else color="#719cd6"
+    fi
 
     label="''${busy}%"
     [ "''${freq:-0}" -gt 0 ] 2>/dev/null && label="$label @ $(fmt_freq "''${freq:-0}")"
-    [ -n "$temp" ] && label="$label ''${temp} °C"
+    [ -n "$temp" ] && label="$label (''${temp} °C)"
 
     echo "<span color='$color'>󰾲 $label</span>"
   '';
@@ -298,7 +301,7 @@ let
     total="$(echo "$line" | awk '{print $2}')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "<span color='#cba6f7'>󰒋 $used_fmt/$total_fmt MiB</span>"
+    echo "<span color='#f4a261'>󰒋 $used_fmt/$total_fmt MiB</span>"
   '';
   diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
     set -euo pipefail
@@ -307,20 +310,20 @@ let
     total="$(echo "$line" | awk '{print $2}' | tr -d 'G')"
     used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
     total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-    echo "<span color='#89dceb'>󰋊 $used_fmt/$total_fmt GiB</span>"
+    echo "<span color='#63cdcf'>󰋊 $used_fmt/$total_fmt GiB</span>"
   '';
   volumeBlock = pkgs.writeShellScript "i3blocks-volume" ''
     set -euo pipefail
     raw="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null)"
     if [ -z "$raw" ]; then
-      echo "<span color='#6c7086'>󰖁 n/a</span>"
+      echo "<span color='#738091'>󰖁 n/a</span>"
       exit 0
     fi
     pct="$(echo "$raw" | awk '{printf "%d", $2 * 100}')"
     if echo "$raw" | ${pkgs.ripgrep}/bin/rg -q MUTED; then
-      echo "<span color='#6c7086'>󰖁 $pct% (muted)</span>"
+      echo "<span color='#738091'>󰖁 $pct% (muted)</span>"
     else
-      echo "<span color='#a6e3a1'>󰕾 $pct%</span>"
+      echo "<span color='#81b29a'>󰕾 $pct%</span>"
     fi
   '';
 in
