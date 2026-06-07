@@ -21,13 +21,13 @@
         bind '"\C-?": backward-kill-word'
         bind '"\C-h": backward-kill-word'
       fi
-      pause-sleep() {
+      inhibit-sleep() {
         local pidfile="$XDG_RUNTIME_DIR/sleep-inhibitor.pid"
         if [[ -f "$pidfile" ]] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then
           echo "Sleep already inhibited (PID $(cat "$pidfile"))"
           return 1
         fi
-        systemd-inhibit --what=sleep --who=pause-sleep --why=paused --mode=block sleep infinity &
+        systemd-inhibit --what=sleep --who=inhibit-sleep --why=paused --mode=block sleep infinity &
         echo $! > "$pidfile"
         echo "Sleep inhibited (PID $!)"
       }

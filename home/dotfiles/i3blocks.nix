@@ -13,7 +13,7 @@ let
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    echo "<span color='#dbc074'>󱐋 $rate</span>"
+    echo "<span color='#c9956c'>󱐋 $rate</span>"
   '';
   wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
     set -euo pipefail
@@ -118,7 +118,7 @@ let
     set -euo pipefail
     cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
     max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
-    echo "<span color='#81b29a'>󰃟 $((cur * 100 / max))%</span>"
+    echo "<span color='#f0e090'>󰃟 $((cur * 100 / max))%</span>"
   '';
   cpuBlock = pkgs.writeShellScript "i3blocks-cpu" ''
     fmt_freq() {
@@ -285,7 +285,7 @@ let
 
     if [ "''${busy:-0}" -ge 80 ]; then color="#c94f6d"
     elif [ "''${busy:-0}" -ge 50 ]; then color="#dbc074"
-    else color="#719cd6"
+    else color="#8c78d2"
     fi
 
     label="''${busy}%"
@@ -306,7 +306,7 @@ let
       total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
       label="$used_fmt/$total_fmt MiB"
     fi
-    echo "<span color='#a4b5e8'>󰒋 $label</span>"
+    echo "<span color='#e8a0a8'>󰒋 $label</span>"
   '';
   diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
     set -euo pipefail
@@ -334,7 +334,7 @@ let
     if echo "$raw" | ${pkgs.ripgrep}/bin/rg -q MUTED; then
       echo "<span color='#738091'>󰖁 $pct% (muted)</span>"
     else
-      echo "<span color='#81b29a'>󰕾 $pct%</span>"
+      echo "<span color='#a0be82'>󰕾 $pct%</span>"
     fi
   '';
 in
