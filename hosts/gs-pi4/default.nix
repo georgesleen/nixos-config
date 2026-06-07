@@ -13,6 +13,7 @@
   ];
 
   nixpkgs.hostPlatform = "aarch64-linux";
+  nixpkgs.config.allowUnfree = true;
 
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
