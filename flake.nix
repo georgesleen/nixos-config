@@ -74,6 +74,7 @@
           specialArgs = { inherit inputs user; };
           modules = [
             ./hosts/gs-pi4
+            { nixpkgs.buildPlatform = "x86_64-linux"; }
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;

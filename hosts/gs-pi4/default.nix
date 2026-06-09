@@ -13,7 +13,6 @@
   ];
 
   nixpkgs.hostPlatform = "aarch64-linux";
-  nixpkgs.buildPlatform = builtins.currentSystem;
   nixpkgs.config.allowUnfree = true;
   boot.zfs.forceImportRoot = false;
 
