@@ -29,6 +29,7 @@
         fi
         systemd-inhibit --what=sleep --who=inhibit-sleep --why=paused --mode=block sleep infinity &
         echo $! > "$pidfile"
+        disown
         echo "Sleep inhibited (PID $!)"
       }
       resume-sleep() {
