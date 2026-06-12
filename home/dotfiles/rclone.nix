@@ -54,9 +54,9 @@ in
       OnFailure = [ "rclone-classes-notify-failure.service" ];
     };
     Service = {
-      Type = "oneshot";
+      Type = "simple";
       ExecStart = "${classesBisync}/bin/rclone-classes-bisync";
-      SuccessExitStatus = [ 143 ]; # SIGTERM from systemd stop (e.g. HM rebuild) is not a failure
+      SuccessExitStatus = [ 143 ];
     };
   };
 
