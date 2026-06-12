@@ -3,7 +3,7 @@
 # Add containers under virtualisation.oci-containers.containers in any
 # host/role module that imports this one.
 
-{ pkgs, ... }:
+{ ... }:
 
 {
   virtualisation.podman = {

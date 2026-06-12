@@ -13,10 +13,18 @@
     ./power.nix
   ];
 
-  nix.settings.experimental-features = [
-    "nix-command"
-    "flakes"
-  ];
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
+    # Sign all locally-built paths so they can be pushed to trusted remote hosts.
+    secret-key-files = [ "/etc/nix/signing-key.sec" ];
+    # QEMU binfmt emulation (aarch64) needs these — seccomp filtering blocks QEMU
+    # syscalls, and the binfmt sandbox can't create nested namespaces.
+    sandbox = false;
+    filter-syscalls = false;
+  };
 
   # Bootloader
   boot.loader.grub.enable = false;

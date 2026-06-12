@@ -29,6 +29,8 @@
   # Mainline LTS is cache-hit. mkForce overrides nixos-hardware's priority-100 default.
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
 
+  boot.kernelModules = [ "tun" ]; # required for gluetun VPN container
+
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
 
@@ -85,6 +87,15 @@
 
   # Open Jellyfin web UI port; HTTPS (8920) and DLNA (1900/7359) optional.
   networking.firewall.allowedTCPPorts = [ 8096 ];
+
+  # Trust paths signed by the T480s. Generate the keypair on the T480s once:
+  #   sudo nix-store --generate-binary-cache-key gs-thinkpad-t480s-1 \
+  #     /etc/nix/signing-key.sec /etc/nix/signing-key.pub
+  # Then replace the placeholder below with: cat /etc/nix/signing-key.pub
+  nix.settings.trusted-public-keys = [
+    "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+    "gs-thinkpad-t480s-1:jdyiTR6gbHJvrxBZBbje0XfVMEJedtekyVEIwoK8Kfs="
+  ];
 
   system.stateVersion = "25.11";
 }
