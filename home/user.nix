@@ -22,7 +22,6 @@
     ./dotfiles/i3blocks.nix
     ./dotfiles/kanshi.nix
     ./dotfiles/kitty.nix
-    ./dotfiles/lsp.nix
     ./dotfiles/mako.nix
     ./dotfiles/packages.nix
     ./dotfiles/python.nix

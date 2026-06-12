@@ -1,7 +1,9 @@
+# Minimal language server set for headless machines.
+
 { pkgs, ... }:
 
 {
-  home.packages = with pkgs; [
+  environment.systemPackages = with pkgs; [
     # nix
     nil
     nixfmt
@@ -14,10 +16,6 @@
     ruff
     black
     python3Packages.python-lsp-server
-
-    # rust
-    rust-analyzer
-    rustfmt
 
     # c/c++
     clang-tools

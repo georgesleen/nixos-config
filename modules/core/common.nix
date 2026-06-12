@@ -27,6 +27,8 @@
     jq # JSON
     imagemagick # Images
     python313Packages.grip # Render GitHub flavoured markdown
+    nmap # network scanner
+    glow # terminal markdown renderer
   ];
 
   # Networking

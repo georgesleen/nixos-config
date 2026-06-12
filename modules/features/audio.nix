@@ -1,6 +1,6 @@
 # Audio via Pipewire
 
-{ ... }:
+{ pkgs, ... }:
 
 {
   services.pulseaudio.enable = false;
@@ -11,4 +11,9 @@
     alsa.support32Bit = true;
     pulse.enable = true;
   };
+
+  environment.systemPackages = with pkgs; [
+    pulsemixer
+    bluetuith
+  ];
 }

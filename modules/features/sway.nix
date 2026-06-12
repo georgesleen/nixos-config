@@ -8,6 +8,18 @@
     extraPackages = with pkgs; [ swaybg ];
   };
 
+  environment.systemPackages = with pkgs; [
+    grim
+    slurp
+    wl-clipboard
+    swayidle
+    swaylock-effects
+    clipman
+    i3blocks
+    mako
+    libnotify
+  ];
+
   xdg.portal = {
     enable = true;
     wlr.enable = true;

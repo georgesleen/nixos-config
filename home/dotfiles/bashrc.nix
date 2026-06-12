@@ -42,7 +42,7 @@
       }
     '';
     shellAliases = {
-      gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an)%Creset'";
+      gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an, %ar)%Creset%(if)%(trailers:key=Co-authored-by,only=true,valueonly=true)%(then) %C(dim cyan)· %(trailers:key=Co-authored-by,only=true,valueonly=true,separator=, )%Creset%(end)'";
       wake-server = "wakeonlan 4c:cc:6a:fb:a9:73";
       shutdown-server = "ssh gs-server sudo shutdown -h now";
     };

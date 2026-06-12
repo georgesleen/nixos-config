@@ -10,6 +10,7 @@
     ../features/btrfs.nix
     ../features/desktop.nix
     ../features/dev.nix
+    ../features/lsp.nix
     ../features/dns.nix
     ../features/laptop-power.nix
     ../features/steam.nix
@@ -17,5 +18,9 @@
     ../features/virtualization.nix
   ];
 
-  environment.systemPackages = [ pkgs.brightnessctl ];
+  environment.systemPackages = with pkgs; [
+    brightnessctl
+    iw
+    wakeonlan
+  ];
 }

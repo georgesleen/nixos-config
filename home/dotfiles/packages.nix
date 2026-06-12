@@ -27,22 +27,4 @@
     };
   };
 
-  home.packages = with pkgs; [
-    grim
-    slurp
-    wl-clipboard
-    mako
-    libnotify
-    swayidle
-    swaylock-effects
-    xdg-desktop-portal-wlr
-    clipman
-    i3blocks
-    iw
-    prettier
-    bluetuith
-    pulsemixer
-    wakeonlan
-    moonlight-qt
-  ];
 }
