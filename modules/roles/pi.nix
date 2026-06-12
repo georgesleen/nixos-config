@@ -5,6 +5,7 @@
 {
   imports = [
     ../core
+    ../features/containers.nix
     ../features/lsp-minimal.nix
   ];
 }

@@ -12,6 +12,7 @@
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ../../modules/roles/pi.nix
+    ./media-stack.nix
   ];
 
   nixpkgs.hostPlatform = "aarch64-linux";
@@ -22,6 +23,11 @@
   # adding Rockchip/sun4i/etc. modules (dw-hdmi, dw-mipi-dsi, ...) that don't exist in
   # the RPi kernel. makeModulesClosure hard-fails on any listed-but-absent module.
   hardware.enableAllHardware = lib.mkForce false;
+
+  # nixos-hardware sets linuxPackages_rpi4 (downstream patched kernel) which isn't
+  # cached on Hydra for aarch64 — forces a local recompile on every update.
+  # Mainline LTS is cache-hit. mkForce overrides nixos-hardware's priority-100 default.
+  boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
 
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
@@ -40,6 +46,45 @@
   };
 
   security.sudo.wheelNeedsPassword = false;
+
+  fileSystems."/srv/media" = {
+    device = "/dev/disk/by-uuid/6212C72E510C984E";
+    fsType = "ntfs3";
+    options = [
+      "uid=0"
+      "gid=0"
+      "umask=0022"
+      "noatime"
+      "nofail"
+    ];
+  };
+
+  # Jellyfin must not start until the media drive is mounted.
+  systemd.services.podman-jellyfin = {
+    after = [ "srv-media.mount" ];
+    requires = [ "srv-media.mount" ];
+  };
+
+  virtualisation.oci-containers.containers.jellyfin = {
+    image = "jellyfin/jellyfin:latest";
+    volumes = [
+      "/var/lib/jellyfin/config:/config"
+      "/var/lib/jellyfin/cache:/cache"
+      "/srv/media:/media:ro"
+    ];
+    ports = [ "8096:8096" ];
+    # Pi 4 V4L2 hardware decode (H.264 via bcm2835-codec).
+    # Remove these lines if you don't need hardware transcoding.
+    extraOptions = [
+      "--device=/dev/video10"
+      "--device=/dev/video11"
+      "--device=/dev/video12"
+    ];
+    autoStart = true;
+  };
+
+  # Open Jellyfin web UI port; HTTPS (8920) and DLNA (1900/7359) optional.
+  networking.firewall.allowedTCPPorts = [ 8096 ];
 
   system.stateVersion = "25.11";
 }
