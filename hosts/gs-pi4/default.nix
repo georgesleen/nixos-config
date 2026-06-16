@@ -61,33 +61,6 @@
     ];
   };
 
-  # Jellyfin must not start until the media drive is mounted.
-  systemd.services.podman-jellyfin = {
-    after = [ "srv-media.mount" ];
-    requires = [ "srv-media.mount" ];
-  };
-
-  virtualisation.oci-containers.containers.jellyfin = {
-    image = "jellyfin/jellyfin:latest";
-    volumes = [
-      "/var/lib/jellyfin/config:/config"
-      "/var/lib/jellyfin/cache:/cache"
-      "/srv/media:/media:ro"
-    ];
-    ports = [ "8096:8096" ];
-    # Pi 4 V4L2 hardware decode (H.264 via bcm2835-codec).
-    # Remove these lines if you don't need hardware transcoding.
-    extraOptions = [
-      "--device=/dev/video10"
-      "--device=/dev/video11"
-      "--device=/dev/video12"
-    ];
-    autoStart = true;
-  };
-
-  # Open Jellyfin web UI port; HTTPS (8920) and DLNA (1900/7359) optional.
-  networking.firewall.allowedTCPPorts = [ 8096 ];
-
   # Trust paths signed by the T480s. Generate the keypair on the T480s once:
   #   sudo nix-store --generate-binary-cache-key gs-thinkpad-t480s-1 \
   #     /etc/nix/signing-key.sec /etc/nix/signing-key.pub

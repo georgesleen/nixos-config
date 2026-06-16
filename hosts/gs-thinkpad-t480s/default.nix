@@ -20,6 +20,12 @@
     ];
     # Sign all locally-built paths so they can be pushed to trusted remote hosts.
     secret-key-files = [ "/etc/nix/signing-key.sec" ];
+    # Allows running nixos-rebuild --target-host without sudo; nix-copy-closure
+    # then runs as the user and uses their SSH key rather than root's.
+    trusted-users = [
+      "root"
+      "george-sleen"
+    ];
     # QEMU binfmt emulation (aarch64) needs these — seccomp filtering blocks QEMU
     # syscalls, and the binfmt sandbox can't create nested namespaces.
     sandbox = false;

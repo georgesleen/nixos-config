@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ ... }:
 
 {
   programs.helix = {
@@ -6,6 +6,7 @@
 
     settings = {
       theme = "nightfox";
+      line-number = "relative";
     };
 
     languages = {
