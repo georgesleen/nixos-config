@@ -12,7 +12,13 @@
 
   services.upower.criticalPowerAction = "Hibernate";
 
-  boot.kernelParams = lib.mkAfter [ "pcie_aspm=force" ];
+  boot.kernelParams = lib.mkAfter [
+    "pcie_aspm=force"
+    # Panel Self Refresh + framebuffer compression: cut idle GPU/display
+    # power on the internal panel. Watch for flicker; disable if it appears.
+    "i915.enable_psr=1"
+    "i915.enable_fbc=1"
+  ];
 
   services.tlp = {
     enable = true;
@@ -23,7 +29,7 @@
       CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
       CPU_SCALING_GOVERNOR_ON_AC = "powersave";
       CPU_ENERGY_PERF_POLICY_ON_BAT = "power";
-      CPU_ENERGY_PERF_POLICY_ON_AC = "balance_performance";
+      CPU_ENERGY_PERF_POLICY_ON_AC = "performance";
       CPU_BOOST_ON_BAT = 0;
       CPU_BOOST_ON_AC = 1;
 
@@ -31,8 +37,11 @@
       RUNTIME_PM_ON_AC = "on";
       USB_AUTOSUSPEND = 1;
 
-      SATA_LINKPWR_ON_BAT = "med_power_with_dipm";
-      SATA_LINKPWR_ON_AC = "med_power_with_dipm";
+      # pcie_aspm=force enables ASPM at the link level, but the policy
+      # governor stays "default" without this — drive it to the deepest
+      # state on battery.
+      PCIE_ASPM_ON_BAT = "powersupersave";
+      PCIE_ASPM_ON_AC = "performance";
 
       WIFI_PWR_ON_BAT = "on";
       WIFI_PWR_ON_AC = "off";
@@ -41,7 +50,7 @@
   services.power-profiles-daemon.enable = false;
 
   hardware.bluetooth.enable = true;
-  hardware.bluetooth.powerOnBoot = false;
+  hardware.bluetooth.powerOnBoot = true;
 
   networking.networkmanager.wifi.powersave = true;
 

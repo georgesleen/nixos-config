@@ -1,6 +1,7 @@
 { config, pkgs, ... }:
 
 let
+  thresh = import ./battery-thresholds.nix;
   powerBlock = pkgs.writeShellScript "i3blocks-power" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
@@ -77,8 +78,10 @@ let
     tte_hours=""
     ttf_hours=""
     if [ -n "$rate" ] && awk -v r="$rate" 'BEGIN{exit (r>0.1)?0:1}'; then
-      if [ -n "$energy" ]; then
-        tte_hours="$(awk -v e="$energy" -v r="$rate" 'BEGIN{printf "%.2f", e/r}')"
+      # Count down to the hibernate target (criticalPct), not 0%.
+      if [ -n "$energy" ] && [ -n "$energy_full" ]; then
+        tte_hours="$(awk -v e="$energy" -v ef="$energy_full" -v r="$rate" -v c=${toString thresh.criticalPct} \
+          'BEGIN{u=e-ef*c/100; if(u<0)u=0; printf "%.2f", u/r}')"
       fi
       if [ -n "$energy_full" ] && [ -n "$energy" ]; then
         ttf_hours="$(awk -v ef="$energy_full" -v e="$energy" -v r="$rate" 'BEGIN{printf "%.2f", (ef-e)/r}')"

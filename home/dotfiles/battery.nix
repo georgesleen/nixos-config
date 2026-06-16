@@ -6,8 +6,7 @@
 }:
 
 let
-  criticalPct = 8;
-  lowPct = 15;
+  inherit (import ./battery-thresholds.nix) criticalPct lowPct;
   batteryNotify = pkgs.writeShellScript "battery-notify" ''
     set -euo pipefail
 
