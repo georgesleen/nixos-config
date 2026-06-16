@@ -6,6 +6,7 @@
     enableCompletion = true;
     bashrcExtra = ''
       export PATH="$PATH:$HOME/bin:$HOME/.local/bin:$HOME/go/bin"
+      [[ -r /run/secrets/github_pat ]] && export GITHUB_PERSONAL_ACCESS_TOKEN="$(< /run/secrets/github_pat)"
       shopt -s cdspell
       shopt -s histappend
       HISTCONTROL=ignoredups:erasedups
