@@ -33,7 +33,7 @@ let
     # Context window usage
     ctx_used="$(echo "$input" | ${pkgs.jq}/bin/jq -r '.context_window.used_percentage // empty')"
     if [ -n "$ctx_used" ]; then
-      parts+=("ctx $(printf '%.0f' "$ctx_used")%")
+      parts+=("context $(printf '%.0f' "$ctx_used")%")
     else
       total_in="$(echo "$input" | ${pkgs.jq}/bin/jq -r '.context_window.total_input_tokens // empty')"
       win="$(echo "$input" | ${pkgs.jq}/bin/jq -r '.context_window.context_window_size // empty')"
@@ -64,9 +64,12 @@ let
       bar="$(${pkgs.coreutils}/bin/printf '#%.0s' $(seq 1 "$filled" 2>/dev/null))$(${pkgs.coreutils}/bin/printf '.%.0s' $(seq 1 "$empty" 2>/dev/null))"
       reset_note=""
       if [ -n "$resets_at" ]; then
-        if reset_fmt="$(${pkgs.coreutils}/bin/date -d "$resets_at" '+%a %H:%M' 2>/dev/null)"; then
-          reset_note=" resets $reset_fmt"
-        fi
+        reset_fmt=""
+        case "$resets_at" in
+          *[!0-9]*) reset_fmt="$(${pkgs.coreutils}/bin/date -d "$resets_at" '+%a %H:%M' 2>/dev/null)" ;;
+          *) reset_fmt="$(${pkgs.coreutils}/bin/date -d "@$resets_at" '+%a %H:%M' 2>/dev/null)" ;;
+        esac
+        [ -n "$reset_fmt" ] && reset_note=" (resets $reset_fmt)"
       fi
       pct_rounded=$(${pkgs.gawk}/bin/awk -v p="$pct" 'BEGIN{printf "%.0f", p}')
       echo "$label [$bar] ''${pct_rounded}%$reset_note"

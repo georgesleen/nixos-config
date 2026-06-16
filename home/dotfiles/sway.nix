@@ -226,7 +226,6 @@ in
             "--locked ${mod}+XF86MonBrightnessUp" = "exec ${brightnessScript} up";
             "--locked ${mod}+XF86MonBrightnessDown" = "exec ${brightnessScript} down";
             "Print" = "exec ${screenshotScript}/bin/screenshot full";
-            "Shift+Print" = "exec ${screenshotScript}/bin/screenshot region";
           };
           startup = [ ];
           modes = {
@@ -262,6 +261,12 @@ in
         # Keep kitty transparent even when fullscreen.
         for_window [app_id="kitty"] opacity ${config.my.opacity}
         exec_always swaymsg "[app_id=\"kitty\"] opacity ${config.my.opacity}"
+
+        # Region screenshot on Shift + the physical Escape key only.
+        # Capslock is remapped to the Escape keysym too (see customKeymap),
+        # so bindsym can't tell them apart; bindcode targets the raw X11
+        # keycode (9 = physical Escape position) instead.
+        bindcode Shift+9 exec ${screenshotScript}/bin/screenshot region
       '';
     };
 
