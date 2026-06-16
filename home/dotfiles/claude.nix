@@ -123,7 +123,6 @@ in
       "hookify@claude-plugins-official" = true;
       # MCP servers
       "context7@claude-plugins-official" = true;
-      "github@claude-plugins-official" = true;
       "playwright@claude-plugins-official" = true;
     };
     effortLevel = "medium";
