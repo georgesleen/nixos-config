@@ -13,6 +13,7 @@
     ./dotfiles/bashrc.nix
     ./dotfiles/bashrc-desktop.nix
     ./dotfiles/battery.nix
+    ./dotfiles/claude.nix
     ./dotfiles/darkman.nix
     ./dotfiles/dconf.nix
     ./dotfiles/fuzzel.nix
