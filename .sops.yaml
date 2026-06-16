@@ -1,0 +1,12 @@
+keys:
+  - &user_george age1aa0f0jssjez2ngqelgfc3400mqu6sa00zdlp5ytdcu8wt9yea48sz0s8fz
+  - &host_gs_thinkpad_t480s age194ysktmvcyfrxl4etdq2al76q3vll405z0plc8vk4up47fwzr52q00ratx
+  # - &host_gs_zephyrus_14 <derive with: ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub>
+  # - &host_gs_server <derive with: ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub>
+
+creation_rules:
+  - path_regex: secrets/.*\.yaml$
+    key_groups:
+      - age:
+          - *user_george
+          - *host_gs_thinkpad_t480s

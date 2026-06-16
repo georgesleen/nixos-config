@@ -50,6 +50,29 @@ This is a NixOS flake-based system configuration for three hosts: `gs-thinkpad-t
 
 **`flake.nix` also exposes a `yolo-testing` devShell** with Python 3.13 + uv and LD_LIBRARY_PATH set for running native binaries outside NixOS wrappers.
 
+## Secrets
+
+Managed with [sops-nix](https://github.com/Mic92/sops-nix). `.sops.yaml` lists
+age recipients (one personal key for editing, one per host derived from that
+host's own SSH host key — no separate host key to distribute). Encrypted
+secrets live in `secrets/secrets.yaml`; only `gs-thinkpad-t480s` consumes it
+so far.
+
+```bash
+# Edit secrets (decrypts to $EDITOR, re-encrypts on save)
+sops secrets/secrets.yaml
+
+# Onboard a new host: derive its age pubkey from its SSH host key
+ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
+# add the result to .sops.yaml, then re-encrypt for the new recipient set
+sops updatekeys secrets/secrets.yaml
+```
+
+Each host declares `sops.defaultSopsFile` + `sops.age.sshKeyPaths` and its own
+`sops.secrets.<name>` entries (see `hosts/gs-thinkpad-t480s/default.nix`).
+Decrypted values land at `/run/secrets/<name>` at activation — no separate
+key file to manage per host.
+
 ## Git hooks
 
 `hooks/pre-commit` is tracked in the repo. `.envrc` wires it via `git config core.hooksPath hooks` when direnv loads (i.e. on `nix develop` / `direnv allow`). The hook formats staged `.nix` files with nixfmt and validates them with `nix-instantiate --parse`.

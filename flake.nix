@@ -27,6 +27,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Secrets management
+    sops-nix = {
+      url = "github:Mic92/sops-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs =
@@ -37,6 +43,7 @@
       waveforms,
       nixos-hardware,
       NixVirt,
+      sops-nix,
       ...
     }:
     let
@@ -55,6 +62,7 @@
           modules = [
             hostPath
             waveforms.nixosModule
+            sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;

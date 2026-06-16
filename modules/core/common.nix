@@ -31,6 +31,9 @@
     glow # terminal markdown renderer
     poppler-utils # PDF tools (pdftotext, pdfimages, etc.)
     nodejs # npx, needed by some Claude Code MCP servers (context7, playwright)
+    sops # edit/inspect encrypted secrets
+    age # sops-nix encryption backend
+    ssh-to-age # derive age recipient keys from ssh host keys
   ];
 
   # Networking
