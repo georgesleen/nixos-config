@@ -29,6 +29,7 @@
     python313Packages.grip # Render GitHub flavoured markdown
     nmap # network scanner
     glow # terminal markdown renderer
+    poppler-utils # PDF tools (pdftotext, pdfimages, etc.)
   ];
 
   # Networking

@@ -6,7 +6,12 @@
 
     settings = {
       theme = "nightfox";
-      line-number = "relative";
+      editor.line-number = "relative";
+      editor.rulers = [
+        80
+        120
+      ];
+      editor.soft-wrap.enable = true;
     };
 
     languages = {
