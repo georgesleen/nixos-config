@@ -2,6 +2,21 @@
 
 let
   thresh = import ./battery-thresholds.nix;
+  fmtFreq = pkgs.writeShellScript "fmt-freq" ''
+    mhz="$1"
+    if [ "$mhz" -ge 1000 ] 2>/dev/null; then
+      awk -v m="$mhz" 'BEGIN{printf "%.1f GHz", m/1000}'
+    else
+      echo "''${mhz} MHz"
+    fi
+  '';
+  fmtBytes = pkgs.writeShellScript "fmt-bytes" ''
+    awk -v u="$1" -v t="$2" 'BEGIN{
+      gib=1024*1024*1024; tib=gib*1024
+      if (t >= tib) { printf "%.2f/%.2f TiB", u/tib, t/tib }
+      else           { printf "%.2f/%.2f GiB", u/gib, t/gib }
+    }'
+  '';
   powerBlock = pkgs.writeShellScript "i3blocks-power" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
@@ -124,15 +139,6 @@ let
     echo "<span color='#f0e090'>󰃟 $((cur * 100 / max))%</span>"
   '';
   cpuBlock = pkgs.writeShellScript "i3blocks-cpu" ''
-    fmt_freq() {
-      local mhz="$1"
-      if [ "$mhz" -ge 1000 ] 2>/dev/null; then
-        awk -v m="$mhz" 'BEGIN{printf "%.1f GHz", m/1000}'
-      else
-        echo "''${mhz} MHz"
-      fi
-    }
-
     cpu_freq() {
       local sum=0 count=0 f val
       for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq; do
@@ -172,21 +178,12 @@ let
     fi
 
     label="$load/''${cores}c"
-    [ "$freq" -gt 0 ] 2>/dev/null && label="$label @ $(fmt_freq "$freq")"
+    [ "$freq" -gt 0 ] 2>/dev/null && label="$label @ $(${fmtFreq} "$freq")"
     [ -n "$temp" ] && label="$label (''${temp} °C)"
 
     echo "<span color='$color'>󰍛 $label</span>"
   '';
   gpuBlock = pkgs.writeShellScript "i3blocks-gpu" ''
-    fmt_freq() {
-      local mhz="$1"
-      if [ "$mhz" -ge 1000 ] 2>/dev/null; then
-        awk -v m="$mhz" 'BEGIN{printf "%.1f GHz", m/1000}'
-      else
-        echo "''${mhz} MHz"
-      fi
-    }
-
     STATE="''${XDG_RUNTIME_DIR:-/tmp}/i3blocks-gpu-state"
 
     # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
@@ -292,7 +289,7 @@ let
     fi
 
     label="''${busy}%"
-    [ "''${freq:-0}" -gt 0 ] 2>/dev/null && label="$label @ $(fmt_freq "''${freq:-0}")"
+    [ "''${freq:-0}" -gt 0 ] 2>/dev/null && label="$label @ $(${fmtFreq} "''${freq:-0}")"
     [ -n "$temp" ] && label="$label (''${temp} °C)"
 
     echo "<span color='$color'>󰾲 $label</span>"
@@ -303,7 +300,7 @@ let
     used="$(echo "$line" | awk '{print $1}')"
     total="$(echo "$line" | awk '{print $2}')"
     if [ "$total" -ge 1024 ]; then
-      label="$(awk -v u="$used" -v t="$total" 'BEGIN{printf "%.1f/%.1f GiB", u/1024, t/1024}')"
+      label="$(${fmtBytes} $((used * 1024 * 1024)) $((total * 1024 * 1024)))"
     else
       used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
       total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
@@ -319,11 +316,7 @@ let
       | awk 'NR>1 && !seen[$1]++ {u+=$2; t+=$3} END{print u, t}')"
     used_b="$(echo "$stats" | awk '{print $1}')"
     total_b="$(echo "$stats" | awk '{print $2}')"
-    label="$(awk -v u="$used_b" -v t="$total_b" 'BEGIN{
-      gib=1024*1024*1024; tib=gib*1024
-      if (t >= tib) { printf "%.1f/%.1f TiB", u/tib, t/tib }
-      else { printf "%.1f/%.1f GiB", u/gib, t/gib }
-    }')"
+    label="$(${fmtBytes} "$used_b" "$total_b")"
     echo "<span color='#c3b5e8'>󰋊 $label</span>"
   '';
   volumeBlock = pkgs.writeShellScript "i3blocks-volume" ''
