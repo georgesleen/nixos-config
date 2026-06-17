@@ -125,7 +125,7 @@ in
       "context7@claude-plugins-official" = true;
       "playwright@claude-plugins-official" = true;
     };
-    effortLevel = "medium";
+    model = "sonnet";
     remoteControlAtStartup = false;
     agentPushNotifEnabled = true;
     skipAutoPermissionPrompt = true;

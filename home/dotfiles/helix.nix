@@ -11,7 +11,7 @@
         80
         120
       ];
-      editor.soft-wrap.enable = true;
+      editor.soft-wrap.enable = false;
     };
 
     languages = {
