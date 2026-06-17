@@ -34,6 +34,7 @@
     sops # edit/inspect encrypted secrets
     age # sops-nix encryption backend
     ssh-to-age # derive age recipient keys from ssh host keys
+    pv # pipe progress monitor
   ];
 
   # Networking

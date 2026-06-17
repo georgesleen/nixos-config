@@ -43,6 +43,14 @@ sudo btrfs scrub start -B /mnt/backup
 
 ## Incremental sends
 
+`<new>` is the highest number from `snapper list`. To find `<last>`, check
+what's on the backup disk and match it to a local snapshot by UUID:
+
+```bash
+sudo btrfs subvolume show /mnt/backup/snapshot   # note the UUID
+sudo btrfs subvolume show /home/.snapshots/<n>/snapshot  # find the match locally
+```
+
 Use the last-sent snapshot as `-p`, the newest local snapshot as the target:
 
 ```bash
@@ -55,6 +63,15 @@ sudo btrfs property set /mnt/backup/snapshot ro true
 > `btrfs receive` always names the subvolume after the source, so the path is always `/mnt/backup/snapshot`.
 
 Advance `<last>` each time.
+
+> The local `<last>` snapshot must still exist when you run the next incremental. Pin it so snapper doesn't prune it:
+> ```bash
+> sudo snapper -c home modify -c "" <last>
+> ```
+> Once the next incremental is done, restore it to the timeline cleanup policy:
+> ```bash
+> sudo snapper -c home modify -c "timeline" <last>
+> ```
 
 ## Unmount
 
