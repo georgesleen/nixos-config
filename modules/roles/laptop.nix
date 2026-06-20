@@ -14,6 +14,7 @@
     ../features/dns.nix
     ../features/laptop-power.nix
     ../features/steam.nix
+    ../features/keychron.nix
     ../features/user-packages.nix
     ../features/virtualization.nix
   ];

@@ -94,3 +94,4 @@ key file to manage per host.
 - Steam Remote Play (T480s): white-screen/~1FPS, root cause TBD (display chain stalls under XWayland/sway+iHD) — do NOT set `LIBGL_DRI3_DISABLE=1`, it forces llvmpipe and breaks Steam launch entirely.
 - "open kitty in last dir" (`sway.nix` + `bashrc.nix` `mark`): `kitty --cwd last` doesn't exist at the top-level CLI; `mark` writes `$PWD` to a runtime file instead, must live in a helper function (Nix `''...''` strings expand `$PWD` at source time inline).
 - `hosts/gs-pi4/default.nix` `hardware.enableAllHardware = lib.mkForce false`: the all-hardware profile adds kernel modules the RPi kernel doesn't have, hard-failing `makeModulesClosure`.
+- `modules/features/keychron.nix` udev rules: `TAG+="uaccess"` doesn't grant hidraw access under sway/Wayland (logind seat grant never fires); `MODE="0660", GROUP="plugdev"` is required instead.
