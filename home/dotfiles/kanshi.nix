@@ -99,6 +99,18 @@ let
   swaymsg = "${pkgs.sway}/bin/swaymsg";
   externalCriteria = "Acer Technologies SA240Y 0x90801B39";
 
+  # kanshi can't see the lid switch, so a profile applied at boot/hotplug with
+  # the lid already closed would re-enable eDP-1 onto the dark internal panel.
+  # The sway `bindswitch` only fires on lid *transitions*, not at startup, so
+  # this mirrors the bindswitch close (just disable eDP-1) when the lid is
+  # already shut. It deliberately leaves the extend profile's split assignment
+  # rules in place so sway pulls the internal workspaces back when the lid
+  # reopens; sway auto-moves eDP-1's workspaces to the external in the meantime.
+  lidReconcileScript = pkgs.writeShellScript "kanshi-lid-reconcile" ''
+    ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state || exit 0
+    ${swaymsg} "output eDP-1 disable"
+  '';
+
   # Mode profiles. All four docked modes share the same matching criteria
   # (both outputs connected); kanshi auto-applies the first match (extend)
   # on dock, and the picker switches between them via `kanshictl switch`.
@@ -124,6 +136,7 @@ let
         ''${swaymsg} "${assignSplit "eDP-1" externalCriteria}"''
         "${splitMoveScript}"
         ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
+        "${lidReconcileScript}"
       ];
     };
   };

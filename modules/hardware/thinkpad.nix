@@ -27,7 +27,12 @@
 
       if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
         # Authorized Thunderbolt dock → treat as desktop, do nothing.
+        # Skip route-0 entries (`<domain>-0`): those are the host controllers
+        # themselves, always authorized=1, and would otherwise make every lid
+        # close look "docked" so the laptop never sleeps and drains flat.
         for f in /sys/bus/thunderbolt/devices/*-*/authorized; do
+          dev=$(${pkgs.coreutils}/bin/basename "$(${pkgs.coreutils}/bin/dirname "$f")")
+          case "$dev" in *-0) continue ;; esac
           [ -e "$f" ] && [ "$(${pkgs.coreutils}/bin/cat "$f")" = "1" ] && exit 0
         done
 
