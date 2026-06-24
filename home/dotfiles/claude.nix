@@ -131,5 +131,11 @@ in
     skipAutoPermissionPrompt = true;
   };
 
-  home.file.".claude/skills/setup-workflow/SKILL.md".source = ./claude/skills/setup-workflow/SKILL.md;
+  # Link the whole skills tree individually (recursive) so the directory stays
+  # writable for ad-hoc/experimental skills, and any skill added under
+  # ./claude/skills auto-wires without editing this file.
+  home.file.".claude/skills" = {
+    source = ./claude/skills;
+    recursive = true;
+  };
 }

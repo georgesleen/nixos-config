@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Local gate: the fast checks, run before anything leaves the machine. Mirror
+# these exact steps in CI. Keep each one cheap; a slow hook gets bypassed.
+set -euo pipefail
+
+echo "[pre-push] format check..."
+nixfmt --check $(find . -name '*.nix' -not -path './.git/*')
+# Add the language formatters, e.g.:
+#   cargo fmt --check
+#   clang-format --dry-run --Werror $(find src lib -name '*.h' -o -name '*.cpp')
+#   ruff format --check . && ruff check .
+
+echo "[pre-push] tests..."
+# Run the host test suite, e.g.:
+#   cargo test
+#   pio test -e native
+#   pytest -q
+
+echo "[pre-push] all checks passed."
