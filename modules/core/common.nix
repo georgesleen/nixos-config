@@ -4,10 +4,8 @@
 
 {
   environment.systemPackages = with pkgs; [
-    helix # text editor
     git # version control
     gh # github cli
-    kitty # terminal emulator
     rsync # file sync
     tree # file viewer
     xclip # clipboard interface for helix
@@ -35,6 +33,7 @@
     age # sops-nix encryption backend
     ssh-to-age # derive age recipient keys from ssh host keys
     pv # pipe progress monitor
+    delta # diff pager for git
   ];
 
   # Networking

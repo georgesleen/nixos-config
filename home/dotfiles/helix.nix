@@ -1,12 +1,14 @@
-{ ... }:
+{ inputs, pkgs, ... }:
 
 {
   programs.helix = {
     enable = true;
+    package = inputs.helix.packages.${pkgs.system}.default;
 
     settings = {
       theme = "nightfox";
       editor.line-number = "relative";
+      editor.bufferline = "always";
       editor.rulers = [
         80
         120

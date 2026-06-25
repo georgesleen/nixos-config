@@ -33,6 +33,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Helix nightly
+    helix = {
+      url = "github:helix-editor/helix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
   };
 
   outputs =
@@ -44,6 +50,7 @@
       nixos-hardware,
       NixVirt,
       sops-nix,
+      helix,
       ...
     }:
     let
@@ -68,7 +75,7 @@
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.backupFileExtension = "hm-backup";
-              home-manager.extraSpecialArgs = { inherit user; };
+              home-manager.extraSpecialArgs = { inherit user inputs; };
               home-manager.users.${user} = import hmHome;
             }
           ];
@@ -88,7 +95,7 @@
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               home-manager.backupFileExtension = "hm-backup";
-              home-manager.extraSpecialArgs = { inherit user; };
+              home-manager.extraSpecialArgs = { inherit user inputs; };
               home-manager.users.${user} = import ./home/user-pi.nix;
             }
           ];

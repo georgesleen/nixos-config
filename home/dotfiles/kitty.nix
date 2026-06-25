@@ -22,7 +22,11 @@ let
       tmp=$(mktemp --suffix=.log)
       trap 'rm -f "$tmp"' EXIT
       cat > "$tmp"
-      hx "$tmp:$(wc -l < "$tmp")"
+      last=$(wc -l < "$tmp")
+      # Pad with blank lines so helix can scroll the last content line to the
+      # bottom of the viewport rather than centering it in empty space.
+      printf '\n%.0s' $(seq 1 "$(tput lines)") >> "$tmp"
+      hx "$tmp:$last"
     '';
   };
 in
@@ -31,7 +35,7 @@ in
   options = {
     my.opacity = lib.mkOption {
       type = lib.types.str;
-      default = "0.94";
+      default = "0.96";
       description = "Global UI opacity used by terminal and compositor rules.";
     };
   };

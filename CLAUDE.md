@@ -92,7 +92,7 @@ key file to manage per host.
 - `home/dotfiles/i3blocks.nix` gpuBlock: Intel utilization comes from RC6 residency delta, the only no-root sysfs metric available (AMD/NVIDIA have direct counters).
 - `home/dotfiles/kanshi.nix` mkMoveScript: uses focus+move, not `[workspace=]` criteria — sway IPC criteria don't match workspaces, only window containers.
 - Steam Remote Play (T480s): white-screen/~1FPS, root cause TBD (display chain stalls under XWayland/sway+iHD) — do NOT set `LIBGL_DRI3_DISABLE=1`, it forces llvmpipe and breaks Steam launch entirely.
-- "open kitty in last dir" (`sway.nix` + `bashrc.nix` `mark`): `kitty --cwd last` doesn't exist at the top-level CLI; `mark` writes `$PWD` to a runtime file instead, must live in a helper function (Nix `''...''` strings expand `$PWD` at source time inline).
+- "open kitty in last dir" (`sway.nix` + `bashrc-desktop.nix` `mark`): `mark` writes `$PWD` to `$XDG_RUNTIME_DIR/kitty-last-dir`; sway passes it via `kitty -d ...`. Must live in a helper function (Nix `''...''` strings expand `$PWD` at source time inline).
 - `hosts/gs-pi4/default.nix` `hardware.enableAllHardware = lib.mkForce false`: the all-hardware profile adds kernel modules the RPi kernel doesn't have, hard-failing `makeModulesClosure`.
 - `modules/features/keychron.nix` udev rules: `TAG+="uaccess"` doesn't grant hidraw access under sway/Wayland (logind seat grant never fires); `MODE="0660", GROUP="plugdev"` is required instead.
 - `modules/hardware/thinkpad.nix` lidEventCommands: the dock-present check skips `*-0` Thunderbolt devices — route-0 is the host controller itself (`0-0` = "Thinkpad T480s"), always `authorized=1`, so without the skip every lid close looked docked and the laptop never slept (drained to 0%).
