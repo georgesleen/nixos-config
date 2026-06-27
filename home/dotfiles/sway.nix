@@ -7,6 +7,28 @@
 
 let
   borderWidth = 2;
+  # Open a new kitty OS window in the focused kitty's cwd. Left Alt is the sway
+  # modifier (Mod3), so kitty can't bind it internally; this drives kitty's
+  # control socket instead. Falls back to a plain kitty when the focus is not a
+  # kitty (no socket).
+  kittyCwdWindow = pkgs.writeShellApplication {
+    name = "kitty-cwd-window";
+    runtimeInputs = with pkgs; [
+      kitty
+      jq
+      sway
+    ];
+    text = ''
+      pid=$(swaymsg -t get_tree \
+        | jq -r 'recurse(.nodes[]?, .floating_nodes[]?) | select(.focused) | .pid' \
+        || true)
+      if [ -n "$pid" ] \
+        && kitty @ --to "unix:/tmp/kitty-$pid" launch --type=os-window --cwd=current >/dev/null 2>&1; then
+        exit 0
+      fi
+      exec kitty
+    '';
+  };
   # Remap left alt → Hyper_L in Mod3 so it is the sole sway modifier.
   # Mod3 is otherwise unused; this isolates it from Win (Mod4/Super) and
   # right alt (Mod1/Alt_R). Right alt passes through to applications as a
@@ -147,8 +169,7 @@ in
           ];
           keybindings = {
             "${mod}+Return" = "exec kitty";
-            "${mod}+Shift+Return" =
-              "exec kitty -d \"$(cat \"\${XDG_RUNTIME_DIR:-/tmp}/kitty-last-dir\" 2>/dev/null || echo \"$HOME\")\"";
+            "${mod}+Shift+Return" = "exec ${lib.getExe kittyCwdWindow}";
             "Control+${mod}+t" = "exec kitty";
             "${mod}+Shift+e" = "exec swaymsg exit";
             "${mod}+Shift+c" = "reload";
@@ -213,6 +234,10 @@ in
             "${mod}+a" = "focus parent";
             "${mod}+r" = "mode resize";
 
+            "--locked XF86AudioPlay" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
+            "--locked XF86AudioPause" = "exec ${pkgs.playerctl}/bin/playerctl pause";
+            "--locked XF86AudioNext" = "exec ${pkgs.playerctl}/bin/playerctl next";
+            "--locked XF86AudioPrev" = "exec ${pkgs.playerctl}/bin/playerctl previous";
             "--locked XF86AudioRaiseVolume" = "exec ${volumeScript} up";
             "--locked XF86AudioLowerVolume" = "exec ${volumeScript} down";
             "--locked XF86AudioMute" = "exec ${volumeScript} mute";

@@ -6,28 +6,14 @@
 }:
 
 let
-  # Opens the scrollback in helix for keyboard selection (`v` select,
-  # `Space y` yank). kitty's `@text` pipe source hands us the buffer as plain
-  # text, so there are no escape sequences to strip — we just drop stdin to a
-  # temp file and open it at the last line. The .log suffix makes helix apply
-  # its log grammar: colors error/warn/info levels, timestamps, and numbers
-  # without imposing programming-language syntax on terminal output.
-  scrollbackPager = pkgs.writeShellApplication {
-    name = "kitty-scrollback-pager";
-    runtimeInputs = [
-      pkgs.helix
-      pkgs.coreutils
-    ];
-    text = ''
-      tmp=$(mktemp --suffix=.log)
-      trap 'rm -f "$tmp"' EXIT
-      cat > "$tmp"
-      last=$(wc -l < "$tmp")
-      # Pad with blank lines so helix can scroll the last content line to the
-      # bottom of the viewport rather than centering it in empty space.
-      printf '\n%.0s' $(seq 1 "$(tput lines)") >> "$tmp"
-      hx "$tmp:$last"
-    '';
+  # Keyboard-driven copy mode with vim motions, bound to ctrl+shift+x. grab.py
+  # is run straight from the store; the kitten loader adds its directory to
+  # sys.path so the sibling modules resolve without cloning into the config dir.
+  kittyGrab = pkgs.fetchFromGitHub {
+    owner = "yurikhan";
+    repo = "kitty_grab";
+    rev = "969e363295b48f62fdcbf29987c77ac222109c41";
+    hash = "sha256-DamZpYkyVjxRKNtW5LTLX1OU47xgd/ayiimDorVSamE=";
   };
 in
 
@@ -51,12 +37,45 @@ in
         background_opacity = config.my.opacity;
         hide_window_decorations = "yes";
         window_padding_width = 4;
+        # Per-instance control socket; the sway Mod3+Shift+Return binding opens
+        # a new window in the focused kitty's cwd through it.
+        allow_remote_control = "socket-only";
+        listen_on = "unix:/tmp/kitty-{kitty_pid}";
       };
       keybindings = {
-        # Override the default scrollback pager: pipe the plain-text buffer
-        # (@text, no escape codes) into helix in an overlay window.
-        "ctrl+shift+h" = "pipe @text overlay ${lib.getExe scrollbackPager}";
+        # Copy mode (kitty_grab); grab.conf below sets helix-style binds.
+        "ctrl+shift+x" = "kitten ${kittyGrab}/grab.py";
       };
     };
+
+    # kitty_grab reads grab.conf from the kitty config dir. Helix selection
+    # model (move repositions, v extends, ; collapses, y copies); vim single-key
+    # nav (0 $ ^ g G) fills in for goto-mode chords the kitten can't express.
+    xdg.configFile."kitty/grab.conf".text = ''
+      map y      confirm
+      map q      quit
+      map Escape quit
+
+      map h move left
+      map j move down
+      map k move up
+      map l move right
+      map w move word right
+      map b move word left
+      map 0 move first
+      map ^ move first nonwhite
+      map $ move last nonwhite
+      map g move top
+      map G move bottom
+      map Ctrl+u move page up
+      map Ctrl+d move page down
+
+      map Ctrl+y scroll up
+      map Ctrl+e scroll down
+
+      map v      set_mode visual
+      map Ctrl+v set_mode block
+      map ;      set_mode normal
+    '';
   };
 }

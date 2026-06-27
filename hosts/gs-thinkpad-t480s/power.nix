@@ -2,6 +2,7 @@
   config,
   pkgs,
   lib,
+  lidSleepAction,
   ...
 }:
 
@@ -12,11 +13,13 @@ in
   # Hibernate resume; kernel cmdline `resume=` is derived automatically.
   boot.resumeDevice = resumeSwap;
 
-  # Refresh DNS and Wi-Fi after resume. Skip when the lid is still closed —
-  # that means we briefly woke only to transition into hibernate.
+  # On a lid-closed resume the lid switch never fired, so re-run the sleep
+  # decision to go straight back to sleep — catches a self-wake from hibernate
+  # that would otherwise leave the machine awake and draining. Otherwise
+  # refresh DNS and Wi-Fi after a real wake.
   powerManagement.resumeCommands = ''
     if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
-      exit 0
+      exec ${lidSleepAction}
     fi
     ${pkgs.systemd}/bin/systemctl try-restart dnscrypt-proxy.service
     ${pkgs.systemd}/bin/systemctl try-restart NetworkManager.service

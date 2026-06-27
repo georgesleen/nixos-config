@@ -39,8 +39,6 @@
         echo "$output_path"
       }
 
-      mark() { printf %s "$PWD" >"''${XDG_RUNTIME_DIR:-/tmp}/kitty-last-dir"; }
-
       btrfsqcycle() {
         trap 'sudo btrfs quota disable /' EXIT INT TERM
         sudo btrfs quota enable / && \
