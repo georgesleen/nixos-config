@@ -38,10 +38,22 @@ let
       exec ${pkgs.systemd}/bin/systemctl --no-block hibernate
     fi
   '';
+
+  # Set wakeup policy on every PCIe/Thunderbolt root port. `disabled` before
+  # sleep so only LID wakes from S4; `enabled` on resume so the dock can signal
+  # Thunderbolt hotplug while the machine is awake.
+  pcieWakeup =
+    state:
+    pkgs.writeShellScript "pcie-wakeup-${state}" ''
+      for w in /sys/bus/pci/drivers/pcieport/*/power/wakeup; do
+        [ -e "$w" ] && echo ${state} > "$w"
+      done
+    '';
 in
 {
   # Shared with hosts/gs-thinkpad-t480s/power.nix resume reconcile.
   _module.args.lidSleepAction = lidSleepAction;
+  _module.args.pcieWakeupEnable = pcieWakeup "enabled";
 
   # Intel Gen9.5 (UHD 620) VAAPI driver so hardware video decode works
   # (e.g. Moonlight). Without iHD, libva finds no Intel driver under
@@ -83,21 +95,16 @@ in
     ACTION=="add", SUBSYSTEM=="usb", ATTRS{removable}=="removable", ATTR{power/wakeup}="enabled"
   '';
 
-  # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports so only the
-  # lid wakes from S4 — otherwise they self-wake with the lid shut and the
-  # machine sits awake draining flat. A oneshot (not a udev `add` rule) so it
-  # also covers devices already present after a switch; the sysfs write is
-  # idempotent, unlike toggling /proc/acpi/wakeup.
-  systemd.services.disable-pcie-hibernate-wakeup = {
-    description = "Disarm wake-from-hibernate on PCIe root ports";
-    wantedBy = [ "multi-user.target" ];
+  # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports just before
+  # sleeping so only LID wakes from S4 — otherwise they self-wake with the lid
+  # shut and the machine sits awake draining flat. Scoped to sleep.target (not
+  # boot) so wakeup stays enabled while awake, leaving Thunderbolt dock hotplug
+  # working; resume re-arms via power.nix resumeCommands.
+  systemd.services.disarm-pcie-wakeup = {
+    description = "Disarm PCIe root port wake before sleep";
+    wantedBy = [ "sleep.target" ];
+    before = [ "sleep.target" ];
     serviceConfig.Type = "oneshot";
-    script = ''
-      for w in /sys/bus/pci/drivers/pcieport/*/power/wakeup; do
-        if [ -e "$w" ] && [ "$(${pkgs.coreutils}/bin/cat "$w")" = enabled ]; then
-          echo disabled > "$w"
-        fi
-      done
-    '';
+    script = "${pcieWakeup "disabled"}";
   };
 }
