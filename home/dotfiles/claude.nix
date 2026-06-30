@@ -125,6 +125,16 @@ in
       "context7@claude-plugins-official" = true;
       "playwright@claude-plugins-official" = true;
     };
+    mcpServers = {
+      nixos = {
+        command = "nix";
+        args = [
+          "run"
+          "github:utensils/mcp-nixos"
+          "--"
+        ];
+      };
+    };
     model = "sonnet";
     remoteControlAtStartup = false;
     agentPushNotifEnabled = true;

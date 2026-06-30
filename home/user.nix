@@ -31,6 +31,7 @@
     ./dotfiles/swayidle.nix
     ./dotfiles/tmux.nix
     ./dotfiles/vscode.nix
+    ./dotfiles/wallpaper.nix
     ./dotfiles/xresources.nix
   ];
 

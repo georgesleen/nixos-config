@@ -47,10 +47,6 @@ let
       xkb_geometry { include "pc(pc104)" };
     };
   '';
-  swayBg = builtins.path {
-    path = ../../assets/background.png;
-    name = "background.png";
-  };
   swaylockPackage = pkgs.swaylock-effects;
   swaylockConfig = "${config.xdg.configHome}/swaylock/config";
   swaylockCmd = "${swaylockPackage}/bin/swaylock -f -C ${swaylockConfig}";
@@ -147,7 +143,7 @@ in
           input."type:touchpad".pointer_accel = "0.7";
           # Remap caps to esc on every keyboard sway sees (internal + USB).
           input."type:keyboard".xkb_file = "${customKeymap}";
-          output."*".bg = "${swayBg} fill";
+
           bars = [
             {
               mode = "dock";

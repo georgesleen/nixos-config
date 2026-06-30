@@ -14,6 +14,7 @@
         ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
         ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface color-scheme "prefer-light"
       '';
+      wallpaper = "${pkgs.systemd}/bin/systemctl --user start wallpaper-refresh.service";
     };
     darkModeScripts = {
       gtk = ''
@@ -21,6 +22,7 @@
         ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface icon-theme "Adwaita"
         ${pkgs.glib}/bin/gsettings set org.gnome.desktop.interface color-scheme "prefer-dark"
       '';
+      wallpaper = "${pkgs.systemd}/bin/systemctl --user start wallpaper-refresh.service";
     };
   };
 }

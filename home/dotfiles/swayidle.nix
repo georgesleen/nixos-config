@@ -2,7 +2,7 @@
 
 let
   swayBg = builtins.path {
-    path = ../../assets/background.png;
+    path = ../../assets/wallpapers/background.png;
     name = "background.png";
   };
   swaylockBg = pkgs.runCommand "swaylock-background" { } ''
