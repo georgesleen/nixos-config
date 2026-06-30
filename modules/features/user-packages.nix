@@ -16,6 +16,7 @@ in
     jellyfin # media server
     vlc # media player
     kdePackages.okular # pdf viewer
+    inkscape # vector graphics editor
     kicad # schematic capture and PCB design
     ngspice # circuit simulator used with kicad
     easyeda2kicad # rip symbols from jlc for kicad

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Key Commands
 
-Replace `<host>` with one of: `gs-thinkpad-t480s`, `gs-zephyrus-14`, `gs-server`.
+Replace `<host>` with one of: `gs-thinkpad-t480s`, `gs-server`, `gs-pi4`.
 
 ```bash
 # Apply system + home-manager changes (use the host you're on)
@@ -29,9 +29,9 @@ nix flake check
 
 ## Architecture
 
-This is a NixOS flake-based system configuration for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-zephyrus-14` (Asus Zephyrus G14), and `gs-server` (Framework-class server, win11 VM via libvirt/vfio).
+This is a NixOS flake-based system configuration for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-server` (Framework-class server, win11 VM via libvirt/vfio), and `gs-pi4` (Raspberry Pi 4, built via QEMU binfmt emulation).
 
-**Entry point:** `flake.nix` — defines inputs (nixpkgs unstable, home-manager, waveforms, codex-cli-nix) and exposes one `nixosConfigurations.<host>` per host. The `mkHost hostPath hmHome` helper wires a host's config together with home-manager as a NixOS module; the two laptops share `home/user.nix`, the server uses `home/user-server.nix`.
+**Entry point:** `flake.nix` — defines inputs (nixpkgs unstable, home-manager, waveforms, codex-cli-nix) and exposes one `nixosConfigurations.<host>` per host. The `mkHost hostPath hmHome` helper wires a host's config together with home-manager as a NixOS module (used by the T480s and the server); the T480s uses `home/user.nix`, the server uses `home/user-server.nix`, and `gs-pi4` is wired directly via `nixosSystem` with `home/user-pi.nix`.
 
 **Layers:**
 
@@ -41,7 +41,7 @@ This is a NixOS flake-based system configuration for three hosts: `gs-thinkpad-t
   - `modules/features/user-packages.nix` — GUI/heavy packages for desktop hosts only (kicad, obsidian, libreoffice, etc.)
   - `modules/features/` — opt-in features: fonts, btrfs, audio, desktop, dev tools, sway, virtualization, etc.
   - `modules/roles/laptop.nix` / `server.nix` — role aggregators that pull in the relevant features
-- `home/user.nix` / `home/user-server.nix` — home-manager entry points (laptops vs server); they import the dotfiles modules
+- `home/user.nix` / `home/user-server.nix` / `home/user-pi.nix` — home-manager entry points (T480s / server / pi4); they import the dotfiles modules
 - `home/dotfiles/` — per-program home-manager configs (bash, git, helix, sway, kitty, tmux, i3blocks/i3status, rclone, etc.)
 
 **Desktop:** sway only (Wayland), launched via greetd. Standalone GNOME components (polkit-gnome agent, gnome-keyring, gsettings for GTK theming) are used but GNOME Shell/GDM are not installed.
