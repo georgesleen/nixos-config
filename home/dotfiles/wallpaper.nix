@@ -157,10 +157,11 @@ in
   };
 
   systemd.user.timers.wallpaper-rotate = {
-    Unit.Description = "Rotate wallpaper every 30 minutes";
+    Unit.Description = "Rotate wallpaper at midnight";
     Timer = {
       OnBootSec = "5s";
-      OnUnitActiveSec = "30m";
+      OnCalendar = "daily";
+      Persistent = true;
     };
     Install.WantedBy = [ "sway-session.target" ];
   };
