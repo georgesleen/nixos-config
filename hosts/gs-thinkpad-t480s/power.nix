@@ -4,6 +4,7 @@
   lib,
   lidSleepAction,
   pcieWakeupEnable,
+  tbNhiRuntimeAuto,
   ...
 }:
 
@@ -15,12 +16,15 @@ in
   boot.resumeDevice = resumeSwap;
 
   # Re-arm PCIe root port wakeup disarmed before sleep, so the Thunderbolt dock
-  # can hotplug while awake. Then, on a lid-closed resume the lid switch never
-  # fired, so re-run the sleep decision to go straight back to sleep — catches a
-  # self-wake from hibernate that would otherwise leave the machine awake and
-  # draining. Otherwise refresh DNS and Wi-Fi after a real wake.
+  # can hotplug while awake, and let the NHI runtime-suspend again (held `on`
+  # across the transition by disarm-pcie-wakeup). Then, on a lid-closed resume
+  # the lid switch never fired, so re-run the sleep decision to go straight
+  # back to sleep; catches a self-wake from hibernate that would otherwise
+  # leave the machine awake and draining. Otherwise refresh DNS and Wi-Fi
+  # after a real wake.
   powerManagement.resumeCommands = ''
     ${pcieWakeupEnable}
+    ${tbNhiRuntimeAuto}
     if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
       exec ${lidSleepAction}
     fi

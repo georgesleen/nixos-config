@@ -39,6 +39,22 @@ let
     fi
   '';
 
+  # Hold the Thunderbolt NHI runtime-resumed (`on`) across the sleep
+  # transition: hibernate's freeze phase otherwise runtime-resumes it itself
+  # and trips the nhi.c "RX ring already enabled" bug, hanging the ICM and
+  # dropping the controller off the PCI bus (dead dock until a power cycle).
+  # Restored to `auto` by resumeCommands. Matched by PCI ID (Alpine Ridge LP
+  # NHI), not bus address: bus numbers shift with dock state at POST.
+  nhiPowerControl =
+    state:
+    pkgs.writeShellScript "tb-nhi-power-${state}" ''
+      for d in /sys/bus/pci/devices/*; do
+        [ "$(${pkgs.coreutils}/bin/cat "$d/vendor" 2>/dev/null)" = "0x8086" ] || continue
+        [ "$(${pkgs.coreutils}/bin/cat "$d/device" 2>/dev/null)" = "0x15bf" ] || continue
+        echo ${state} > "$d/power/control"
+      done
+    '';
+
   # Set wakeup policy on every PCIe/Thunderbolt root port. `disabled` before
   # sleep so only LID wakes from S4; `enabled` on resume so the dock can signal
   # Thunderbolt hotplug while the machine is awake.
@@ -54,6 +70,7 @@ in
   # Shared with hosts/gs-thinkpad-t480s/power.nix resume reconcile.
   _module.args.lidSleepAction = lidSleepAction;
   _module.args.pcieWakeupEnable = pcieWakeup "enabled";
+  _module.args.tbNhiRuntimeAuto = nhiPowerControl "auto";
 
   # Intel Gen9.5 (UHD 620) VAAPI driver so hardware video decode works
   # (e.g. Moonlight). Without iHD, libva finds no Intel driver under
@@ -95,16 +112,22 @@ in
     ACTION=="add", SUBSYSTEM=="usb", ATTRS{removable}=="removable", ATTR{power/wakeup}="enabled"
   '';
 
-  # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports just before
-  # sleeping so only LID wakes from S4 — otherwise they self-wake with the lid
-  # shut and the machine sits awake draining flat. Scoped to sleep.target (not
-  # boot) so wakeup stays enabled while awake, leaving Thunderbolt dock hotplug
-  # working; resume re-arms via power.nix resumeCommands.
+  # Pre-sleep PCIe/Thunderbolt reconcile, scoped to sleep.target (not boot):
+  # 1. Runtime-resume the Thunderbolt NHI so hibernate's freeze phase never
+  #    does it from its buggy path (see nhiPowerControl above).
+  # 2. Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports so only
+  #    LID wakes from S4; otherwise they self-wake with the lid shut and the
+  #    machine sits awake draining flat. Wakeup must stay enabled while awake
+  #    or Thunderbolt dock hotplug breaks; resume re-arms via power.nix
+  #    resumeCommands.
   systemd.services.disarm-pcie-wakeup = {
-    description = "Disarm PCIe root port wake before sleep";
+    description = "Quiesce Thunderbolt NHI and disarm PCIe root port wake before sleep";
     wantedBy = [ "sleep.target" ];
     before = [ "sleep.target" ];
     serviceConfig.Type = "oneshot";
-    script = "${pcieWakeup "disabled"}";
+    script = ''
+      ${nhiPowerControl "on"}
+      ${pcieWakeup "disabled"}
+    '';
   };
 }
