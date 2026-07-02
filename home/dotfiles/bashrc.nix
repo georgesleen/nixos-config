@@ -52,5 +52,14 @@
   programs.direnv = {
     enable = true;
     nix-direnv.enable = true;
+    # Activate a uv-managed venv so pylsp/jedi introspect the project's
+    # packages. Usage in .envrc: layout_uv [project-subdir]
+    stdlib = ''
+      layout_uv() {
+        local venv="$PWD/''${1:-.}/.venv"
+        export VIRTUAL_ENV="$venv"
+        PATH_add "$venv/bin"
+      }
+    '';
   };
 }
