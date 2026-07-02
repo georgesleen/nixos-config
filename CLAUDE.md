@@ -1,105 +1,95 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repository.
 
 ## Key Commands
 
 Replace `<host>` with one of: `gs-thinkpad-t480s`, `gs-server`, `gs-pi4`.
 
 ```bash
-# Apply system + home-manager changes (use the host you're on)
-sudo nixos-rebuild switch --flake .#<host>
-
-# Build without switching (dry run / check)
-sudo nixos-rebuild build --flake .#<host>
-
-# Update flake inputs
-nix flake update
-
-# Enter the default dev shell
-nix develop
-
-# Check flake outputs / validate syntax
-nix flake check
+sudo nixos-rebuild switch --flake .#<host>   # apply system + home-manager changes
+sudo nixos-rebuild build --flake .#<host>    # build without switching
+nix flake update                             # update flake inputs
+nix develop                                  # enter the default dev shell
+nix flake check                              # validate flake outputs
 ```
 
-## Tips
-
-- **Prevent sleep during long builds** (e.g. cross-compiled SD card images): `inhibit-sleep` holds a logind inhibitor lock in the background; `resume-sleep` releases it. PID is tracked in `$XDG_RUNTIME_DIR/sleep-inhibitor.pid`. Verify with `systemd-inhibit --list`. Defined in `home/dotfiles/bashrc.nix`.
+For long builds (e.g. SD card images), `inhibit-sleep` / `resume-sleep` hold and release a logind inhibitor (defined in `home/dotfiles/bashrc.nix`; verify with `systemd-inhibit --list`).
 
 ## Architecture
 
-This is a NixOS flake-based system configuration for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-server` (Framework-class server, win11 VM via libvirt/vfio), and `gs-pi4` (Raspberry Pi 4, built via QEMU binfmt emulation).
+NixOS flake config for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-server` (Framework-class server, win11 VM via libvirt/vfio), `gs-pi4` (Raspberry Pi 4, built via QEMU binfmt emulation).
 
-**Entry point:** `flake.nix` — defines inputs (nixpkgs unstable, home-manager, waveforms, codex-cli-nix) and exposes one `nixosConfigurations.<host>` per host. The `mkHost hostPath hmHome` helper wires a host's config together with home-manager as a NixOS module (used by the T480s and the server); the T480s uses `home/user.nix`, the server uses `home/user-server.nix`, and `gs-pi4` is wired directly via `nixosSystem` with `home/user-pi.nix`.
+**Entry point:** `flake.nix`. The `mkHost hostPath hmHome` helper wires a host together with home-manager as a NixOS module (T480s: `home/user.nix`, server: `home/user-server.nix`); `gs-pi4` is wired directly via `nixosSystem` with `home/user-pi.nix`.
 
 **Layers:**
 
-- `hosts/<host>/` — host-specific config (hardware, networking, boot, services, power tuning). The T480s adds DNS-over-HTTPS via dnscrypt-proxy and caps→esc via xkb; `gs-server` carries the win11 VM passthrough setup.
-- `modules/` — reusable system-level modules imported by the hosts. `default.nix` is the aggregator.
-  - `modules/core/common.nix` — `environment.systemPackages` for **all** hosts (nmap, glow, helix, git, tmux, etc.)
-  - `modules/features/user-packages.nix` — GUI/heavy packages for desktop hosts only (kicad, obsidian, libreoffice, etc.)
-  - `modules/features/` — opt-in features: fonts, btrfs, audio, desktop, dev tools, sway, virtualization, etc.
-  - `modules/roles/laptop.nix` / `server.nix` — role aggregators that pull in the relevant features
-- `home/user.nix` / `home/user-server.nix` / `home/user-pi.nix` — home-manager entry points (T480s / server / pi4); they import the dotfiles modules
-- `home/dotfiles/` — per-program home-manager configs (bash, git, helix, sway, kitty, tmux, i3blocks/i3status, rclone, etc.)
+- `hosts/<host>/` (hardware, networking, boot, services, power). The T480s adds dnscrypt-proxy DoH; `gs-server` carries the win11 passthrough setup.
+- `modules/` (system-level, `default.nix` aggregates):
+  - `modules/core/common.nix`: packages for all hosts
+  - `modules/features/`: opt-in features (fonts, btrfs, audio, desktop, sway, virtualization, user-packages for desktop hosts, ...)
+  - `modules/roles/laptop.nix` / `server.nix`: role aggregators
+  - `modules/hardware/thinkpad.nix`: ThinkPad quirks (lid, dock, Thunderbolt)
+- `home/dotfiles/`: per-program home-manager configs, imported by the `home/user*.nix` entry points
 
-**Desktop:** sway only (Wayland), launched via greetd. Standalone GNOME components (polkit-gnome agent, gnome-keyring, gsettings for GTK theming) are used but GNOME Shell/GDM are not installed.
+**Desktop:** sway only (Wayland), launched via greetd. Standalone GNOME pieces (polkit agent, gnome-keyring, gsettings) are used; GNOME Shell/GDM are not installed.
 
-**nixpkgs channel:** `nixos-unstable` — expect cutting-edge package versions.
+**nixpkgs channel:** `nixos-unstable`; expect cutting-edge package versions.
 
-**`flake.nix` also exposes a `yolo-testing` devShell** with Python 3.13 + uv and LD_LIBRARY_PATH set for running native binaries outside NixOS wrappers.
+`flake.nix` also exposes a `yolo-testing` devShell (Python 3.13 + uv, LD_LIBRARY_PATH set for native binaries outside NixOS wrappers).
 
 ## Secrets
 
-Managed with [sops-nix](https://github.com/Mic92/sops-nix). `.sops.yaml` lists
-age recipients (one personal key for editing, one per host derived from that
-host's own SSH host key — no separate host key to distribute). Encrypted
-secrets live in `secrets/secrets.yaml`; only `gs-thinkpad-t480s` consumes it
-so far.
+Managed with [sops-nix](https://github.com/Mic92/sops-nix). `.sops.yaml` lists age recipients (one personal key, one per host derived from its SSH host key). Encrypted secrets live in `secrets/secrets.yaml`; only `gs-thinkpad-t480s` consumes it so far. Decrypted values land at `/run/secrets/<name>` at activation.
 
 ```bash
-# Edit secrets (decrypts to $EDITOR, re-encrypts on save)
-sops secrets/secrets.yaml
-
-# Onboard a new host: derive its age pubkey from its SSH host key
-ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub
-# add the result to .sops.yaml, then re-encrypt for the new recipient set
-sops updatekeys secrets/secrets.yaml
+sops secrets/secrets.yaml                        # edit (decrypts to $EDITOR)
+ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub  # onboard a host: derive its age key
+sops updatekeys secrets/secrets.yaml             # re-encrypt for new recipient set
 ```
 
-Each host declares `sops.defaultSopsFile` + `sops.age.sshKeyPaths` and its own
-`sops.secrets.<name>` entries (see `hosts/gs-thinkpad-t480s/default.nix`).
-Decrypted values land at `/run/secrets/<name>` at activation — no separate
-key file to manage per host.
+Each host declares `sops.defaultSopsFile` + `sops.age.sshKeyPaths` + its `sops.secrets.<name>` entries (see `hosts/gs-thinkpad-t480s/default.nix`).
 
 ## Git hooks
 
-`hooks/pre-commit` is tracked in the repo. `.envrc` wires it via `git config core.hooksPath hooks` when direnv loads (i.e. on `nix develop` / `direnv allow`). The hook formats staged `.nix` files with nixfmt and validates them with `nix-instantiate --parse`.
+`hooks/pre-commit` is tracked in the repo; `.envrc` wires it via `core.hooksPath` when direnv loads. It formats staged `.nix` files with nixfmt and validates them with `nix-instantiate --parse`.
 
 ## Workarounds
 
-- `flake.nix` gs-pi4: QEMU binfmt emulation, not cross-compilation — nixpkgs cross-compile hit multiple unrelated package bugs (gh, marksman, Haskell TH). `buildPlatform` must be hardcoded `"x86_64-linux"` if retried.
-- `modules/btrfs.nix` `btrfs-disable-qgroups`: qgroups stall `btrfs-cleaner` 30+ min; `btrfsqcycle` re-enables them temporarily for sizing, this oneshot guarantees they're off again after reboot.
-- `modules/virtualization.nix`: `set_sched` removed from libvirt qemu hook — those CFS sysctls don't exist post-EEVDF (Linux 6.6+).
-- `home/dotfiles/i3blocks.nix` wirelessBlock: skips ifaces without `device` symlink to exclude virtual interfaces (virbr0/docker0/veth) from the wifi block.
+One-liners: file, what, and why. Full detail lives in comments at the referenced definitions.
+
+### T480s power, dock, Thunderbolt
+
+- `modules/hardware/thinkpad.nix` lidEventCommands: the dock check skips `*-0` Thunderbolt entries (route 0 is the host controller, always authorized=1; without the skip every lid close looked docked and the laptop never slept). A USB fallback (HP 03f0, products 036b-086b) covers USB-only mode.
+- `modules/hardware/thinkpad.nix` `disarm-pcie-wakeup`: pcieport wakeup is disarmed only just before sleep (armed ports self-wake S4 and drain the battery flat) and re-armed on resume; an always-on disable kills Thunderbolt dock hotplug. Only LID wakes from S4 (`SLPB` is S3-only, no `PWRB` in the wake table).
+- `modules/hardware/thinkpad.nix` `nhiPowerControl` (in `disarm-pcie-wakeup`): hibernating with the Thunderbolt NHI runtime-suspended trips the kernel `nhi.c` "RX ring already enabled" bug, hangs the ICM, and drops the controller off the PCI bus (dock dead, replug invisible). Pre-sleep holds `power/control=on` (matched by PCI ID 8086:15bf; bus numbers shift with dock state at POST); resume restores `auto`.
+- `modules/hardware/thinkpad.nix` `tb-recover`: boot/resume oneshot; if the TB bridges are on PCI without the NHI (or the NHI is present with an empty domain), power-cycles the controller via the intel-wmi-thunderbolt `force_power` knob and rescans PCI. Same knob works manually when wedged.
+- `hosts/gs-thinkpad-t480s/power.nix` resumeCommands: re-arms pcieport wakeup, restores the NHI to `auto`, then on a lid-closed wake re-runs `lidSleepAction` (backstop for self-wakes; can't loop, lid open falls through), else refreshes DNS/network and pokes `tb-recover`.
+- Hibernate resume rejects the image (`Image mismatch: architecture specific data`) when dock state at POST differs from hibernate time: the e820 map shifts and the kernel check has no bypass. Behavioral mitigation only: resume in the same dock state you hibernated in. Distinct from the kernel-version mismatch a rebuild-then-resume causes.
+
+### sway / desktop
+
+- `home/dotfiles/sway.nix` customKeymap: Left Alt becomes `Hyper_L`/Mod3 because sway can't tell left/right Alt apart while both are Mod1.
+- `home/dotfiles/sway.nix` `kittyCwdWindow` (Mod3+Shift+Return): sway consumes Mod3 combos before apps see them, so kitty can't bind left-Alt; the new-window-in-cwd action runs at sway level and reads the focused kitty's cwd via its control socket (`kitty.nix` `listen_on`).
+- `home/dotfiles/kanshi.nix` mkMoveScript: uses focus+move because sway IPC criteria don't match workspaces, only window containers.
+- `home/dotfiles/kanshi.nix` lidReconcileScript: a profile applied with the lid already shut would re-enable eDP-1 onto the dark panel (the `bindswitch` only fires on transitions); the extend profile's exec disables eDP-1 when closed, leaving assignment rules intact.
+- `home/dotfiles/kanshi.nix` `wallpaperRefresh`: awww resets a re-added output to black, so every profile exec pokes `wallpaper-refresh.service`.
+- `home/dotfiles/wallpaper.nix`: nixpkgs renamed `swww` to `awww` (`pkgs.awww`; binaries `awww-daemon` / `awww img`).
+- `modules/features/desktop.nix` Firefox VA-API prefs: set explicitly because Firefox keeps VA-API opt-in upstream even when system VA-API works.
+- `home/dotfiles/i3blocks.nix` wirelessBlock: skips interfaces without a `device` symlink to hide virtual ones (virbr0/docker0/veth).
+- `home/dotfiles/i3blocks.nix` gpuBlock: Intel utilization from RC6 residency delta, the only no-root sysfs metric available.
+- `modules/features/keychron.nix` udev: `TAG+="uaccess"` never grants hidraw under sway/Wayland (logind seat grant doesn't fire); needs `MODE="0660", GROUP="plugdev"`.
+- Steam Remote Play (T480s): white-screen/~1FPS, root cause TBD (display chain stalls under XWayland/sway+iHD). Do NOT set `LIBGL_DRI3_DISABLE=1`; it forces llvmpipe and breaks Steam launch entirely.
+
+### gs-server / win11 VM
+
 - `hosts/gs-server/default.nix` `wol-enp0s31f6`: arms WoL via ethtool post-boot because NM's `ensureProfiles` doesn't reach runtime `/run/` connections.
-- `hosts/gs-server/win11.xml`: passthrough GPU Code 10 after guest soft-reboot (PCI GPU isn't reset by a guest reboot) — fix is full `virsh destroy && start` power cycle, not reboot.
-- win11 remote access: RDP over Tailscale is the daily driver (Sunshine/Moonlight kept only for gaming); AVC444 must stay disabled in guest RDP settings — AMD HW encoder's AVC444 path corrupts chroma in FreeRDP.
-- win11 guest VirtIO NIC: UDP Segmentation Offload must be disabled (guest registry) or Sunshine→Moonlight drops all media UDP, only the control stream survives.
-- `home/dotfiles/sway.nix` customKeymap: Left Alt → `Hyper_L` in Mod3 to isolate it from right Alt — sway can't tell left/right Alt apart if both stay Mod1.
-- `modules/desktop.nix` Firefox VA-API prefs: must be set explicitly — Firefox keeps VA-API opt-in upstream even when system VA-API works.
-- `home/dotfiles/i3blocks.nix` gpuBlock: Intel utilization comes from RC6 residency delta, the only no-root sysfs metric available (AMD/NVIDIA have direct counters).
-- `home/dotfiles/kanshi.nix` mkMoveScript: uses focus+move, not `[workspace=]` criteria — sway IPC criteria don't match workspaces, only window containers.
-- Steam Remote Play (T480s): white-screen/~1FPS, root cause TBD (display chain stalls under XWayland/sway+iHD) — do NOT set `LIBGL_DRI3_DISABLE=1`, it forces llvmpipe and breaks Steam launch entirely.
-- `home/dotfiles/sway.nix` `kittyCwdWindow` (Mod3+Shift+Return): left Alt is the sway modifier (Mod3), so sway consumes it and never forwards Mod3 in key combinations to apps; kitty therefore can't bind left-Alt internally (`show_key` confirms the hyper bit is stripped from combos). The new-window-in-cwd action runs at the sway level and reaches the focused kitty's cwd via its control socket (`kitty.nix` `listen_on = unix:/tmp/kitty-{kitty_pid}`, `allow_remote_control = socket-only`).
-- `hosts/gs-pi4/default.nix` `hardware.enableAllHardware = lib.mkForce false`: the all-hardware profile adds kernel modules the RPi kernel doesn't have, hard-failing `makeModulesClosure`.
-- `modules/features/keychron.nix` udev rules: `TAG+="uaccess"` doesn't grant hidraw access under sway/Wayland (logind seat grant never fires); `MODE="0660", GROUP="plugdev"` is required instead.
-- `modules/hardware/thinkpad.nix` lidEventCommands: the dock-present check skips `*-0` Thunderbolt devices — route-0 is the host controller itself (`0-0` = "Thinkpad T480s"), always `authorized=1`, so without the skip every lid close looked docked and the laptop never slept (drained to 0%). A USB fallback check (HP vendor 03f0, product IDs 036b-086b) covers the dock in USB-only mode or before Thunderbolt authorization fires.
-- `home/dotfiles/kanshi.nix` lidReconcileScript: kanshi can't see the lid switch and the sway `bindswitch` only fires on transitions, so a profile applied at boot/hotplug with the lid already shut re-enabled eDP-1 onto the dark panel; the extend profile's exec runs this to disable eDP-1 when closed. It only disables (mirrors the bindswitch close), leaving the split assignment rules intact so reopening the lid restores the internal workspaces.
-- `modules/hardware/thinkpad.nix` `disarm-pcie-wakeup` (`before sleep.target`): the PCIe/Thunderbolt root ports arm wake-from-S4, so the laptop self-wakes from hibernate with the lid shut and sits awake draining flat; only `LID` should wake from S4. Writes `power/wakeup=disabled` to every pcieport just before sleep, re-armed on resume by power.nix. Must NOT be a boot-time/always-on disable: those same ports (incl. `04:00.0` Alpine Ridge + its `05:0x.0` switch) need wakeup enabled while awake or the Thunderbolt dock can't signal hotplug, killing all downstream USB/Ethernet. Power button can't substitute for the lid: `SLPB` is S3-only, no `PWRB` in the wake table, so a hibernated machine only wakes by opening the lid.
-- `hosts/gs-thinkpad-t480s/power.nix` resumeCommands: first re-arms pcieport `power/wakeup` (disarmed before sleep) so the dock hotplugs while awake; then, since the lid switch never fires on a wake-with-lid-closed, on resume with `LID/state=closed` it re-runs `lidSleepAction` to go straight back to sleep (backstop for any self-wake the disarm misses). Can't loop: opening the lid sets state=open and falls through to the network refresh.
-- `home/dotfiles/wallpaper.nix` awww daemon/client: nixpkgs renamed the package `swww` to `awww` (use `pkgs.awww`; `pkgs.swww` is an alias that emits an eval warning) and the binaries to `awww-daemon` / `awww img`.
-- `modules/hardware/thinkpad.nix` `nhiPowerControl` (in `disarm-pcie-wakeup`): hibernating with the Thunderbolt NHI runtime-suspended trips the kernel `nhi.c` "RX ring already enabled" bug in the freeze phase; the ICM hangs, the NHI drops off the PCI bus, and the dock is dead until a power cycle (hotplug/replug invisible, no controller on the bus). Pre-sleep we hold the NHI at `power/control=on` (matched by PCI ID 8086:15bf, bus numbers shift with dock state at POST); resumeCommands restores `auto`. Manual unwedge without reboot: `force_power` 0 then 1 via `/sys/bus/wmi/devices/86CCFD48-205E-4A77-9C48-2021CBEDE341/force_power`, then `echo 1 > /sys/bus/pci/rescan`.
-- `home/dotfiles/kanshi.nix` `wallpaperRefresh`: awww resets a re-added output to the default black, so every kanshi profile exec ends by poking `wallpaper-refresh.service`; otherwise a monitor that disconnects and returns (dock replug, failed resume) comes back with no wallpaper.
-- `modules/hardware/thinkpad.nix` `tb-recover`: oneshot at boot and on resume that detects a wedged Thunderbolt controller (bridges on PCI with the NHI gone, or NHI present with an empty domain, so dock hotplug is invisible) and power-cycles it via the intel-wmi-thunderbolt `force_power` knob plus a PCI rescan.
+- `hosts/gs-server/win11.xml`: GPU shows Code 10 after a guest soft-reboot (guest reboots don't reset the PCI GPU); fix is a full `virsh destroy && start`.
+- win11 remote access: RDP over Tailscale is the daily driver; Sunshine/Moonlight kept for gaming only. AVC444 must stay disabled in guest RDP settings (AMD encoder corrupts chroma in FreeRDP), and the guest VirtIO NIC needs UDP Segmentation Offload disabled or Moonlight loses all media UDP.
+
+### gs-pi4 / misc
+
+- `flake.nix` gs-pi4: QEMU binfmt emulation, not cross-compilation; cross hit unrelated package bugs (gh, marksman, Haskell TH). Hardcode `buildPlatform = "x86_64-linux"` if retried.
+- `hosts/gs-pi4/default.nix` `hardware.enableAllHardware = lib.mkForce false`: the all-hardware profile adds kernel modules the RPi kernel lacks, hard-failing `makeModulesClosure`.
+- `modules/features/btrfs.nix` `btrfs-disable-qgroups`: qgroups stall `btrfs-cleaner` 30+ min; this oneshot guarantees they're off after reboot (`btrfsqcycle` re-enables them temporarily for sizing).
+- `modules/features/virtualization.nix`: `set_sched` removed from the libvirt qemu hook; those CFS sysctls don't exist post-EEVDF (Linux 6.6+).
