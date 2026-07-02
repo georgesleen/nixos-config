@@ -55,6 +55,41 @@ let
       done
     '';
 
+  # Detect and recover a wedged Thunderbolt controller. A hung ICM (e.g. the
+  # hibernate freeze bug above slipping through) leaves the bridge functions
+  # (8086:15c0) on the PCI bus with the NHI (8086:15bf) gone, or the NHI
+  # present with an empty thunderbolt domain; either way hotplug is invisible
+  # and replugging the dock does nothing. Power-cycle the controller via the
+  # intel-wmi-thunderbolt force_power knob and rescan PCI, then release
+  # force_power so the firmware can power-gate the controller when idle.
+  tbRecover = pkgs.writeShellScript "tb-recover" ''
+    fp=$(echo /sys/bus/wmi/devices/86CCFD48-205E-4A77-9C48-2021CBEDE341*/force_power)
+    [ -e "$fp" ] || exit 0
+
+    present() {
+      for d in /sys/bus/pci/devices/*; do
+        [ "$(${pkgs.coreutils}/bin/cat "$d/vendor" 2>/dev/null)" = "0x8086" ] &&
+        [ "$(${pkgs.coreutils}/bin/cat "$d/device" 2>/dev/null)" = "$1" ] && return 0
+      done
+      return 1
+    }
+
+    # Let boot/resume enumeration settle before judging.
+    ${pkgs.coreutils}/bin/sleep 5
+
+    domain_up() { ${pkgs.coreutils}/bin/ls /sys/bus/thunderbolt/devices/ 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q .; }
+    if present 0x15c0 && ! present 0x15bf; then :;   # bridges alive, NHI gone
+    elif present 0x15bf && ! domain_up; then :;      # NHI alive, ICM dead
+    else exit 0; fi
+
+    echo "wedged Thunderbolt controller detected, power cycling"
+    echo 0 > "$fp"; ${pkgs.coreutils}/bin/sleep 2
+    echo 1 > "$fp"; ${pkgs.coreutils}/bin/sleep 3
+    echo 1 > /sys/bus/pci/rescan; ${pkgs.coreutils}/bin/sleep 3
+    echo 0 > "$fp"
+    domain_up && echo "thunderbolt domain recovered" || echo "recovery failed, reboot required"
+  '';
+
   # Set wakeup policy on every PCIe/Thunderbolt root port. `disabled` before
   # sleep so only LID wakes from S4; `enabled` on resume so the dock can signal
   # Thunderbolt hotplug while the machine is awake.
@@ -129,5 +164,14 @@ in
       ${nhiPowerControl "on"}
       ${pcieWakeup "disabled"}
     '';
+  };
+
+  # Self-heal a wedged Thunderbolt controller at boot and on resume (started
+  # non-blocking from power.nix resumeCommands). No-op when healthy.
+  systemd.services.tb-recover = {
+    description = "Recover a wedged Thunderbolt controller";
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig.Type = "oneshot";
+    script = "${tbRecover}";
   };
 }

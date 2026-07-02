@@ -30,5 +30,6 @@ in
     fi
     ${pkgs.systemd}/bin/systemctl try-restart dnscrypt-proxy.service
     ${pkgs.systemd}/bin/systemctl try-restart NetworkManager.service
+    ${pkgs.systemd}/bin/systemctl --no-block start tb-recover.service
   '';
 }
