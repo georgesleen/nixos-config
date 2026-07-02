@@ -99,6 +99,10 @@ let
   swaymsg = "${pkgs.sway}/bin/swaymsg";
   externalCriteria = "Acer Technologies SA240Y 0x90801B39";
 
+  # awww resets a re-added output to black; re-apply the current wallpaper
+  # whenever a profile lands (wallpaper.nix owns the unit).
+  wallpaperRefresh = "${pkgs.systemd}/bin/systemctl --user start wallpaper-refresh.service";
+
   # kanshi can't see the lid switch, so a profile applied at boot/hotplug with
   # the lid already closed would re-enable eDP-1 onto the dark internal panel.
   # The sway `bindswitch` only fires on lid *transitions*, not at startup, so
@@ -137,6 +141,7 @@ let
         "${splitMoveScript}"
         ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
         "${lidReconcileScript}"
+        wallpaperRefresh
       ];
     };
   };
@@ -160,6 +165,7 @@ let
         ''${swaymsg} "output \"${externalCriteria}\" mirror eDP-1"''
         ''${swaymsg} "${assignAllTo "eDP-1"}"''
         "${allToInternalScript}"
+        wallpaperRefresh
       ];
     };
   };
@@ -183,6 +189,7 @@ let
         ''${swaymsg} "${assignAllTo externalCriteria}"''
         "${allToExternalScript}"
         ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
+        wallpaperRefresh
       ];
     };
   };
@@ -204,6 +211,7 @@ let
       exec = [
         ''${swaymsg} "${assignAllTo "eDP-1"}"''
         "${allToInternalScript}"
+        wallpaperRefresh
       ];
     };
   };
@@ -220,6 +228,7 @@ let
       exec = [
         ''${swaymsg} "${assignAllTo "eDP-1"}"''
         "${allToInternalScript}"
+        wallpaperRefresh
       ];
     };
   };
