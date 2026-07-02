@@ -15,6 +15,7 @@ in
     qbittorrent # torrenting client
     jellyfin # media server
     vlc # media player
+    moonlight-qt # game stream client for Sunshine on the win11 VM
     kdePackages.okular # pdf viewer
     inkscape # vector graphics editor
     kicad # schematic capture and PCB design

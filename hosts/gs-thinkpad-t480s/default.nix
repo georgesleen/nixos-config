@@ -43,6 +43,11 @@
   boot.loader.efi.canTouchEfiVariables = true;
   boot.kernelPackages = pkgs.linuxPackages_latest;
 
+  # Intel iGPU (UHD 620) VA-API decode via the iHD driver. Without it the only
+  # VA backends are Gallium stubs, so Firefox (desktop.nix prefs) and the Steam
+  # Remote Play client fall back to CPU software decode.
+  hardware.graphics.extraPackages = [ pkgs.intel-media-driver ];
+
   # Networking
   networking.hostName = "gs-thinkpad-t480s";
   networking.hosts = {
