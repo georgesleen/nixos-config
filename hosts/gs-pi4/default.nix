@@ -17,7 +17,9 @@
 
   nixpkgs.hostPlatform = "aarch64-linux";
   nixpkgs.config.allowUnfree = true;
-  boot.zfs.forceImportRoot = false;
+  # sd-image base profile enables zfs, but zfs-kernel lags linuxPackages_latest
+  # and breaks the build; this Pi has no zfs pools. Force it off.
+  boot.supportedFilesystems.zfs = lib.mkForce false;
 
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
   # adding Rockchip/sun4i/etc. modules (dw-hdmi, dw-mipi-dsi, ...) that don't exist in
