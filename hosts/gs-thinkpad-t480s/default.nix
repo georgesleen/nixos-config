@@ -55,6 +55,15 @@
   };
   networking.networkmanager.enable = true;
 
+  # Accept the home LAN subnet advertised by the gs-pi4 subnet router, so this
+  # laptop can reach the Moonlight/Sunshine VM (192.168.1.248) and other LAN gear
+  # when roaming. useRoutingFeatures = "client" fixes reverse-path filtering so
+  # accepted routes work. extraUpFlags merges with common.nix's ["--ssh"].
+  services.tailscale = {
+    useRoutingFeatures = "client";
+    extraUpFlags = [ "--accept-routes" ];
+  };
+
   # Auto-restart wpa_supplicant on crash so NM can reconnect without a reboot.
   systemd.services.wpa_supplicant.serviceConfig = {
     Restart = "on-failure";

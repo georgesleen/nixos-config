@@ -36,6 +36,18 @@
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
 
+  # Tailscale subnet router for the home LAN. The Moonlight/Sunshine host is the
+  # win11 VM (192.168.1.248), which has no Tailscale of its own (macvtap isolates
+  # it from gs-server, and #4320 keeps it off the tailnet). Advertising the LAN
+  # here lets a roaming client reach the VM and other non-tailnet gear (router,
+  # 3D printer) over the tailnet. useRoutingFeatures = "server" turns on the IP
+  # forwarding sysctls; the route still needs one-time approval in the admin
+  # console. extraUpFlags merges with common.nix's ["--ssh"].
+  services.tailscale = {
+    useRoutingFeatures = "server";
+    extraUpFlags = [ "--advertise-routes=192.168.1.0/24" ];
+  };
+
   services.openssh = {
     enable = true;
     settings.PasswordAuthentication = false;
