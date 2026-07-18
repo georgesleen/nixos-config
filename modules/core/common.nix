@@ -34,6 +34,7 @@
     ssh-to-age # derive age recipient keys from ssh host keys
     pv # pipe progress monitor
     delta # diff pager for git
+    wakeonlan # wake on lan commands
   ];
 
   # Networking

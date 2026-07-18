@@ -1,6 +1,7 @@
 # Font configuration shared across hosts
 
-{ config, pkgs, ... }:
+# Font configuration shared across hosts
+{ pkgs, ... }:
 
 {
   fonts = {
@@ -13,7 +14,15 @@
       noto-fonts-color-emoji
       jetbrains-mono
       pkgs.nerd-fonts."jetbrains-mono"
+
+      (pkgs.runCommand "track-font" { } ''
+        mkdir -p $out/share/fonts/opentype
+        # Adjust the relative path below (`../assets/fonts/track`) 
+        # depending on where fonts.nix is relative to your assets folder.
+        cp -r ${../../assets/fonts/track}/*.otf $out/share/fonts/opentype/
+      '')
     ];
+
     fontconfig = {
       defaultFonts = {
         sansSerif = [

@@ -91,6 +91,52 @@ let
     done
     echo "$out"
   '';
+
+  # Adversarial review hook: PostToolUse on TodoWrite. When a todo list is
+  # fully completed (>=2 items, to skip trivial lists) and the repo has
+  # uncommitted changes not already reviewed, feed Claude a directive to run
+  # the pr-review-toolkit code-reviewer agent against the diff. Dedup is by
+  # diff hash so re-marking a list complete (or the read-only review agent
+  # itself) does not retrigger; findings land outside the repo tree.
+  reviewHook = pkgs.writeShellScript "claude-adversarial-review" ''
+    set -euo pipefail
+    input="$(${pkgs.coreutils}/bin/cat)"
+
+    cwd="$(echo "$input" | ${pkgs.jq}/bin/jq -r '.cwd // empty')"
+    [ -n "$cwd" ] || cwd="$PWD"
+    cd "$cwd" 2>/dev/null || exit 0
+
+    # All todos completed? (>=2 to skip single-item lists)
+    todos="$(echo "$input" | ${pkgs.jq}/bin/jq -c '.tool_input.todos // []')"
+    total="$(echo "$todos" | ${pkgs.jq}/bin/jq 'length')"
+    [ "$total" -ge 2 ] || exit 0
+    remaining="$(echo "$todos" | ${pkgs.jq}/bin/jq '[.[] | select(.status != "completed")] | length')"
+    [ "$remaining" -eq 0 ] || exit 0
+
+    # Inside a git repo with reviewable uncommitted changes?
+    repo="$(${pkgs.git}/bin/git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+    diff="$(${pkgs.git}/bin/git -C "$repo" diff HEAD 2>/dev/null || true)"
+    [ -n "$diff" ] || exit 0
+
+    # Dedup: skip if this exact diff already triggered a review.
+    slug="$(echo "$repo" | ${pkgs.coreutils}/bin/tr '/' '-' | ${pkgs.gnused}/bin/sed 's/^-//')"
+    statedir="$HOME/.claude/reviews/$slug"
+    ${pkgs.coreutils}/bin/mkdir -p "$statedir"
+    hash="$(printf '%s' "$diff" | ${pkgs.coreutils}/bin/sha1sum | ${pkgs.coreutils}/bin/cut -d' ' -f1)"
+    hashfile="$statedir/.last-hash"
+    if [ -f "$hashfile" ] && [ "$(${pkgs.coreutils}/bin/cat "$hashfile")" = "$hash" ]; then
+      exit 0
+    fi
+    printf '%s' "$hash" > "$hashfile"
+
+    ts="$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S)"
+    report="$statedir/$ts.md"
+
+    reason="A todo list just completed and this repo ($repo) has uncommitted changes. Launch an adversarial code review NOW before moving on. Use the Agent tool with subagent_type \"pr-review-toolkit:code-reviewer\" on the current uncommitted diff (git diff HEAD). Instruct that agent to: (1) apply the /project-conventions conventions; (2) check the change against George's personal preferences in ~/.claude/CLAUDE.md, this repo's CLAUDE.md, and the project memory under ~/.claude/projects/; (3) be adversarial: assume a bug or a convention violation exists and hunt for it, do not rubber-stamp. Have the agent WRITE its full findings to $report, then you relay a short summary to the user with that path. If the change is genuinely clean, say so in one line. Never use em dashes or en dashes."
+
+    ${pkgs.jq}/bin/jq -n --arg r "$reason" --arg f "$report" \
+      '{decision:"block", reason:$r, systemMessage:("Adversarial review triggered -> " + $f), suppressOutput:true}'
+  '';
 in
 {
   home.file.".claude/settings.json".text = builtins.toJSON {
@@ -139,6 +185,19 @@ in
     remoteControlAtStartup = false;
     agentPushNotifEnabled = true;
     skipAutoPermissionPrompt = true;
+    hooks = {
+      PostToolUse = [
+        {
+          matcher = "TodoWrite";
+          hooks = [
+            {
+              type = "command";
+              command = "${reviewHook}";
+            }
+          ];
+        }
+      ];
+    };
   };
 
   # Link the whole skills tree individually (recursive) so the directory stays

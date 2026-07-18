@@ -29,39 +29,30 @@ let
       done
     done
 
-    # Firmware can't reliably fire the RTC wake that suspend-then-hibernate
-    # needs on battery, so jump straight to S4. On AC: plain S3. --no-block so
-    # callers running inside the resume transition don't block sleep.target.
+    # On AC: plain S3. On battery: S3 first, then hibernate via RTC wake after
+    # HibernateDelaySec (sleep.conf below); fast resume when the lid reopens
+    # soon, S4 when it doesn't. An older revision jumped straight to S4 out of
+    # distrust of the firmware RTC wake on battery; unverified, retested with
+    # systemd 260 as of 2026-07-13. --no-block so callers running inside the
+    # resume transition don't block sleep.target.
     if ${pkgs.gnugrep}/bin/grep -q 1 /sys/class/power_supply/AC/online 2>/dev/null; then
       exec ${pkgs.systemd}/bin/systemctl --no-block suspend
     else
-      exec ${pkgs.systemd}/bin/systemctl --no-block hibernate
+      exec ${pkgs.systemd}/bin/systemctl --no-block suspend-then-hibernate
     fi
   '';
-
-  # Hold the Thunderbolt NHI runtime-resumed (`on`) across the sleep
-  # transition: hibernate's freeze phase otherwise runtime-resumes it itself
-  # and trips the nhi.c "RX ring already enabled" bug, hanging the ICM and
-  # dropping the controller off the PCI bus (dead dock until a power cycle).
-  # Restored to `auto` by resumeCommands. Matched by PCI ID (Alpine Ridge LP
-  # NHI), not bus address: bus numbers shift with dock state at POST.
-  nhiPowerControl =
-    state:
-    pkgs.writeShellScript "tb-nhi-power-${state}" ''
-      for d in /sys/bus/pci/devices/*; do
-        [ "$(${pkgs.coreutils}/bin/cat "$d/vendor" 2>/dev/null)" = "0x8086" ] || continue
-        [ "$(${pkgs.coreutils}/bin/cat "$d/device" 2>/dev/null)" = "0x15bf" ] || continue
-        echo ${state} > "$d/power/control"
-      done
-    '';
 
   # Detect and recover a wedged Thunderbolt controller. A hung ICM (e.g. the
   # hibernate freeze bug above slipping through) leaves the bridge functions
   # (8086:15c0) on the PCI bus with the NHI (8086:15bf) gone, or the NHI
   # present with an empty thunderbolt domain; either way hotplug is invisible
-  # and replugging the dock does nothing. Power-cycle the controller via the
-  # intel-wmi-thunderbolt force_power knob and rescan PCI, then release
-  # force_power so the firmware can power-gate the controller when idle.
+  # and replugging the dock does nothing. Remove the stale functions (a rescan
+  # alone re-reads the dead bridges and finds the NHI bus empty), power-cycle
+  # the controller via the intel-wmi-thunderbolt force_power knob with a long
+  # off dwell (2s off failed to reset a hung ICM; 10s recovered it), rescan,
+  # then release force_power so the firmware can power-gate the controller
+  # when idle. A plugged-in dock can hold the chip powered through the cycle;
+  # if recovery fails, unplug the dock, rerun, and replug.
   tbRecover = pkgs.writeShellScript "tb-recover" ''
     fp=$(echo /sys/bus/wmi/devices/86CCFD48-205E-4A77-9C48-2021CBEDE341*/force_power)
     [ -e "$fp" ] || exit 0
@@ -83,11 +74,19 @@ let
     else exit 0; fi
 
     echo "wedged Thunderbolt controller detected, power cycling"
-    echo 0 > "$fp"; ${pkgs.coreutils}/bin/sleep 2
-    echo 1 > "$fp"; ${pkgs.coreutils}/bin/sleep 3
+    for d in /sys/bus/pci/devices/*; do
+      [ "$(${pkgs.coreutils}/bin/cat "$d/vendor" 2>/dev/null)" = "0x8086" ] || continue
+      case "$(${pkgs.coreutils}/bin/cat "$d/device" 2>/dev/null)" in
+        0x15c0 | 0x15bf | 0x15c1) echo 1 > "$d/remove" 2>/dev/null ;;
+      esac
+    done
+    ${pkgs.coreutils}/bin/sleep 2
+    echo 0 > "$fp"; ${pkgs.coreutils}/bin/sleep 10
+    echo 1 > "$fp"; ${pkgs.coreutils}/bin/sleep 5
     echo 1 > /sys/bus/pci/rescan; ${pkgs.coreutils}/bin/sleep 3
     echo 0 > "$fp"
-    domain_up && echo "thunderbolt domain recovered" || echo "recovery failed, reboot required"
+    domain_up && echo "thunderbolt domain recovered" ||
+      echo "recovery failed; unplug the dock, restart tb-recover, replug (else reboot)"
   '';
 
   # Set wakeup policy on every PCIe/Thunderbolt root port. `disabled` before
@@ -105,7 +104,6 @@ in
   # Shared with hosts/gs-thinkpad-t480s/power.nix resume reconcile.
   _module.args.lidSleepAction = lidSleepAction;
   _module.args.pcieWakeupEnable = pcieWakeup "enabled";
-  _module.args.tbNhiRuntimeAuto = nhiPowerControl "auto";
 
   # Intel Gen9.5 (UHD 620) VAAPI driver so hardware video decode works
   # (e.g. Moonlight). Without iHD, libva finds no Intel driver under
@@ -113,6 +111,11 @@ in
   # itself is enabled in modules/virtualization.nix.
   hardware.graphics.extraPackages = [ pkgs.intel-media-driver ];
   environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
+
+  # Suspend-then-hibernate: 30 min in S3, then the RTC alarm wakes the machine
+  # to hibernate. Explicit delay opts out of systemd's battery-estimate mode,
+  # which would trust the fuel gauge (this pack's gauge over-reports badly).
+  systemd.sleep.settings.Sleep.HibernateDelaySec = "30min";
 
   # Lid handling is delegated to the debounced acpid script below.
   services.logind.settings.Login = {
@@ -145,26 +148,41 @@ in
     # USB devices behind a Thunderbolt controller (PCIe `removable`) — let a
     # dock's power button or attached keyboard wake the laptop from suspend.
     ACTION=="add", SUBSYSTEM=="usb", ATTRS{removable}=="removable", ATTR{power/wakeup}="enabled"
+
+    # Never let the Thunderbolt NHI runtime-suspend: runtime-resume from deep
+    # D3cold trips the nhi.c "RX ring already enabled" bug, hangs the ICM, and
+    # drops the controller off the PCI bus (dock dead, replug invisible), both
+    # directly and via hibernate's freeze phase. Matched on driver bind, not
+    # device add: nhi_probe ends with pm_runtime_allow() (same knob as
+    # power/control), so a write at `add` gets flipped back to `auto` whenever
+    # probe runs after udev (boot, module load); `bind` fires only after probe
+    # returns. Covers boot, resume, and tb-recover rescans alike. TLP is kept
+    # from undoing this by RUNTIME_PM_DRIVER_DENYLIST below.
+    ACTION=="bind", SUBSYSTEM=="pci", DRIVER=="thunderbolt", ATTR{power/control}="on"
   '';
 
-  # Pre-sleep PCIe/Thunderbolt reconcile, scoped to sleep.target (not boot):
-  # 1. Runtime-resume the Thunderbolt NHI so hibernate's freeze phase never
-  #    does it from its buggy path (see nhiPowerControl above).
-  # 2. Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports so only
-  #    LID wakes from S4; otherwise they self-wake with the lid shut and the
-  #    machine sits awake draining flat. Wakeup must stay enabled while awake
-  #    or Thunderbolt dock hotplug breaks; resume re-arms via power.nix
-  #    resumeCommands.
+  # TLP's RUNTIME_PM_ON_BAT=auto would flip the NHI back to runtime suspend on
+  # every switch to battery, defeating the udev hold above. Default denylist
+  # plus `thunderbolt`.
+  services.tlp.settings.RUNTIME_PM_DRIVER_DENYLIST = "mei_me nouveau radeon xhci_hcd thunderbolt";
+
+  # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports, scoped to
+  # sleep.target (not boot), so only LID wakes from S4; otherwise they
+  # self-wake with the lid shut and the machine sits awake draining flat.
+  # Wakeup must stay enabled while awake or Thunderbolt dock hotplug breaks;
+  # resume re-arms via power.nix resumeCommands.
   systemd.services.disarm-pcie-wakeup = {
-    description = "Quiesce Thunderbolt NHI and disarm PCIe root port wake before sleep";
+    description = "Disarm PCIe root port wake before sleep";
     wantedBy = [ "sleep.target" ];
     before = [ "sleep.target" ];
     serviceConfig.Type = "oneshot";
-    script = ''
-      ${nhiPowerControl "on"}
-      ${pcieWakeup "disabled"}
-    '';
+    script = "${pcieWakeup "disabled"}";
   };
+
+  # Thunderbolt device authorization: boltd auto-authorizes enrolled devices
+  # and boltctl does the one-time `boltctl enroll` (domain security level is
+  # "user").
+  services.hardware.bolt.enable = true;
 
   # Self-heal a wedged Thunderbolt controller at boot and on resume (started
   # non-blocking from power.nix resumeCommands). No-op when healthy.
