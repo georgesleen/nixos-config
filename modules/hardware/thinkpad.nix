@@ -99,31 +99,40 @@ let
         [ -e "$w" ] && echo ${state} > "$w"
       done
     '';
+
+  # Backstop for a wedged Embedded Controller during a sleep transition. When
+  # the EC stops answering, the kernel busy-polls it (`ec_guard`, task state R,
+  # pegging a core) inside the suspend/hibernate prepare path, so the machine
+  # sits awake and drains the pack flat off AC. Root cause is the EC/battery
+  # SMBus link (aftermarket LCC 01AV478 pack) with firmware already maxed (BIOS
+  # 1.61 / EC 1.23) and no safe EC knob (`ec_no_wakeup` kills lid-wake, EC
+  # busy_polling breaks fans), so we can only bound the damage. `sleep` runs on
+  # CLOCK_MONOTONIC, which the kernel freezes across S3/S4, so this counts only
+  # *awake* time within the transition: a healthy suspend is awake for seconds
+  # and the guard is killed on resume (see the service below); a wedge piles up
+  # real time and force-powers-off. 1500s is well above the observed benign
+  # stalls (2-14 min) and well under the ~2.5 h a spinning core needs to flatten
+  # the pack. Poweroff (not reboot) leaves zero drain since the trigger is
+  # always lid-closed-and-walked-away; emergency-sync first via SysRq.
+  sleepHangGuard = pkgs.writeShellScript "sleep-hang-guard" ''
+    ${pkgs.coreutils}/bin/sleep 1500
+    ${pkgs.util-linux}/bin/logger -t sleep-hang-guard "sleep transition wedged >25min awake (EC busy-poll); emergency sync + poweroff to save the battery"
+    echo 1 > /proc/sys/kernel/sysrq
+    echo s > /proc/sysrq-trigger
+    ${pkgs.coreutils}/bin/sleep 3
+    echo o > /proc/sysrq-trigger
+  '';
 in
 {
   # Shared with hosts/gs-thinkpad-t480s/power.nix resume reconcile.
   _module.args.lidSleepAction = lidSleepAction;
   _module.args.pcieWakeupEnable = pcieWakeup "enabled";
-
+  environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
   # Intel Gen9.5 (UHD 620) VAAPI driver so hardware video decode works
   # (e.g. Moonlight). Without iHD, libva finds no Intel driver under
   # /run/opengl-driver and apps fall back to CPU decode. hardware.graphics
   # itself is enabled in modules/virtualization.nix.
   hardware.graphics.extraPackages = [ pkgs.intel-media-driver ];
-  environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
-
-  # Suspend-then-hibernate: 30 min in S3, then the RTC alarm wakes the machine
-  # to hibernate. Explicit delay opts out of systemd's battery-estimate mode,
-  # which would trust the fuel gauge (this pack's gauge over-reports badly).
-  systemd.sleep.settings.Sleep.HibernateDelaySec = "30min";
-
-  # Lid handling is delegated to the debounced acpid script below.
-  services.logind.settings.Login = {
-    HandleLidSwitch = "ignore";
-    HandleLidSwitchExternalPower = "ignore";
-    HandleLidSwitchDocked = "ignore";
-  };
-
   # Debounced lid handler — cancels and re-arms a 3-second timer on every
   # lid event so a brief magnetic false-close gets ignored.
   services.acpid = {
@@ -139,7 +148,20 @@ in
       fi
     '';
   };
-
+  # Thunderbolt device authorization: boltd auto-authorizes enrolled devices
+  # and boltctl does the one-time `boltctl enroll` (domain security level is
+  # "user").
+  services.hardware.bolt.enable = true;
+  # Lid handling is delegated to the debounced acpid script below.
+  services.logind.settings.Login = {
+    HandleLidSwitch = "ignore";
+    HandleLidSwitchDocked = "ignore";
+    HandleLidSwitchExternalPower = "ignore";
+  };
+  # TLP's RUNTIME_PM_ON_BAT=auto would flip the NHI back to runtime suspend on
+  # every switch to battery, defeating the udev hold above. Default denylist
+  # plus `thunderbolt`.
+  services.tlp.settings.RUNTIME_PM_DRIVER_DENYLIST = "mei_me nouveau radeon xhci_hcd thunderbolt";
   # Mic-mute LED: let the `input` group flip the brightness file so the sway
   # micmute binding can update it without sudo.
   services.udev.extraRules = ''
@@ -160,36 +182,46 @@ in
     # from undoing this by RUNTIME_PM_DRIVER_DENYLIST below.
     ACTION=="bind", SUBSYSTEM=="pci", DRIVER=="thunderbolt", ATTR{power/control}="on"
   '';
-
-  # TLP's RUNTIME_PM_ON_BAT=auto would flip the NHI back to runtime suspend on
-  # every switch to battery, defeating the udev hold above. Default denylist
-  # plus `thunderbolt`.
-  services.tlp.settings.RUNTIME_PM_DRIVER_DENYLIST = "mei_me nouveau radeon xhci_hcd thunderbolt";
-
   # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports, scoped to
   # sleep.target (not boot), so only LID wakes from S4; otherwise they
   # self-wake with the lid shut and the machine sits awake draining flat.
   # Wakeup must stay enabled while awake or Thunderbolt dock hotplug breaks;
   # resume re-arms via power.nix resumeCommands.
   systemd.services.disarm-pcie-wakeup = {
-    description = "Disarm PCIe root port wake before sleep";
-    wantedBy = [ "sleep.target" ];
     before = [ "sleep.target" ];
-    serviceConfig.Type = "oneshot";
+    description = "Disarm PCIe root port wake before sleep";
     script = "${pcieWakeup "disabled"}";
+    serviceConfig.Type = "oneshot";
+    wantedBy = [ "sleep.target" ];
   };
-
-  # Thunderbolt device authorization: boltd auto-authorizes enrolled devices
-  # and boltctl does the one-time `boltctl enroll` (domain security level is
-  # "user").
-  services.hardware.bolt.enable = true;
-
+  # Arm the EC-hang backstop for the duration of each sleep transition.
+  # `PartOf = sleep.target` ties its lifetime to the sleep: it starts when
+  # sleep.target activates and is stopped (its `sleep` killed) the instant
+  # sleep.target deactivates on resume. On a healthy suspend that happens within
+  # seconds; only a wedged transition keeps it running long enough (25 min of
+  # awake time, since CLOCK_MONOTONIC freezes across S3/S4) to force a poweroff.
+  # Type=simple so sleep.target proceeds as soon as the guard is exec'd rather
+  # than waiting for it to exit.
+  systemd.services.sleep-hang-guard = {
+    before = [ "sleep.target" ];
+    description = "Force poweroff if a sleep transition wedges the EC";
+    partOf = [ "sleep.target" ];
+    serviceConfig = {
+      ExecStart = "${sleepHangGuard}";
+      Type = "simple";
+    };
+    wantedBy = [ "sleep.target" ];
+  };
   # Self-heal a wedged Thunderbolt controller at boot and on resume (started
   # non-blocking from power.nix resumeCommands). No-op when healthy.
   systemd.services.tb-recover = {
     description = "Recover a wedged Thunderbolt controller";
-    wantedBy = [ "multi-user.target" ];
-    serviceConfig.Type = "oneshot";
     script = "${tbRecover}";
+    serviceConfig.Type = "oneshot";
+    wantedBy = [ "multi-user.target" ];
   };
+  # Suspend-then-hibernate: 30 min in S3, then the RTC alarm wakes the machine
+  # to hibernate. Explicit delay opts out of systemd's battery-estimate mode,
+  # which would trust the fuel gauge (this pack's gauge over-reports badly).
+  systemd.sleep.settings.Sleep.HibernateDelaySec = "30min";
 }
