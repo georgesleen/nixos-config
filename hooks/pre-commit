@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if ! command -v nixfmt >/dev/null 2>&1; then
-  echo "[pre-commit] nixfmt not found" >&2
+if ! command -v pedantix >/dev/null 2>&1; then
+  echo "[pre-commit] pedantix not found" >&2
   exit 1
 fi
 
@@ -16,8 +16,8 @@ if [[ ${#staged[@]} -eq 0 ]]; then
   exit 0
 fi
 
-echo "[pre-commit] formatting ${#staged[@]} staged nix files with nixfmt..."
-nixfmt "${staged[@]}"
+echo "[pre-commit] formatting ${#staged[@]} staged nix files with pedantix..."
+pedantix "${staged[@]}"
 git add "${staged[@]}"
 
 echo "[pre-commit] running nix parse on staged files..."

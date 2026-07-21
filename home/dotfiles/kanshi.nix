@@ -216,6 +216,49 @@ let
     };
   };
 
+  extendTvProfile = {
+    profile = {
+      name = "extend-tv";
+      outputs = [
+        {
+          criteria = "eDP-1";
+          status = "enable";
+          position = "0,0";
+        }
+        {
+          criteria = "*";
+          status = "enable";
+          position = "1920,0";
+        }
+      ];
+      exec = [
+        ''${swaymsg} "output eDP-1 position 0 0"''
+        "${lidReconcileScript}"
+        wallpaperRefresh
+      ];
+    };
+  };
+
+  tvOnlyProfile = {
+    profile = {
+      name = "tv-only";
+      outputs = [
+        {
+          criteria = "eDP-1";
+          status = "disable";
+        }
+        {
+          criteria = "*";
+          status = "enable";
+          position = "0,0";
+        }
+      ];
+      exec = [
+        wallpaperRefresh
+      ];
+    };
+  };
+
   undockedProfile = {
     profile = {
       name = "undocked";
@@ -259,7 +302,7 @@ let
   # which case we surface the failure via notify-send.
   modePickerScript = pkgs.writeShellScript "display-mode-picker" ''
     set -eu
-    choice=$(printf 'extend\nmirror\nexternal-only\ninternal-only\nundocked\n' \
+    choice=$(printf 'extend\nmirror\nexternal-only\ninternal-only\nextend-tv\ntv-only\nundocked\n' \
       | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt 'Display: ')
     [ -z "$choice" ] && exit 0
     if ${pkgs.kanshi}/bin/kanshictl switch "$choice" 2>/dev/null; then
@@ -282,6 +325,8 @@ in
       mirrorProfile
       externalOnlyProfile
       internalOnlyProfile
+      extendTvProfile
+      tvOnlyProfile
       undockedProfile
     ];
   };

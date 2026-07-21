@@ -2,20 +2,13 @@
   description = "NixOS configuration flake";
 
   inputs = {
-    # NixOS official package source
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
 
-    # Home manager
     home-manager = {
       url = "github:nix-community/home-manager";
-      # The 'follows' keyword in inputs is used for inheritance.
-      # Here, 'inputs.nixpkgs' of home-manager is kept consistent with
-      # the 'inputs.nixpkgs' of the current flake,
-      # to avoid problems cause by different versions of nixpkgs.
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Waveforms
     waveforms.url = "github:liff/waveforms-flake";
 
     # For installing nixos on raspberry pi
@@ -39,22 +32,44 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Pedantic Nix formatter (wraps nixfmt + adds attribute ordering)
+    pedantix.url = "github:Swarsel/pedantix";
+
   };
 
   outputs =
     inputs@{
-      self,
       nixpkgs,
       home-manager,
       waveforms,
-      nixos-hardware,
-      NixVirt,
       sops-nix,
       helix,
+      pedantix,
       ...
     }:
     let
       user = "george-sleen";
+
+      # Git helix from the flake, for native x86_64 hosts.
+      helixOverlay = final: _prev: {
+        helix = helix.packages.${final.stdenv.hostPlatform.system}.default;
+      };
+
+      pkgsCross = nixpkgs.legacyPackages.x86_64-linux.pkgsCross.aarch64-multiplatform;
+
+      # Git helix cross-compiled for aarch64 on x86_64 (avoids QEMU emulation).
+      # Update the cargoDeps hash when bumping the helix input: build with
+      # nixpkgs.lib.fakeHash, then copy the "got:" hash from the error.
+      helixCrossOverlay = _final: _prev: {
+        helix = pkgsCross.helix.overrideAttrs (old: {
+          src = helix;
+          cargoDeps = pkgsCross.rustPlatform.fetchCargoVendor {
+            inherit (old) pname;
+            src = helix;
+            hash = "sha256-iFuGPTsEDH4PbRrdxjhFWS+j+MMldGvT9eltXuZPzho=";
+          };
+        });
+      };
 
       systems = [
         "x86_64-linux"
@@ -62,22 +77,29 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
+      hmConfig = hmHome: {
+        home-manager.useGlobalPkgs = true;
+        home-manager.useUserPackages = true;
+        home-manager.backupFileExtension = "hm-backup";
+        home-manager.extraSpecialArgs = { inherit user inputs; };
+        home-manager.sharedModules = [
+          pedantix.homeModules.default
+          { programs.pedantix.enable = true; }
+        ];
+        home-manager.users.${user} = import hmHome;
+      };
+
       mkHost =
         hostPath: hmHome:
         nixpkgs.lib.nixosSystem {
           specialArgs = { inherit inputs user; };
           modules = [
             hostPath
+            { nixpkgs.overlays = [ helixOverlay ]; }
             waveforms.nixosModule
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "hm-backup";
-              home-manager.extraSpecialArgs = { inherit user inputs; };
-              home-manager.users.${user} = import hmHome;
-            }
+            (hmConfig hmHome)
           ];
         };
     in
@@ -90,14 +112,9 @@
           specialArgs = { inherit inputs user; };
           modules = [
             ./hosts/gs-pi4
+            { nixpkgs.overlays = [ helixCrossOverlay ]; }
             home-manager.nixosModules.home-manager
-            {
-              home-manager.useGlobalPkgs = true;
-              home-manager.useUserPackages = true;
-              home-manager.backupFileExtension = "hm-backup";
-              home-manager.extraSpecialArgs = { inherit user inputs; };
-              home-manager.users.${user} = import ./home/user-pi.nix;
-            }
+            (hmConfig ./home/user-pi.nix)
           ];
         };
       };

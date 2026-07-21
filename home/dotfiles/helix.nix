@@ -1,9 +1,9 @@
-{ inputs, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   programs.helix = {
     enable = true;
-    package = inputs.helix.packages.${pkgs.stdenv.hostPlatform.system}.default;
+    package = pkgs.helix;
 
     settings = {
       theme = "nightfox";
@@ -21,16 +21,12 @@
         {
           name = "nix";
           language-servers = [ "nil" ];
-          formatter.command = "nixfmt";
+          formatter = { command = "pedantix"; args = [ "-" ]; };
         }
         {
           name = "python";
           language-servers = [ "pylsp" ];
-          formatter.command = "black";
-          formatter.args = [
-            "--quiet"
-            "-"
-          ];
+          formatter = { command = "black"; args = [ "--quiet" "-" ]; };
         }
         {
           name = "markdown";
@@ -38,15 +34,10 @@
             "harper"
             "marksman"
           ];
-          formatter.command = "prettier";
-          formatter.args = [
-            "--parser"
-            "markdown"
-            "--print-width"
-            "80"
-            "--prose-wrap"
-            "always"
-          ];
+          formatter = {
+            command = "prettier";
+            args = [ "--parser" "markdown" "--print-width" "80" "--prose-wrap" "always" ];
+          };
         }
         {
           name = "typst";
@@ -54,12 +45,10 @@
             "tinymist"
             "harper"
           ];
-          formatter.command = "typstyle";
-          formatter.args = [
-            "--line-width"
-            "80"
-            "--wrap-text"
-          ];
+          formatter = {
+            command = "typstyle";
+            args = [ "--line-width" "80" "--wrap-text" ];
+          };
         }
       ];
 
