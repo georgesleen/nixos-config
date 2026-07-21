@@ -111,3 +111,12 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 - `modules/features/btrfs.nix` `btrfs-disable-qgroups`: qgroups stall `btrfs-cleaner` 30+ min; this oneshot guarantees they're off after reboot (`btrfsqcycle` re-enables them temporarily for sizing).
 - `modules/features/virtualization.nix`: `set_sched` removed from the libvirt qemu hook; those CFS sysctls don't exist post-EEVDF (Linux 6.6+).
 - `hooks/pre-commit`: nixfmt re-stages the *whole* .nix file, so committing one hunk of a multi-hunk file sweeps the other hunks in. For a partial commit, format first then `git commit --no-verify`.
+
+### gs-pi4 / nixflix media stack
+
+Full setup + deploy quirks in `docs/nixflix.md`.
+
+- `hosts/gs-pi4/default.nix` `systemd.tmpfiles.rules = [ "d /srv 0755 root root" ]`: nixflix's mediaDir/stateDir live under `/srv`, and systemd-tmpfiles refuses to create root-owned subdirs beneath a non-root-owned parent ("unsafe path transition"), failing `nixflix-setup-dirs`. `/srv` had drifted to `george-sleen`; this pins it root-owned.
+- `hosts/gs-pi4/nixflix.nix` qBittorrent `serverConfig.Preferences.WebUI.AuthSubnetWhitelist = "192.168.15.0/24"`: nixflix hardcodes an empty qBittorrent username in the *arr download-client config, which qbit rejects; bypassing auth for the isolated VPN bridge subnet (only qbit + arrs) lets the arrs register the download client. Also needs `Password_PBKDF2` (hash) + `password` secret (plaintext) set to the same value, applied only on a qbit *restart* (ExecStartPre installs the conf; `switch` alone doesn't restart the namespaced service).
+- `hosts/gs-pi4/nixflix.nix` FlareSolverr runs as an OCI container, not `nixflix.flaresolverr.enable`: the nixpkgs package builds Chromium from source, impractical under aarch64 QEMU emulation; the official image ships a prebuilt arm64 Chromium. `nixflix.prowlarr.config.indexerProxies` points Prowlarr at the container.
+- `hosts/gs-pi4/nixflix.nix` `flaresolverr-wait` oneshot: FlareSolverr's Chromium takes ~40s to launch after the container reports up, so `prowlarr-indexer-proxies` races ahead on boot and fails to register the proxy (HTTP 400). This gate blocks until the endpoint answers; the proxy service is ordered after it. Replaces the health-gate nixflix's native flaresolverr module provides.
