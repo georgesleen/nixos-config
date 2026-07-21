@@ -41,6 +41,7 @@
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ../../modules/roles/pi.nix
     ./nixflix.nix
+    ./pia-vpn.nix
   ];
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
