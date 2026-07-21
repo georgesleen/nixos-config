@@ -3,78 +3,99 @@
 {
   programs.helix = {
     enable = true;
-    package = pkgs.helix;
-
-    settings = {
-      theme = "nightfox";
-      editor.line-number = "relative";
-      editor.bufferline = "always";
-      editor.rulers = [
-        80
-        120
-      ];
-      editor.soft-wrap.enable = false;
-    };
-
     languages = {
       language = [
         {
-          name = "nix";
+          formatter = {
+            args = [ "-" ];
+            command = "pedantix";
+          };
           language-servers = [ "nil" ];
-          formatter = { command = "pedantix"; args = [ "-" ]; };
+          name = "nix";
         }
         {
-          name = "python";
+          formatter = {
+            args = [
+              "--quiet"
+              "-"
+            ];
+            command = "black";
+          };
           language-servers = [ "pylsp" ];
-          formatter = { command = "black"; args = [ "--quiet" "-" ]; };
+          name = "python";
         }
         {
-          name = "markdown";
+          formatter = {
+            args = [
+              "--parser"
+              "markdown"
+              "--print-width"
+              "80"
+              "--prose-wrap"
+              "always"
+            ];
+            command = "prettier";
+          };
           language-servers = [
             "harper"
             "marksman"
           ];
-          formatter = {
-            command = "prettier";
-            args = [ "--parser" "markdown" "--print-width" "80" "--prose-wrap" "always" ];
-          };
+          name = "markdown";
         }
         {
-          name = "typst";
+          formatter = {
+            args = [
+              "--line-width"
+              "80"
+              "--wrap-text"
+            ];
+            command = "typstyle";
+          };
           language-servers = [
             "tinymist"
             "harper"
           ];
-          formatter = {
-            command = "typstyle";
-            args = [ "--line-width" "80" "--wrap-text" ];
-          };
+          name = "typst";
         }
       ];
 
       language-server = {
+        harper = {
+          args = [ "--stdio" ];
+          command = "harper-ls";
+        };
+        marksman = {
+          command = "marksman";
+        };
         nil = {
           command = "nil";
+        };
+        pylsp = {
+          command = "pylsp";
         };
         rust-analyzer = {
           config = {
             files.watcher = "server";
           };
         };
-        harper = {
-          command = "harper-ls";
-          args = [ "--stdio" ];
-        };
-        marksman = {
-          command = "marksman";
-        };
-        pylsp = {
-          command = "pylsp";
-        };
         tinymist = {
           command = "tinymist";
         };
       };
+    };
+    package = pkgs.helix;
+    settings = {
+      # No format-on-save for any language (yaml/sops files especially). The
+      # per-language formatters below stay available for an explicit `:format`.
+      editor.auto-format = false;
+      editor.bufferline = "always";
+      editor.line-number = "relative";
+      editor.rulers = [
+        80
+        120
+      ];
+      editor.soft-wrap.enable = false;
+      theme = "nightfox";
     };
   };
 }
