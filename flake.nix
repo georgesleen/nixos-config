@@ -16,6 +16,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/home-manager";
     };
+    # Declarative media server stack (jellyfin + *arr + qbittorrent, VPN via
+    # bundled vpn-confinement). Used by gs-pi4.
+    nixflix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:kiriwalawren/nixflix";
+    };
     # For installing nixos on raspberry pi
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
@@ -106,6 +112,8 @@
           modules = [
             ./hosts/gs-pi4
             { nixpkgs.overlays = [ crossOverlay ]; }
+            sops-nix.nixosModules.sops
+            inputs.nixflix.nixosModules.default
             home-manager.nixosModules.home-manager
             (hmConfig ./home/user-pi.nix)
           ];

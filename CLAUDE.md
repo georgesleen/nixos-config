@@ -38,6 +38,12 @@ NixOS flake config for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary
 
 `flake.nix` also exposes a `yolo-testing` devShell (Python 3.13 + uv, LD_LIBRARY_PATH set for native binaries outside NixOS wrappers).
 
+## Docs
+
+Runbooks and reference live in `docs/` (filenames are self-describing; run
+`ls docs/`). Read the relevant one before working in that area, and update it
+when the setup changes.
+
 ## Secrets
 
 Managed with [sops-nix](https://github.com/Mic92/sops-nix). `.sops.yaml` lists age recipients (one personal key, one per host derived from its SSH host key). Encrypted secrets live in `secrets/secrets.yaml`; only `gs-thinkpad-t480s` consumes it so far. Decrypted values land at `/run/secrets/<name>` at activation.
