@@ -14,6 +14,8 @@ in
     obsidian # markdown notes
     qbittorrent # torrenting client
     jellyfin # media server
+    tsukimi # jellyfin desktop client
+    python313Packages.grip # render GitHub flavoured markdown
     vlc # media player
     moonlight-qt # game stream client for Sunshine on the win11 VM
     kdePackages.okular # pdf viewer

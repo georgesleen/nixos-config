@@ -24,11 +24,9 @@
     file # File detection
     jq # JSON
     imagemagick # Images
-    python313Packages.grip # Render GitHub flavoured markdown
     nmap # network scanner
     glow # terminal markdown renderer
     poppler-utils # PDF tools (pdftotext, pdfimages, etc.)
-    nodejs # npx, needed by some Claude Code MCP servers (context7, playwright)
     sops # edit/inspect encrypted secrets
     age # sops-nix encryption backend
     ssh-to-age # derive age recipient keys from ssh host keys
@@ -36,38 +34,32 @@
     delta # diff pager for git
     wakeonlan # wake on lan commands
   ];
-
   # Networking
   security.pki.certificates = [
     #optional
   ];
-
   security.pki.installCACerts = true;
-
-  services.xserver.xkb.layout = "us";
-
   # Tailscale daemon
   services.tailscale = {
     enable = true;
     extraUpFlags = [ "--ssh" ];
   };
-
+  # Power device info for battery notifications
+  services.upower.enable = true;
+  services.xserver.xkb.layout = "us";
   # Disable UDP Segmentation Offload on tailscale0. Same class of bug as the
   # win11 VirtIO USO issue (see CLAUDE.md Workarounds): coalesced UDP fools
   # latency-sensitive streamers (Steam Remote Play, Sunshine/Moonlight) into
   # treating timing artifacts as packet loss and throttling to ~1 FPS.
   systemd.services.tailscale-disable-uso = {
-    description = "Disable UDP segmentation offload on tailscale0";
     after = [ "sys-subsystem-net-devices-tailscale0.device" ];
     bindsTo = [ "sys-subsystem-net-devices-tailscale0.device" ];
-    wantedBy = [ "sys-subsystem-net-devices-tailscale0.device" ];
+    description = "Disable UDP segmentation offload on tailscale0";
     serviceConfig = {
-      Type = "oneshot";
-      RemainAfterExit = true;
       ExecStart = "${pkgs.ethtool}/bin/ethtool -K tailscale0 tx-udp-segmentation off";
+      RemainAfterExit = true;
+      Type = "oneshot";
     };
+    wantedBy = [ "sys-subsystem-net-devices-tailscale0.device" ];
   };
-
-  # Power device info for battery notifications
-  services.upower.enable = true;
 }

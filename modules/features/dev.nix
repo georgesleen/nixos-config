@@ -2,22 +2,20 @@
 
 {
   config,
-  pkgs,
   inputs,
+  pkgs,
   ...
 }:
 
 {
-  programs.nix-ld.enable = true;
-
   boot.binfmt.emulatedSystems = [ "aarch64-linux" ];
-
   environment.systemPackages = with pkgs; [
     # llm cli
     codex
     claude-code
     gemini-cli
     bubblewrap
+    nodejs # npx, needed by some Claude Code MCP servers (context7, playwright)
 
     # c/c++
     gcc
@@ -52,7 +50,7 @@
     # typst
     typst
   ];
-
+  programs.nix-ld.enable = true;
   services.udev.packages = [
     pkgs.stlink
     pkgs.platformio-core.udev

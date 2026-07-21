@@ -8,7 +8,6 @@
     ../features/btrfs.nix
     ../features/dev.nix
     ../features/lsp.nix
-    ../features/steam.nix
     ../features/virtualization.nix
   ];
 }

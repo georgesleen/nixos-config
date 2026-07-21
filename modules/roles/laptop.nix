@@ -5,6 +5,10 @@
 { pkgs, ... }:
 
 {
+  environment.systemPackages = with pkgs; [
+    brightnessctl
+    iw
+  ];
   imports = [
     ../core
     ../features/btrfs.nix
@@ -17,11 +21,5 @@
     ../features/keychron.nix
     ../features/user-packages.nix
     ../features/virtualization.nix
-  ];
-
-  environment.systemPackages = with pkgs; [
-    brightnessctl
-    iw
-    jellyfin
   ];
 }
