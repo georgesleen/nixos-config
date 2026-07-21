@@ -103,16 +103,17 @@ let
       | ${pkgs.gawk}/bin/awk '/^D /{print substr($0, 3); exit}'
   '';
 
-  # PreToolUse hook: block any Bash sudo invocation that omits -A or -k.
+  # PreToolUse hook: block any Bash sudo invocation that isn't sudo -A -k.
+  # Literal string match avoids false passes from flags on other commands
+  # (e.g. grep -A 3, ssh -k) that the flag-scanning approach would confuse
+  # with sudo's own flags.
   sudoHook = pkgs.writeShellScript "claude-sudo-check" ''
     input="$(${pkgs.coreutils}/bin/cat)"
     cmd="$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_input.command // empty')"
     [ -z "$cmd" ] && exit 0
     printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -qE '\bsudo\b' || exit 0
-    has_A=$(printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -cE '(^|[[:space:]])-[a-zA-Z]*A' || true)
-    has_k=$(printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -cE '(^|[[:space:]])-[a-zA-Z]*k' || true)
-    if [ "$has_A" -eq 0 ] || [ "$has_k" -eq 0 ]; then
-      printf 'Use sudo -A -k: -A triggers SUDO_ASKPASS dialog, -k prevents within-command caching\n' >&2
+    if ! printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -qE '\bsudo -A -k\b'; then
+      printf 'Use sudo -A -k (exact form): -A triggers SUDO_ASKPASS dialog, -k prevents within-command caching\n' >&2
       exit 2
     fi
   '';
