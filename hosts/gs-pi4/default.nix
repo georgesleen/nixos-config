@@ -42,6 +42,7 @@
     ../../modules/roles/pi.nix
     ./nixflix.nix
     ./pia-vpn.nix
+    ./reverse-proxy.nix
   ];
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
