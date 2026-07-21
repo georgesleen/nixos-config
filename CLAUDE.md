@@ -70,6 +70,10 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 - `modules/hardware/thinkpad.nix` `HibernateDelaySec=30min`: set explicitly so suspend-then-hibernate uses a fixed delay instead of systemd's battery-estimate mode; the pack's fuel gauge (01AV478, LCC aftermarket cells) over-reports roughly 2x while discharging, so any gauge-based estimate hibernates far too late. The "5% at every hibernate resume" complaint was this gauge re-anchoring at power-on, not S4 drain (voltage flat across hibernates 2026-07-11 and 2026-07-13).
 - Hibernate resume rejects the image (`Image mismatch: architecture specific data`) when dock state at POST differs from hibernate time: the e820 map shifts and the kernel check has no bypass. Behavioral mitigation only: resume in the same dock state you hibernated in. Distinct from the kernel-version mismatch a rebuild-then-resume causes.
 
+### sudo / Claude Code
+
+- `hosts/gs-thinkpad-t480s/default.nix` `timestamp_type=ppid`: scopes sudo cache to parent PID; each Claude Bash invocation is a new shell (new PPID), so no cross-invocation caching; interactive shells cache normally. Always use `sudo -A -k` (hook in `home/dotfiles/claude.nix` `sudoHook` enforces this): `-A` triggers `SUDO_ASKPASS` (pinentry-gnome3 dialog), `-k` prevents within-command caching.
+
 ### sway / desktop
 
 - `home/dotfiles/sway.nix` customKeymap: Left Alt becomes `Hyper_L`/Mod3 because sway can't tell left/right Alt apart while both are Mod1.

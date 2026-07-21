@@ -1,7 +1,7 @@
 {
   config,
-  pkgs,
   lib,
+  pkgs,
   ...
 }:
 
@@ -92,6 +92,31 @@ let
     echo "$out"
   '';
 
+  # Bridge between sudo's SUDO_ASKPASS protocol (argv[1] = prompt, stdout =
+  # password) and pinentry-gnome3's Assuan protocol. -k in every sudo call
+  # (enforced by sudoHook below) prevents within-invocation caching; ppid
+  # timestamp_type (sudoers in hosts/gs-thinkpad-t480s/default.nix) prevents
+  # cross-invocation caching because each Bash tool call is a fresh shell.
+  sudoAskpass = pkgs.writeShellScript "sudo-askpass" ''
+    printf 'SETPROMPT %s\nGETPIN\n' "''${1:-Password:}" \
+      | ${pkgs.pinentry-gnome3}/bin/pinentry-gnome3 2>/dev/null \
+      | ${pkgs.gawk}/bin/awk '/^D /{print substr($0, 3); exit}'
+  '';
+
+  # PreToolUse hook: block any Bash sudo invocation that omits -A or -k.
+  sudoHook = pkgs.writeShellScript "claude-sudo-check" ''
+    input="$(${pkgs.coreutils}/bin/cat)"
+    cmd="$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_input.command // empty')"
+    [ -z "$cmd" ] && exit 0
+    printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -qE '\bsudo\b' || exit 0
+    has_A=$(printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -cE '(^|[[:space:]])-[a-zA-Z]*A' || true)
+    has_k=$(printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -cE '(^|[[:space:]])-[a-zA-Z]*k' || true)
+    if [ "$has_A" -eq 0 ] || [ "$has_k" -eq 0 ]; then
+      printf 'Use sudo -A -k: -A triggers SUDO_ASKPASS dialog, -k prevents within-command caching\n' >&2
+      exit 2
+    fi
+  '';
+
   # Adversarial review hook: PostToolUse on TodoWrite. When a todo list is
   # fully completed (>=2 items, to skip trivial lists) and the repo has
   # uncommitted changes not already reviewed, feed Claude a directive to run
@@ -140,10 +165,7 @@ let
 in
 {
   home.file.".claude/settings.json".text = builtins.toJSON {
-    statusLine = {
-      type = "command";
-      command = "${statusLine}";
-    };
+    agentPushNotifEnabled = true;
     attribution = {
       commit = "";
       pr = "";
@@ -151,52 +173,69 @@ in
     enabledPlugins = {
       # LSPs
       "clangd-lsp@claude-plugins-official" = true;
-      "pyright-lsp@claude-plugins-official" = true;
-      "gopls-lsp@claude-plugins-official" = true;
-      "rust-analyzer-lsp@claude-plugins-official" = true;
-      "typescript-lsp@claude-plugins-official" = true;
+      "code-review@claude-plugins-official" = true;
+      # Workflow
+      "commit-commands@claude-plugins-official" = true;
+      # MCP servers
+      "context7@claude-plugins-official" = true;
       "csharp-lsp@claude-plugins-official" = true;
+      "gopls-lsp@claude-plugins-official" = true;
+      "hookify@claude-plugins-official" = true;
       "jdtls-lsp@claude-plugins-official" = true;
       "kotlin-lsp@claude-plugins-official" = true;
       "lua-lsp@claude-plugins-official" = true;
       "php-lsp@claude-plugins-official" = true;
-      "ruby-lsp@claude-plugins-official" = true;
-      "swift-lsp@claude-plugins-official" = true;
-      # Workflow
-      "commit-commands@claude-plugins-official" = true;
-      "code-review@claude-plugins-official" = true;
-      "pr-review-toolkit@claude-plugins-official" = true;
-      "hookify@claude-plugins-official" = true;
-      # MCP servers
-      "context7@claude-plugins-official" = true;
       "playwright@claude-plugins-official" = true;
+      "pr-review-toolkit@claude-plugins-official" = true;
+      "pyright-lsp@claude-plugins-official" = true;
+      "ruby-lsp@claude-plugins-official" = true;
+      "rust-analyzer-lsp@claude-plugins-official" = true;
+      "swift-lsp@claude-plugins-official" = true;
+      "typescript-lsp@claude-plugins-official" = true;
+    };
+    env = {
+      SUDO_ASKPASS = "${sudoAskpass}";
+    };
+    hooks = {
+      PostToolUse = [
+        {
+          hooks = [
+            {
+              command = "${reviewHook}";
+              type = "command";
+            }
+          ];
+          matcher = "TodoWrite";
+        }
+      ];
+      PreToolUse = [
+        {
+          hooks = [
+            {
+              command = "${sudoHook}";
+              type = "command";
+            }
+          ];
+          matcher = "Bash";
+        }
+      ];
     };
     mcpServers = {
       nixos = {
-        command = "nix";
         args = [
           "run"
           "github:utensils/mcp-nixos"
           "--"
         ];
+        command = "nix";
       };
     };
     model = "sonnet";
     remoteControlAtStartup = false;
-    agentPushNotifEnabled = true;
     skipAutoPermissionPrompt = true;
-    hooks = {
-      PostToolUse = [
-        {
-          matcher = "TodoWrite";
-          hooks = [
-            {
-              type = "command";
-              command = "${reviewHook}";
-            }
-          ];
-        }
-      ];
+    statusLine = {
+      command = "${statusLine}";
+      type = "command";
     };
   };
 
@@ -204,7 +243,7 @@ in
   # writable for ad-hoc/experimental skills, and any skill added under
   # ./claude/skills auto-wires without editing this file.
   home.file.".claude/skills" = {
-    source = ./claude/skills;
     recursive = true;
+    source = ./claude/skills;
   };
 }
