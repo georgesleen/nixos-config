@@ -45,6 +45,7 @@
     ./reverse-proxy.nix
     ./dashboard.nix
     ./adguard.nix
+    ./state-backup.nix
   ];
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
