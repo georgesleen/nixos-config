@@ -43,6 +43,8 @@
     ./nixflix.nix
     ./pia-vpn.nix
     ./reverse-proxy.nix
+    ./dashboard.nix
+    ./adguard.nix
   ];
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
