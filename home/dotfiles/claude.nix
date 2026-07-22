@@ -118,6 +118,23 @@ let
     fi
   '';
 
+  # PreToolUse hook: block any Bash command that would read decrypted secrets,
+  # i.e. the sops-nix runtime mount (/run/secrets, /run/secrets.d) or a sops
+  # decrypt-to-stdout (sops -d / --decrypt). The grep sees the whole command
+  # string, so it also catches these paths inside an `ssh <host> "..."` payload
+  # (the real gap: /run/secrets is 0400 locally, but an ssh login user or sudo
+  # routes around file perms). Guardrail against casual/accidental reads, not a
+  # hard sandbox: string matching can be defeated by obfuscation.
+  secretsHook = pkgs.writeShellScript "claude-secrets-guard" ''
+    input="$(${pkgs.coreutils}/bin/cat)"
+    cmd="$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_input.command // empty')"
+    [ -z "$cmd" ] && exit 0
+    if printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -qE '/run/secrets(\.d)?\b|\bsops\b[^|]*(-d|--decrypt)'; then
+      printf 'Blocked: reading decrypted secrets (/run/secrets or sops -d) is denied by policy. Ask the user to act on the secret value directly.\n' >&2
+      exit 2
+    fi
+  '';
+
   # Adversarial review hook: PostToolUse on TodoWrite. When a todo list is
   # fully completed (>=2 items, to skip trivial lists) and the repo has
   # uncommitted changes not already reviewed, feed Claude a directive to run
@@ -216,6 +233,10 @@ in
               command = "${sudoHook}";
               type = "command";
             }
+            {
+              command = "${secretsHook}";
+              type = "command";
+            }
           ];
           matcher = "Bash";
         }
@@ -232,6 +253,11 @@ in
       };
     };
     model = "sonnet";
+    permissions.deny = [
+      # Second layer, covering the Read tool; the Bash side is the secretsHook.
+      "Read(/run/secrets/**)"
+      "Read(/run/secrets.d/**)"
+    ];
     remoteControlAtStartup = false;
     skipAutoPermissionPrompt = true;
     statusLine = {
