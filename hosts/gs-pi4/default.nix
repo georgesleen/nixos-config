@@ -43,6 +43,7 @@
     ./nixflix.nix
     ./pia-vpn.nix
     ./reverse-proxy.nix
+    ./jellyfin-register.nix
     ./dashboard.nix
     ./adguard.nix
     ./state-backup.nix
