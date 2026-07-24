@@ -188,6 +188,7 @@ in
       commit = "";
       pr = "";
     };
+    editorMode = "vim";
     enabledPlugins = {
       # LSPs
       "clangd-lsp@claude-plugins-official" = true;
@@ -257,8 +258,14 @@ in
       # Second layer, covering the Read tool; the Bash side is the secretsHook.
       "Read(/run/secrets/**)"
       "Read(/run/secrets.d/**)"
+      # Sensitive credential files
+      "Read(**/.env)"
+      "Read(**/.env.*)"
+      "Read(~/.ssh/*)"
+      "Read(~/.gnupg/**)"
     ];
     remoteControlAtStartup = false;
+    respectGitignore = false;
     skipAutoPermissionPrompt = true;
     statusLine = {
       command = "${statusLine}";
