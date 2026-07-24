@@ -44,6 +44,7 @@
     ./pia-vpn.nix
     ./reverse-proxy.nix
     ./jellyfin-register.nix
+    ./family-landing.nix
     ./dashboard.nix
     ./adguard.nix
     ./state-backup.nix
