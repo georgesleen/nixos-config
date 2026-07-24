@@ -47,6 +47,7 @@
     ./family-landing.nix
     ./dashboard.nix
     ./adguard.nix
+    ./decluttarr.nix
     ./state-backup.nix
   ];
   networking.hostName = "gs-pi4";
