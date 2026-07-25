@@ -48,7 +48,6 @@
     # typst
     typst
   ];
-  programs.nix-ld.enable = true;
   services.udev.packages = [
     pkgs.stlink
     pkgs.platformio-core.udev

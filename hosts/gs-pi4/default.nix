@@ -20,6 +20,8 @@
   # sd-image base profile enables zfs, but zfs-kernel lags linuxPackages_latest
   # and breaks the build; this Pi has no zfs pools. Force it off.
   boot.supportedFilesystems.zfs = lib.mkForce false;
+  # kitty terminfo so tmux (and other programs) work when SSHing from kitty.
+  environment.systemPackages = [ pkgs.kitty.terminfo ];
   # Reformatted from NTFS to btrfs 2026-07-21 so the *arr apps can hardlink
   # imports (downloads and library share this one filesystem). zstd:1 is cheap
   # compression; media is mostly incompressible but text/metadata benefits.

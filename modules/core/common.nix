@@ -39,6 +39,8 @@
     delta # diff pager for git
     wakeonlan # wake on lan commands
   ];
+  # Allow generic Linux binaries (e.g. uv-managed Python) to run via stub ld.
+  programs.nix-ld.enable = true;
   # Networking
   security.pki.certificates = [
     #optional
