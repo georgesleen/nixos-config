@@ -2,8 +2,6 @@
 
 {
   programs.bash = {
-    enable = true;
-    enableCompletion = true;
     bashrcExtra = ''
       export PATH="$PATH:$HOME/bin:$HOME/.local/bin:$HOME/go/bin"
       [[ -r /run/secrets/github_pat ]] && export GITHUB_PERSONAL_ACCESS_TOKEN="$(< /run/secrets/github_pat)"
@@ -41,11 +39,23 @@
         fi
         kill "$(cat "$pidfile")" && rm "$pidfile" && echo "Sleep resumed"
       }
+      # Keep the `yazi` name but cd the shell to yazi's last directory on quit
+      # (yazi can't change its parent shell's cwd on its own). `command` calls the
+      # real binary, not this function.
+      yazi() {
+        local tmp; tmp="$(mktemp -t yazi-cwd.XXXXXX)"
+        command yazi "$@" --cwd-file="$tmp"
+        local cwd; cwd="$(command cat -- "$tmp")"
+        [[ -n "$cwd" && "$cwd" != "$PWD" ]] && builtin cd -- "$cwd"
+        command rm -f -- "$tmp"
+      }
     '';
+    enable = true;
+    enableCompletion = true;
     shellAliases = {
       gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an, %ar)%Creset%(if)%(trailers:key=Co-authored-by,only=true,valueonly=true)%(then) %C(dim cyan)· %(trailers:key=Co-authored-by,only=true,valueonly=true,separator=, )%Creset%(end)'";
-      wake-server = "wakeonlan 4c:cc:6a:fb:a9:73";
       shutdown-server = "ssh gs-server sudo shutdown -h now";
+      wake-server = "wakeonlan 4c:cc:6a:fb:a9:73";
     };
   };
 
