@@ -39,6 +39,9 @@
       "flakes"
     ];
     filter-syscalls = false;
+    # Keep build deps/outputs of gcroots so GC doesn't force rebuilds.
+    keep-derivations = true;
+    keep-outputs = true;
     # QEMU binfmt emulation (aarch64) needs these — seccomp filtering blocks QEMU
     # syscalls, and the binfmt sandbox can't create nested namespaces.
     sandbox = false;
