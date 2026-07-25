@@ -4,6 +4,8 @@
   home.packages = with pkgs; [ playerctl ];
   home.sessionVariables = {
     EDITOR = "hx";
+    # btrfs reflinks for uv venvs, dedups against ~/.cache/uv.
+    UV_LINK_MODE = "clone";
     VISUAL = "hx";
   };
   services.playerctld.enable = true;
