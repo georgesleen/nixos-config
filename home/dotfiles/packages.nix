@@ -2,44 +2,49 @@
 
 {
   home.packages = with pkgs; [ playerctl ];
-
-  services.playerctld.enable = true;
-
   home.sessionVariables = {
     EDITOR = "hx";
     VISUAL = "hx";
   };
-
-  xdg.mimeApps = {
-    enable = true;
-    defaultApplications = {
-      "text/html" = "firefox.desktop";
-      "x-scheme-handler/http" = "firefox.desktop";
-      "x-scheme-handler/https" = "firefox.desktop";
-      "x-scheme-handler/about" = "firefox.desktop";
-      "x-scheme-handler/unknown" = "firefox.desktop";
-    };
-  };
-
+  services.playerctld.enable = true;
   xdg.desktopEntries = {
-    sound = {
-      name = "Sound";
-      exec = "kitty -e pulsemixer";
-      terminal = false;
-      categories = [ "Audio" ];
-    };
     bluetooth = {
-      name = "Bluetooth";
-      exec = "kitty -e bluetuith";
-      terminal = false;
       categories = [ "Settings" ];
+      exec = "kitty -e bluetuith";
+      name = "Bluetooth";
+      terminal = false;
     };
     network = {
-      name = "Network";
-      exec = "kitty -e nmtui";
-      terminal = false;
       categories = [ "Network" ];
+      exec = "kitty -e nmtui";
+      name = "Network";
+      terminal = false;
     };
+    sound = {
+      categories = [ "Audio" ];
+      exec = "kitty -e pulsemixer";
+      name = "Sound";
+      terminal = false;
+    };
+  };
+  xdg.mimeApps = {
+    defaultApplications = {
+      "image/avif" = "imv.desktop";
+      "image/bmp" = "imv.desktop";
+      "image/gif" = "imv.desktop";
+      # Images open in imv (already installed via sway-extras), not the browser.
+      # imv is Wayland-native and animates GIFs.
+      "image/jpeg" = "imv.desktop";
+      "image/png" = "imv.desktop";
+      "image/tiff" = "imv.desktop";
+      "image/webp" = "imv.desktop";
+      "text/html" = "firefox.desktop";
+      "x-scheme-handler/about" = "firefox.desktop";
+      "x-scheme-handler/http" = "firefox.desktop";
+      "x-scheme-handler/https" = "firefox.desktop";
+      "x-scheme-handler/unknown" = "firefox.desktop";
+    };
+    enable = true;
   };
 
 }
