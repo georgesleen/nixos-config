@@ -39,9 +39,7 @@
         fi
         kill "$(cat "$pidfile")" && rm "$pidfile" && echo "Sleep resumed"
       }
-      # Keep the `yazi` name but cd the shell to yazi's last directory on quit
-      # (yazi can't change its parent shell's cwd on its own). `command` calls the
-      # real binary, not this function.
+      # cd the shell to yazi's last dir on quit.
       yazi() {
         local tmp; tmp="$(mktemp -t yazi-cwd.XXXXXX)"
         command yazi "$@" --cwd-file="$tmp"

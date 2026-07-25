@@ -32,8 +32,7 @@
       "image/avif" = "imv.desktop";
       "image/bmp" = "imv.desktop";
       "image/gif" = "imv.desktop";
-      # Images open in imv (already installed via sway-extras), not the browser.
-      # imv is Wayland-native and animates GIFs.
+      # Open images in imv, not the browser.
       "image/jpeg" = "imv.desktop";
       "image/png" = "imv.desktop";
       "image/tiff" = "imv.desktop";
