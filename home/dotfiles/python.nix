@@ -1,5 +1,5 @@
 # User-scoped Python with batteries-included scientific stack.
-# Bare python313 and uv live in modules/features/dev.nix for system-level / nix-ld use.
+# uv is in modules/core/common.nix; python313 in modules/features/dev.nix.
 
 { pkgs, ... }:
 

@@ -20,11 +20,9 @@
     # c/c++
     gcc
     clang
-    gnumake
     cmake
 
-    # python
-    uv
+    # python (uv is in core; python313 for nix-ld / system use)
     python313
 
     # rust
