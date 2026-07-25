@@ -8,6 +8,9 @@
     gh # github cli
     rsync # file sync
     tree # file viewer
+    yazi # terminal file manager
+    gocryptfs # mountable encrypted directories
+    sshfs # mount remote dirs over ssh
     xclip # clipboard interface for helix
     tmux # terminal multiplexer
     usbutils # for lsusb
@@ -39,6 +42,16 @@
     #optional
   ];
   security.pki.installCACerts = true;
+  # gocryptfs (and other FUSE tools) can only mount as an unprivileged user via a
+  # setuid fusermount3; the plain nix-store binary isn't setuid, so mounts fail
+  # with "fusermount3: mount failed: Operation not permitted". This wrapper (the
+  # standard NixOS fix) lands in /run/wrappers/bin, ahead of the store copy in PATH.
+  security.wrappers.fusermount3 = {
+    group = "root";
+    owner = "root";
+    setuid = true;
+    source = "${pkgs.fuse3}/bin/fusermount3";
+  };
   # Tailscale daemon
   services.tailscale = {
     enable = true;
