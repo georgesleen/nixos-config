@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
@@ -247,4 +248,7 @@ in
     recursive = true;
     source = ./claude/skills;
   };
+  # The gs-pi4 operator skill lives in the private nixos-pi4 input, kept out of
+  # this public repo; link it in alongside the recursive tree above.
+  home.file.".claude/skills/gs-pi4".source = inputs.nixos-pi4 + "/home/skills/gs-pi4";
 }

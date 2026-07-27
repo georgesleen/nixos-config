@@ -16,14 +16,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/home-manager";
     };
-    # Declarative media server stack (jellyfin + *arr + qbittorrent, VPN via
-    # bundled vpn-confinement). Used by gs-pi4.
-    nixflix = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:kiriwalawren/nixflix";
-    };
     # For installing nixos on raspberry pi
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
+    # gs-pi4 host modules, kept in a private repo so its stack stays out of this
+    # public repo. A flake that owns its own downstream inputs; nixpkgs follows
+    # ours so there's a single nixpkgs. Local git checkout on the T480s (the only
+    # machine that builds gs-pi4), so no remote fetch/token is needed.
+    nixos-pi4 = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "git+file:///home/george-sleen/Documents/projects/nixos-pi4";
+    };
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     # Pedantic Nix formatter (wraps nixfmt + adds attribute ordering)
     pedantix.url = "github:Swarsel/pedantix";
@@ -113,7 +115,7 @@
             ./hosts/gs-pi4
             { nixpkgs.overlays = [ crossOverlay ]; }
             sops-nix.nixosModules.sops
-            inputs.nixflix.nixosModules.default
+            inputs.nixos-pi4.nixosModules.gs-pi4
             home-manager.nixosModules.home-manager
             (hmConfig ./home/user-pi.nix)
           ];

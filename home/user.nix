@@ -1,5 +1,6 @@
 {
   config,
+  inputs,
   pkgs,
   user,
   ...
@@ -33,7 +34,7 @@
     ./dotfiles/kitty.nix
     ./dotfiles/mako.nix
     ./dotfiles/packages.nix
-    ./dotfiles/pi-state-backup.nix
+    (inputs.nixos-pi4 + "/home/pi-state-backup.nix")
     ./dotfiles/python.nix
     ./dotfiles/rclone.nix
     ./dotfiles/sway.nix

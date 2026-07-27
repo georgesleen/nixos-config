@@ -85,7 +85,5 @@ Or point a live install's `@home` mount at the restored subvolume.
 - The local `<last>` snapshot MUST still exist for the next incremental; that's
   why step 3 pins it. Forgetting the pin forces a slow full send next time.
 - The backup subvolume must be read-only (step 2) or it can't be a `-p` parent.
-- Don't confuse this with the gs-pi4 media server: its `/srv/media/.state` (arr
-  configs, request history) is a SEPARATE, currently-unbacked-up gap. See
-  [[project-nixflix-migration]] / the gs-pi4 skill; if that's the ask, this skill
-  is the wrong one.
+- This skill backs up the T480s `/home` only. The gs-pi4 host manages its own
+  separate state backup; if that's the ask, this is the wrong skill.

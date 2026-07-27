@@ -140,6 +140,7 @@
       "inputs": {
         "mkdocs-catppuccin": "mkdocs-catppuccin",
         "nixpkgs": [
+          "nixos-pi4",
           "nixpkgs"
         ],
         "treefmt-nix": "treefmt-nix",
@@ -176,6 +177,27 @@
         "ref": "master",
         "repo": "nixos-hardware",
         "type": "github"
+      }
+    },
+    "nixos-pi4": {
+      "inputs": {
+        "nixflix": "nixflix",
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1785142857,
+        "narHash": "sha256-wqQ6ALkwSDmb+VXihgUf9XQm7XccracDvfBW5X+OE1o=",
+        "ref": "refs/heads/main",
+        "rev": "68ffb55f7549ac50b7b30c5826e6050d51f38bbb",
+        "revCount": 6,
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/nixos-pi4"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/nixos-pi4"
       }
     },
     "nixpkgs": {
@@ -262,8 +284,8 @@
         "NixVirt": "NixVirt",
         "helix": "helix",
         "home-manager": "home-manager",
-        "nixflix": "nixflix",
         "nixos-hardware": "nixos-hardware",
+        "nixos-pi4": "nixos-pi4",
         "nixpkgs": "nixpkgs_2",
         "pedantix": "pedantix",
         "sops-nix": "sops-nix",
@@ -314,6 +336,7 @@
     "treefmt-nix": {
       "inputs": {
         "nixpkgs": [
+          "nixos-pi4",
           "nixflix",
           "nixpkgs"
         ]

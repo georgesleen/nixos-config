@@ -34,7 +34,7 @@ sops.secrets.my-secret = { };
 ```
 
 Available at `/run/secrets/my-secret` after rebuild. Nested YAML keys use a `/`
-path: `sops.secrets."jellyfin/api_key"` reads `jellyfin: { api_key: ... }`.
+path: `sops.secrets."service/api_key"` reads `service: { api_key: ... }`.
 
 ## Onboard a new host
 

@@ -8,7 +8,7 @@
   ...
 }:
 {
-  # tun for tailscale; wireguard for the nixflix VPN namespace (vpn-confinement).
+  # tun for tailscale; wireguard for the confined VPN namespace.
   boot.kernelModules = [
     "tun"
     "wireguard"
@@ -22,9 +22,8 @@
   boot.supportedFilesystems.zfs = lib.mkForce false;
   # kitty terminfo so tmux (and other programs) work when SSHing from kitty.
   environment.systemPackages = [ pkgs.kitty.terminfo ];
-  # Reformatted from NTFS to btrfs 2026-07-21 so the *arr apps can hardlink
-  # imports (downloads and library share this one filesystem). zstd:1 is cheap
-  # compression; media is mostly incompressible but text/metadata benefits.
+  # btrfs data drive (single filesystem so apps can hardlink across dirs). zstd:1
+  # is cheap compression; large binaries barely compress but text/metadata does.
   fileSystems."/srv/media" = {
     device = "/dev/disk/by-label/media";
     fsType = "btrfs";
@@ -42,15 +41,8 @@
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ../../modules/roles/pi.nix
-    ./nixflix.nix
-    ./pia-vpn.nix
-    ./reverse-proxy.nix
-    ./jellyfin-register.nix
-    ./family-landing.nix
-    ./dashboard.nix
-    ./adguard.nix
-    ./decluttarr.nix
-    ./state-backup.nix
+    # Host-specific service modules live in the private nixos-pi4 input.
+    inputs.nixos-pi4.nixosModules.gs-pi4
   ];
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
@@ -81,12 +73,11 @@
     useRoutingFeatures = "server";
   };
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
-  sops.defaultSopsFile = ../../secrets/gs-pi4.yaml;
   system.stateVersion = "25.11";
-  # nixflix's mediaDir/stateDir live under /srv, and systemd-tmpfiles refuses to
-  # create root-owned subdirs beneath a non-root-owned parent ("unsafe path
-  # transition"), which fails nixflix-setup-dirs. /srv had drifted to
-  # george-sleen ownership; pin it root-owned so activation is reproducible.
+  # State dirs live under /srv; systemd-tmpfiles refuses to create root-owned
+  # subdirs beneath a non-root-owned parent ("unsafe path transition"). /srv had
+  # drifted to george-sleen ownership; pin it root-owned so activation is
+  # reproducible.
   systemd.tmpfiles.rules = [ "d /srv 0755 root root - -" ];
   users.users.${user} = {
     extraGroups = [ "wheel" ];
