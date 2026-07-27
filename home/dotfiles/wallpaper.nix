@@ -52,7 +52,7 @@ let
         )
       );
 
-  # Normalize a wallpapers.nix entry into resolved { light; dark; } store paths.
+  # Normalize a wallpaper-list.nix entry into resolved { light; dark; } store paths.
   # An entry with a single `src` reuses one render for both modes.
   mkEntry =
     i: e:
@@ -75,7 +75,7 @@ let
         dark = mkImage "${toString i}-dark" darkSrc doWatermark;
       };
 
-  wallpapers = lib.imap0 mkEntry (import ./wallpapers.nix);
+  wallpapers = lib.imap0 mkEntry (import ./wallpaper-list.nix);
 
   lightList = lib.concatMapStringsSep " " (w: "\"${w.light}\"") wallpapers;
   darkList = lib.concatMapStringsSep " " (w: "\"${w.dark}\"") wallpapers;
@@ -136,10 +136,12 @@ in
     Unit = {
       Description = "Rotate to next wallpaper";
       After = [ "awww-daemon.service" ];
+      Requires = [ "awww-daemon.service" ];
     };
     Service = {
       Type = "oneshot";
       ExecStart = "${wallpaperApply}/bin/wallpaper-apply --next";
+      Restart = "on-failure";
     };
   };
 
@@ -149,10 +151,12 @@ in
     Unit = {
       Description = "Re-render current wallpaper for the active mode";
       After = [ "awww-daemon.service" ];
+      Requires = [ "awww-daemon.service" ];
     };
     Service = {
       Type = "oneshot";
       ExecStart = "${wallpaperApply}/bin/wallpaper-apply";
+      Restart = "on-failure";
     };
   };
 
