@@ -92,32 +92,6 @@ let
     echo "$out"
   '';
 
-  # Bridge between sudo's SUDO_ASKPASS protocol (argv[1] = prompt, stdout =
-  # password) and pinentry-gnome3's Assuan protocol. -k in every sudo call
-  # (enforced by sudoHook below) prevents within-invocation caching; ppid
-  # timestamp_type (sudoers in hosts/gs-thinkpad-t480s/default.nix) prevents
-  # cross-invocation caching because each Bash tool call is a fresh shell.
-  sudoAskpass = pkgs.writeShellScript "sudo-askpass" ''
-    printf 'SETPROMPT %s\nGETPIN\n' "''${1:-Password:}" \
-      | ${pkgs.pinentry-gnome3}/bin/pinentry-gnome3 2>/dev/null \
-      | ${pkgs.gawk}/bin/awk '/^D /{print substr($0, 3); exit}'
-  '';
-
-  # PreToolUse hook: block any Bash sudo invocation that isn't sudo -A -k.
-  # Literal string match avoids false passes from flags on other commands
-  # (e.g. grep -A 3, ssh -k) that the flag-scanning approach would confuse
-  # with sudo's own flags.
-  sudoHook = pkgs.writeShellScript "claude-sudo-check" ''
-    input="$(${pkgs.coreutils}/bin/cat)"
-    cmd="$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_input.command // empty')"
-    [ -z "$cmd" ] && exit 0
-    printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -qE '\bsudo\b' || exit 0
-    if ! printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -qE '\bsudo -A -k\b'; then
-      printf 'Use sudo -A -k (exact form): -A triggers SUDO_ASKPASS dialog, -k prevents within-command caching\n' >&2
-      exit 2
-    fi
-  '';
-
   # PreToolUse hook: block any Bash command that would read decrypted secrets,
   # i.e. the sops-nix runtime mount (/run/secrets, /run/secrets.d) or a sops
   # decrypt-to-stdout (sops -d / --decrypt). The grep sees the whole command
@@ -212,9 +186,6 @@ in
       "swift-lsp@claude-plugins-official" = true;
       "typescript-lsp@claude-plugins-official" = true;
     };
-    env = {
-      SUDO_ASKPASS = "${sudoAskpass}";
-    };
     hooks = {
       PostToolUse = [
         {
@@ -230,10 +201,6 @@ in
       PreToolUse = [
         {
           hooks = [
-            {
-              command = "${sudoHook}";
-              type = "command";
-            }
             {
               command = "${secretsHook}";
               type = "command";
