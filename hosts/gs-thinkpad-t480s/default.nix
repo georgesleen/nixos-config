@@ -11,6 +11,14 @@
   # Bootloader
   boot.loader.grub.enable = false;
   boot.loader.systemd-boot.enable = true;
+  # Strict per-interface ARP so the wired dock and wifi can share the home /24
+  # without ARP flux stalling the Moonlight stream to the win11 VM.
+  boot.kernel.sysctl = {
+    "net.ipv4.conf.all.arp_ignore" = 1;
+    "net.ipv4.conf.all.arp_announce" = 2;
+    "net.ipv4.conf.default.arp_ignore" = 1;
+    "net.ipv4.conf.default.arp_announce" = 2;
+  };
   # Host-specific packages
   environment.systemPackages = with pkgs; [
     libimobiledevice
