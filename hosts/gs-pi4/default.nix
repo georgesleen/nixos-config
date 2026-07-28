@@ -46,6 +46,15 @@
   ];
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
+  # 29 GB SD: keep the store from filling. Auto-GC old generations weekly, and
+  # trigger GC mid-build when free space drops below min-free (down to max-free).
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
+  };
+  nix.settings.max-free = 6 * 1024 * 1024 * 1024; # 6 GiB
+  nix.settings.min-free = 2 * 1024 * 1024 * 1024; # 2 GiB
   # Trust paths signed by the T480s. Generate the keypair on the T480s once:
   #   sudo nix-store --generate-binary-cache-key gs-thinkpad-t480s-1 \
   #     /etc/nix/signing-key.sec /etc/nix/signing-key.pub
@@ -57,6 +66,8 @@
   nixpkgs.config.allowUnfree = true;
   nixpkgs.hostPlatform = "aarch64-linux";
   security.sudo.wheelNeedsPassword = false;
+  # Cap the journal so it can't balloon on the SD (had grown past 400 MB).
+  services.journald.extraConfig = "SystemMaxUse=200M";
   services.openssh = {
     enable = true;
     settings.PasswordAuthentication = false;
@@ -85,5 +96,13 @@
     openssh.authorizedKeys.keys = [
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDS8y5OdyR6OIy91fTAzt2GHg+aqm9H5F2l+G9/aWFJF george-sleen@GS-ThinkPad-T480s"
     ];
+  };
+  # 3.75 GB RAM, no disk swap: the media stack exhausts RAM and the page cache
+  # collapses, so every read hits the slow USB media drive. Compressed RAM swap
+  # gives headroom (lets idle service pages compress out to free real RAM for
+  # cache) without SD wear. Not a hibernation target, but this host never sleeps.
+  zramSwap = {
+    enable = true;
+    memoryPercent = 100;
   };
 }
