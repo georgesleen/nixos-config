@@ -155,6 +155,52 @@ let
     ${pkgs.jq}/bin/jq -n --arg r "$reason" --arg f "$report" \
       '{decision:"block", reason:$r, systemMessage:("Adversarial review triggered -> " + $f), suppressOutput:true}'
   '';
+
+  # Debug-skill nudge: PostToolUse on Bash. When a command's output carries a
+  # strong failure signal (not a bare non-zero exit, which grep/test/[ produce
+  # benignly), emit a one-line NON-BLOCKING reminder to invoke /debug for
+  # root-cause analysis. Deliberately cheap: the methodology lives in the debug
+  # SKILL.md and only loads when the skill is actually invoked; this only nudges.
+  # Deduped by error signature (same idea as reviewHook's diff-hash trick) so a
+  # re-run of the same failure does not re-inject. Never blocks: exits 0 with a
+  # systemMessage, so it costs ~1 line and never derails routine failures.
+  debugHook = pkgs.writeShellScript "claude-debug-nudge" ''
+    set -euo pipefail
+    input="$(${pkgs.coreutils}/bin/cat)"
+
+    # Combine stdout+stderr of the tool result; bail if there's nothing to scan.
+    out="$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '
+      (.tool_response.stdout // "") + "\n" + (.tool_response.stderr // "")
+      + "\n" + (.tool_response.output // "")' 2>/dev/null || true)"
+    [ -n "''${out//[[:space:]]/}" ] || exit 0
+
+    # Strong failure signals only. Bare exit 1 (grep no-match, test/[ false) has
+    # none of these, so routine non-zero exits stay silent.
+    if ! printf '%s\n' "$out" | ${pkgs.gnugrep}/bin/grep -qiE \
+      'traceback \(most recent|^error:|[[:space:]]error:|panic:|segfault|core dumped|\bFAILED\b|assertion failed|no such file or directory|command not found|cannot find|unbound variable|syntax error|fatal:|build failed|error building|nix log'; then
+      exit 0
+    fi
+
+    # Dedup by a normalised signature of the matched error lines (strip digits,
+    # hex, and paths so the same class of error doesn't re-fire on each retry).
+    sig="$(printf '%s\n' "$out" \
+      | ${pkgs.gnugrep}/bin/grep -iE 'error|failed|panic|fatal|traceback|segfault|no such file|not found' \
+      | ${pkgs.gnused}/bin/sed -E 's/[0-9a-f]{2,}//g; s#/[^ ]+##g' \
+      | ${pkgs.coreutils}/bin/head -c 4000 \
+      | ${pkgs.coreutils}/bin/sha1sum | ${pkgs.coreutils}/bin/cut -d' ' -f1)"
+    statedir="$HOME/.claude/debug-nudge"
+    ${pkgs.coreutils}/bin/mkdir -p "$statedir"
+    sigfile="$statedir/$sig"
+    [ -e "$sigfile" ] && exit 0
+    : > "$sigfile"
+    # Keep the dedup dir from growing unbounded (drop entries older than a day).
+    ${pkgs.findutils}/bin/find "$statedir" -type f -mtime +1 -delete 2>/dev/null || true
+
+    ${pkgs.jq}/bin/jq -n '{
+      systemMessage: "A command failed with an error signal. If this is a real bug (not an expected non-zero exit), invoke /debug: reproduce it, fishbone the causes, fix the root, and prove it with a toggle test.",
+      suppressOutput: true
+    }'
+  '';
 in
 {
   home.file.".claude/settings.json".text = builtins.toJSON {
@@ -197,6 +243,15 @@ in
             }
           ];
           matcher = "TodoWrite";
+        }
+        {
+          hooks = [
+            {
+              command = "${debugHook}";
+              type = "command";
+            }
+          ];
+          matcher = "Bash";
         }
       ];
       PreToolUse = [
