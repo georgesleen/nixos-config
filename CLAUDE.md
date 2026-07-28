@@ -78,7 +78,7 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 
 ### sudo / Claude Code
 
-- `hosts/gs-thinkpad-t480s/default.nix` `timestamp_type=ppid`: scopes sudo cache to parent PID; each Claude Bash invocation is a new shell (new PPID), so no cross-invocation caching; interactive shells cache normally.
+- `hosts/gs-thinkpad-t480s/default.nix` `timestamp_type=ppid`: scopes sudo cache to parent PID so each Claude Bash invocation (new PPID) has no inherited cache; interactive shells cache normally. Sudo triggers the system askpass automatically when no tty is present.
 - `home/dotfiles/claude.nix` `secretsHook` (PreToolUse/Bash) + `permissions.deny` on `Read(/run/secrets/**)`: block Claude from reading decrypted sops secrets (`/run/secrets`, `sops -d`), including inside an `ssh <host> "..."` payload. Guardrail against casual reads, not a hard sandbox (matches the command string). To act on a secret-backed service, use its own runtime credential inline without echoing it, or an auth-bypass path.
 
 ### sway / desktop
