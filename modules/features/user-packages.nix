@@ -4,6 +4,15 @@
 
 let
   libreoffice = pkgs."libreoffice-fresh";
+  # JMP renders a black screen (audio only) under Wayland-native Qt: EGL context
+  # creation fails, mpv logs "No render context set". Force XWayland so mpv's VO
+  # gets a working GL context. Scoped to this binary; a global QT_QPA_PLATFORM
+  # would push every Qt app onto XWayland.
+  jellyfin-media-player = pkgs.jellyfin-media-player.overrideAttrs (old: {
+    postFixup = (old.postFixup or "") + ''
+      wrapProgram $out/bin/jellyfin-desktop --set-default QT_QPA_PLATFORM xcb
+    '';
+  });
 in
 
 {

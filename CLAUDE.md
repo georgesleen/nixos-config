@@ -95,6 +95,7 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 - `modules/features/keychron.nix` udev: `TAG+="uaccess"` never grants hidraw under sway/Wayland (logind seat grant doesn't fire); needs `MODE="0660", GROUP="plugdev"`.
 - Steam Remote Play (T480s client): works fine under sway/XWayland (verified 2026-07-02); the old white-screen/~1FPS was guest-side (wedged tailscale + RX580 Code 43), not the client display chain. Do NOT set `LIBGL_DRI3_DISABLE=1`; it forces llvmpipe and breaks Steam launch entirely.
 - `home/dotfiles/claude.nix` `reviewHook` (PostToolUse/TodoWrite adversarial review): after `nixos-rebuild switch` the new hook does not fire in already-running Claude Code sessions; the settings watcher only tracks hooks present at session start. Reload with `/hooks` or restart; new sessions pick it up automatically.
+- `modules/features/user-packages.nix` jellyfin-media-player xcb wrap: JMP (`jellyfin-desktop` 2.0.0) renders black video with working audio under Wayland-native Qt (EGL context fails, mpv logs `No render context set`); a `postFixup` `wrapProgram` sets `QT_QPA_PLATFORM=xcb` to force XWayland. `qtWrapperArgs` via overrideAttrs is a no-op for this package (changed the drv hash but did not inject the var); must re-wrap the final binary. Runtime `QT_QPA_PLATFORM=xcb jellyfin-desktop` is the manual equivalent.
 
 ### gs-server / win11 VM
 
