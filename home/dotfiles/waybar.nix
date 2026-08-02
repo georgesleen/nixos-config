@@ -23,8 +23,8 @@ let
   fmtBytes = pkgs.writeShellScript "fmt-bytes" ''
     awk -v u="$1" -v t="$2" 'BEGIN{
       gib=1024*1024*1024; tib=gib*1024
-      if (t >= tib) { printf "%.3f/%.3f TiB", u/tib, t/tib }
-      else           { printf "%.3f/%.3f GiB", u/gib, t/gib }
+      if (t >= tib) { printf "%.2f/%.2f TiB", u/tib, t/tib }
+      else           { printf "%.2f/%.2f GiB", u/gib, t/gib }
     }'
   '';
   brightnessBlock = pkgs.writeShellScript "waybar-brightness" ''
@@ -41,7 +41,7 @@ let
       echo "<span color='${muted}'>󱐋 n/a</span>"
       exit 0
     fi
-    rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{print $2, $3}')
+    rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{printf "%.2f %s\n", $2, $3}')
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
