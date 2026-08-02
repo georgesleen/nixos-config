@@ -51,10 +51,23 @@ let
   swaylockConfig = "${config.xdg.configHome}/swaylock/config";
   swaylockCmd = "${swaylockPackage}/bin/swaylock -f -C ${swaylockConfig}";
 
+  # Volume/brightness step, in percent. Presses snap to the next multiple of
+  # this, so levels always land on multiples of 5 (45, 50, 55...) not 49, 54.
+  avStep = 5;
   volumeScript = pkgs.writeShellScript "volume" ''
+    step=${toString avStep}
     case "$1" in
-      up)   ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ ;;
-      down) ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- ;;
+      up | down)
+        cur=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%d", $2 * 100}')
+        if [ "$1" = up ]; then
+          new=$(( (cur / step + 1) * step ))
+        else
+          new=$(( ((cur - 1) / step) * step ))
+        fi
+        [ "$new" -lt 0 ] && new=0
+        [ "$new" -gt 100 ] && new=100
+        ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ "''${new}%"
+        ;;
       mute) ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
     esac
     raw=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@)
@@ -80,13 +93,19 @@ let
   '';
 
   brightnessScript = pkgs.writeShellScript "brightness" ''
-    case "$1" in
-      up)   ${pkgs.brightnessctl}/bin/brightnessctl set 5%+ ;;
-      down) ${pkgs.brightnessctl}/bin/brightnessctl set 5%- ;;
-    esac
+    step=${toString avStep}
     cur=$(${pkgs.brightnessctl}/bin/brightnessctl get)
     max=$(${pkgs.brightnessctl}/bin/brightnessctl max)
-    ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "$((cur * 100 / max))%"
+    pct=$(( cur * 100 / max ))
+    case "$1" in
+      up)   new=$(( (pct / step + 1) * step )) ;;
+      down) new=$(( ((pct - 1) / step) * step )) ;;
+      *)    new=$pct ;;
+    esac
+    [ "$new" -lt 0 ] && new=0
+    [ "$new" -gt 100 ] && new=100
+    ${pkgs.brightnessctl}/bin/brightnessctl set "''${new}%" >/dev/null
+    ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "''${new}%"
   '';
 
   screenshotScript = pkgs.writeShellApplication {
