@@ -15,7 +15,7 @@ let
   fmtFreq = pkgs.writeShellScript "fmt-freq" ''
     mhz="$1"
     if [ "$mhz" -ge 1000 ] 2>/dev/null; then
-      awk -v m="$mhz" 'BEGIN{printf "%.1f GHz", m/1000}'
+      awk -v m="$mhz" 'BEGIN{printf "%.2f GHz", m/1000}'
     else
       echo "''${mhz} MHz"
     fi
@@ -23,8 +23,8 @@ let
   fmtBytes = pkgs.writeShellScript "fmt-bytes" ''
     awk -v u="$1" -v t="$2" 'BEGIN{
       gib=1024*1024*1024; tib=gib*1024
-      if (t >= tib) { printf "%.2f/%.2f TiB", u/tib, t/tib }
-      else           { printf "%.2f/%.2f GiB", u/gib, t/gib }
+      if (t >= tib) { printf "%.3f/%.3f TiB", u/tib, t/tib }
+      else           { printf "%.3f/%.3f GiB", u/gib, t/gib }
     }'
   '';
   brightnessBlock = pkgs.writeShellScript "waybar-brightness" ''
@@ -97,11 +97,11 @@ let
     pct_num="$(echo "$pct" | tr -d '%')"
     if [ "$state" = "charging" ]; then
       icon="󰂄"
-      color="#81b29a"
+      color="#dbc074"
       label="$pct (chg) $ttf_fmt"
     elif [ "$state" = "fully-charged" ]; then
       icon="󰁹"
-      color="#81b29a"
+      color="#dbc074"
       label="$pct (full)"
     elif [ "$pct_num" -le 15 ]; then
       icon="󰁺"
@@ -117,7 +117,7 @@ let
       label="$pct $tte_fmt"
     else
       icon="󰂁"
-      color="#81b29a"
+      color="#dbc074"
       label="$pct $tte_fmt"
     fi
     echo "<span color='$color'>$icon $label</span>"
@@ -274,7 +274,7 @@ in
       height = 30;
       layer = "top";
       memory = {
-        format = "󰒋 {used:0.1f}/{total:0.1f} GiB";
+        format = "󰒋 {used:0.2f}/{total:0.2f} GiB";
         interval = 10;
       };
       modules-center = [ ];
@@ -293,7 +293,6 @@ in
         "custom/battery"
         "custom/power"
         "clock"
-        "tray"
       ];
       network = {
         format-disconnected = "󰤭 down";
@@ -305,10 +304,6 @@ in
       spacing = 4;
       "sway/mode".format = "<span style=\"italic\">{}</span>";
       "sway/workspaces".format = "{name}";
-      tray = {
-        icon-size = 18;
-        spacing = 8;
-      };
       wireplumber = {
         format = "󰕾 {volume}%";
         format-muted = "󰖁 {volume}% (muted)";
@@ -351,14 +346,13 @@ in
       #custom-disk,
       #custom-battery,
       #custom-power,
-      #clock,
-      #tray {
+      #clock {
         margin: 4px 2px;
         padding: 0 10px;
         background: rgba(57, 80, 109, 0.30);
         border-radius: 7px;
       }
-      #tray { margin-right: 6px; }
+      #clock { margin-right: 6px; }
       /* Function-matched colours; custom modules colour themselves via pango. */
       #network     { color: #63cdcf; } /* cyan  - connectivity */
       #wireplumber { color: #81b29a; } /* green - audio */
