@@ -4,21 +4,32 @@
   user,
   ...
 }:
-
+let
+  # Masked password prompt on the sway session for when sudo has no tty (Claude
+  # Code Bash); sudo auto-uses it via /etc/sudo.conf only in the no-terminal case.
+  sudoAskpass = pkgs.writeShellScript "fuzzel-sudo-askpass" ''
+    exec ${pkgs.fuzzel}/bin/fuzzel --dmenu --password --lines 0 --prompt "''${1:-sudo password: } " </dev/null
+  '';
+in
 {
+  # Strict per-interface ARP so the wired dock and wifi can share the home /24
+  # without ARP flux stalling the Moonlight stream to the win11 VM.
+  boot.kernel.sysctl = {
+    "net.ipv4.conf.all.arp_announce" = 2;
+    "net.ipv4.conf.all.arp_ignore" = 1;
+    "net.ipv4.conf.default.arp_announce" = 2;
+    "net.ipv4.conf.default.arp_ignore" = 1;
+  };
   boot.kernelPackages = pkgs.linuxPackages_latest;
   boot.loader.efi.canTouchEfiVariables = true;
   # Bootloader
   boot.loader.grub.enable = false;
   boot.loader.systemd-boot.enable = true;
-  # Strict per-interface ARP so the wired dock and wifi can share the home /24
-  # without ARP flux stalling the Moonlight stream to the win11 VM.
-  boot.kernel.sysctl = {
-    "net.ipv4.conf.all.arp_ignore" = 1;
-    "net.ipv4.conf.all.arp_announce" = 2;
-    "net.ipv4.conf.default.arp_ignore" = 1;
-    "net.ipv4.conf.default.arp_announce" = 2;
-  };
+  # Point sudo at the fuzzel askpass so ttyless invocations (Claude Code Bash)
+  # prompt on-screen instead of failing "a terminal is required".
+  environment.etc."sudo.conf".text = ''
+    Path askpass ${sudoAskpass}
+  '';
   # Host-specific packages
   environment.systemPackages = with pkgs; [
     libimobiledevice

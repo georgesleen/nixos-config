@@ -8,11 +8,13 @@ Replace `<host>` with one of: `gs-thinkpad-t480s`, `gs-server`, `gs-pi4`.
 
 ```bash
 sudo nixos-rebuild switch --flake .#<host>   # apply system + home-manager changes
-sudo nixos-rebuild build --flake .#<host>    # build without switching
+nixos-rebuild build --flake .#<host>         # build without switching (no root needed)
 nix flake update                             # update flake inputs
 nix develop                                  # enter the default dev shell
 nix flake check                              # validate flake outputs
 ```
+
+**Prefer sudoless approaches.** On the T480s every `sudo` from Claude's Bash pops an interactive fuzzel password prompt on the desktop (see Workarounds), so it interrupts George. Reach for the non-root path first (`nixos-rebuild build`, `nix build`, `nix flake check`, plain reads); use `sudo` only when activation truly requires it (`switch`), and batch such work to minimise prompts.
 
 For long builds (e.g. SD card images), `inhibit-sleep` / `resume-sleep` hold and release a logind inhibitor (defined in `home/dotfiles/bashrc.nix`; verify with `systemd-inhibit --list`).
 
@@ -78,7 +80,8 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 
 ### sudo / Claude Code
 
-- `hosts/gs-thinkpad-t480s/default.nix` `timestamp_type=ppid`: scopes sudo cache to parent PID so each Claude Bash invocation (new PPID) has no inherited cache; interactive shells cache normally. Sudo triggers the system askpass automatically when no tty is present.
+- `hosts/gs-thinkpad-t480s/default.nix` `timestamp_type=ppid`: scopes sudo cache to parent PID so each Claude Bash invocation (new PPID) has no inherited cache; interactive shells cache normally.
+- `hosts/gs-thinkpad-t480s/default.nix` `sudoAskpass` + `environment.etc."sudo.conf"`: a fuzzel `--dmenu --password` script registered as sudo's `Path askpass`. sudo auto-invokes it only when no tty is present (Claude's Bash), popping a masked prompt on the sway session; plain `sudo` then works with no `-A` needed. Interactive shells keep prompting on their own tty. Without this, ttyless sudo failed "a terminal is required"; `-A` alone could not help because no askpass was configured (SUDO_ASKPASS unset, no sudo.conf).
 - `home/dotfiles/claude.nix` `secretsHook` (PreToolUse/Bash) + `permissions.deny` on `Read(/run/secrets/**)`: block Claude from reading decrypted sops secrets (`/run/secrets`, `sops -d`), including inside an `ssh <host> "..."` payload. Guardrail against casual reads, not a hard sandbox (matches the command string). To act on a secret-backed service, use its own runtime credential inline without echoing it, or an auth-bypass path.
 
 ### sway / desktop
