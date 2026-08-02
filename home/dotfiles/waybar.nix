@@ -1,4 +1,10 @@
-{ config, pkgs, ... }:
+# Status bar. Native waybar modules cover the simple readouts (network, volume,
+# brightness, memory, clock) and the SNI tray (swaybar rendered tray icons as
+# blobs). Blocks with deliberate custom logic stay shell scripts: battery counts
+# down to the hibernate target not 0% (see battery-thresholds.nix), gpu reads
+# Intel RC6 residency, cpu shows freq+temp, disk aggregates all real filesystems.
+
+{ pkgs, ... }:
 
 let
   thresh = import ./battery-thresholds.nix;
@@ -17,7 +23,7 @@ let
       else           { printf "%.2f/%.2f GiB", u/gib, t/gib }
     }'
   '';
-  powerBlock = pkgs.writeShellScript "i3blocks-power" ''
+  powerBlock = pkgs.writeShellScript "waybar-power" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
@@ -31,33 +37,7 @@ let
     fi
     echo "<span color='#c9956c'>󱐋 $rate</span>"
   '';
-  wirelessBlock = pkgs.writeShellScript "i3blocks-wireless" ''
-    set -euo pipefail
-    for iface in /sys/class/net/*; do
-      name="$(basename "$iface")"
-      [ "$name" = "lo" ] && continue
-      [ -d "$iface/wireless" ] && continue
-      [ -e "$iface/device" ] || continue
-      [ "$(cat "$iface/type" 2>/dev/null)" = "1" ] || continue
-      if [ "$(cat "$iface/carrier" 2>/dev/null)" = "1" ]; then
-        echo "<span color='#63cdcf'>󰲝 $name</span>"
-        exit 0
-      fi
-    done
-    dev=$(${pkgs.iw}/bin/iw dev | awk '/Interface/ {print $2; exit}')
-    out="$(${pkgs.iw}/bin/iw dev "$dev" link || true)"
-    ssid="$(printf "%s\n" "$out" | awk '/SSID/ {print $2}')"
-    sig="$(printf "%s\n" "$out" | awk '/signal/ {print $2}')"
-    if [ -z "$ssid" ]; then
-      echo "<span color='#738091'>󰤭 down</span>"
-      exit 0
-    fi
-    q=$((2*(sig+100)))
-    if [ "$q" -lt 0 ]; then q=0; fi
-    if [ "$q" -gt 100 ]; then q=100; fi
-    echo "<span color='#63cdcf'>󰤨 $ssid $q%</span>"
-  '';
-  batteryBlock = pkgs.writeShellScript "i3blocks-battery" ''
+  batteryBlock = pkgs.writeShellScript "waybar-battery" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
@@ -132,13 +112,7 @@ let
     fi
     echo "<span color='$color'>$icon $label</span>"
   '';
-  brightnessBlock = pkgs.writeShellScript "i3blocks-brightness" ''
-    set -euo pipefail
-    cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
-    max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
-    echo "<span color='#f0e090'>󰃟 $((cur * 100 / max))%</span>"
-  '';
-  cpuBlock = pkgs.writeShellScript "i3blocks-cpu" ''
+  cpuBlock = pkgs.writeShellScript "waybar-cpu" ''
     cpu_freq() {
       local sum=0 count=0 f val
       for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq; do
@@ -183,8 +157,8 @@ let
 
     echo "<span color='$color'>󰍛 $label</span>"
   '';
-  gpuBlock = pkgs.writeShellScript "i3blocks-gpu" ''
-    STATE="''${XDG_RUNTIME_DIR:-/tmp}/i3blocks-gpu-state"
+  gpuBlock = pkgs.writeShellScript "waybar-gpu" ''
+    STATE="''${XDG_RUNTIME_DIR:-/tmp}/waybar-gpu-state"
 
     # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
     intel_busy() {
@@ -212,39 +186,6 @@ let
       p=$(ls /sys/class/drm/card*/gt/gt0/rps_act_freq_mhz 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
       [ -f "$p" ] && ${pkgs.coreutils}/bin/cat "$p" || echo 0
     }
-
-    # AMD: direct sysfs busy percent
-    amd_busy() {
-      local p
-      p=$(ls /sys/class/drm/card*/device/gpu_busy_percent 2>/dev/null | ${pkgs.coreutils}/bin/tail -1)
-      [ -f "$p" ] && ${pkgs.coreutils}/bin/cat "$p" || echo 0
-    }
-    amd_freq() {
-      local d name f
-      for d in /sys/class/hwmon/hwmon*; do
-        [ -d "$d" ] || continue
-        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
-        [ "$name" = "amdgpu" ] || continue
-        f="$d/freq1_input"
-        [ -f "$f" ] && echo $(( $(${pkgs.coreutils}/bin/cat "$f") / 1000000 )) && return
-      done
-      echo 0
-    }
-
-    amd_temp() {
-      local d name f max=0 val
-      for d in /sys/class/hwmon/hwmon*; do
-        [ -d "$d" ] || continue
-        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
-        [ "$name" = "amdgpu" ] || continue
-        for f in "$d"/temp*_input; do
-          [ -f "$f" ] || continue
-          val=$(${pkgs.coreutils}/bin/cat "$f")
-          [ "$val" -gt "$max" ] && max="$val"
-        done
-      done
-      [ "$max" -gt 0 ] && echo $(( max / 1000 )) || echo ""
-    }
     intel_temp() {
       local d name f
       for d in /sys/class/hwmon/hwmon*; do
@@ -257,27 +198,9 @@ let
       echo ""
     }
 
-    # NVIDIA: nvidia-smi (optional — present only when nvidia driver is loaded)
-    nv_busy() {
-      nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits 2>/dev/null \
-        | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/tr -d ' ' || echo 0
-    }
-    nv_freq() {
-      nvidia-smi --query-gpu=clocks.current.graphics --format=csv,noheader,nounits 2>/dev/null \
-        | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/tr -d ' ' || echo 0
-    }
-    nv_temp() {
-      nvidia-smi --query-gpu=temperature.gpu --format=csv,noheader,nounits 2>/dev/null \
-        | ${pkgs.coreutils}/bin/head -1 | ${pkgs.coreutils}/bin/tr -d ' ' || echo ""
-    }
-
     busy=0 freq=0 temp=""
-    if ls /sys/class/drm/card*/device/gpu_busy_percent > /dev/null 2>&1; then
-      busy=$(amd_busy); freq=$(amd_freq); temp=$(amd_temp)
-    elif ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms > /dev/null 2>&1; then
+    if ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms > /dev/null 2>&1; then
       busy=$(intel_busy); freq=$(intel_freq); temp=$(intel_temp)
-    elif command -v nvidia-smi > /dev/null 2>&1; then
-      busy=$(nv_busy); freq=$(nv_freq); temp=$(nv_temp)
     else
       echo "<span color='#738091'>󰾲 GPU n/a</span>"
       exit 0
@@ -294,21 +217,7 @@ let
 
     echo "<span color='$color'>󰾲 $label</span>"
   '';
-  memoryBlock = pkgs.writeShellScript "i3blocks-memory" ''
-    set -euo pipefail
-    line="$(${pkgs.procps}/bin/free -m | awk '/Mem:/ {print $3, $2}')"
-    used="$(echo "$line" | awk '{print $1}')"
-    total="$(echo "$line" | awk '{print $2}')"
-    if [ "$total" -ge 1024 ]; then
-      label="$(${fmtBytes} $((used * 1024 * 1024)) $((total * 1024 * 1024)))"
-    else
-      used_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$used" | tr ',' '_')"
-      total_fmt="$(${pkgs.coreutils}/bin/numfmt --grouping "$total" | tr ',' '_')"
-      label="$used_fmt/$total_fmt MiB"
-    fi
-    echo "<span color='#e8a0a8'>󰒋 $label</span>"
-  '';
-  diskBlock = pkgs.writeShellScript "i3blocks-disk" ''
+  diskBlock = pkgs.writeShellScript "waybar-disk" ''
     set -euo pipefail
     stats="$(${pkgs.coreutils}/bin/df -B1 \
       -x tmpfs -x devtmpfs -x efivarfs -x squashfs -x overlay \
@@ -319,64 +228,125 @@ let
     label="$(${fmtBytes} "$used_b" "$total_b")"
     echo "<span color='#c3b5e8'>󰋊 $label</span>"
   '';
-  volumeBlock = pkgs.writeShellScript "i3blocks-volume" ''
-    set -euo pipefail
-    raw="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null)"
-    if [ -z "$raw" ]; then
-      echo "<span color='#738091'>󰖁 n/a</span>"
-      exit 0
-    fi
-    pct="$(echo "$raw" | awk '{printf "%d", $2 * 100}')"
-    if echo "$raw" | ${pkgs.ripgrep}/bin/rg -q MUTED; then
-      echo "<span color='#738091'>󰖁 $pct% (muted)</span>"
-    else
-      echo "<span color='#a0be82'>󰕾 $pct%</span>"
-    fi
-  '';
 in
 {
-  xdg.configFile."i3blocks/config".text = ''
-    separator_block_width=18
-    markup=pango
+  programs.waybar = {
+    enable = true;
+    systemd.enable = true;
+    settings.mainBar = {
+      layer = "top";
+      position = "top";
+      height = 26;
+      spacing = 4;
+      modules-left = [
+        "sway/workspaces"
+        "sway/mode"
+      ];
+      modules-center = [ ];
+      modules-right = [
+        "network"
+        "backlight"
+        "wireplumber"
+        "custom/cpu"
+        "custom/gpu"
+        "memory"
+        "custom/disk"
+        "custom/battery"
+        "custom/power"
+        "tray"
+        "clock"
+      ];
 
-    [wireless]
-    command=${wirelessBlock}
-    interval=10
+      "sway/workspaces".format = "{name}";
+      "sway/mode".format = "<span style=\"italic\">{}</span>";
 
-    [brightness]
-    command=${brightnessBlock}
-    interval=2
+      network = {
+        format-wifi = "󰤨 {essid} {signalStrength}%";
+        format-ethernet = "󰲝 {ifname}";
+        format-disconnected = "󰤭 down";
+        tooltip-format = "{ifname}: {ipaddr}";
+      };
+      backlight = {
+        format = "󰃟 {percent}%";
+        on-scroll-up = "${pkgs.brightnessctl}/bin/brightnessctl set 5%+";
+        on-scroll-down = "${pkgs.brightnessctl}/bin/brightnessctl set 5%-";
+      };
+      wireplumber = {
+        format = "󰕾 {volume}%";
+        format-muted = "󰖁 {volume}% (muted)";
+        on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+        scroll-step = 5;
+      };
+      memory = {
+        format = "󰒋 {used:0.1f}/{total:0.1f} GiB";
+        interval = 10;
+      };
+      clock = {
+        format = "{:%a %b %d %I:%M %p}";
+        tooltip-format = "<tt>{calendar}</tt>";
+      };
+      tray = {
+        icon-size = 18;
+        spacing = 8;
+      };
 
-    [volume]
-    command=${volumeBlock}
-    interval=2
-
-    [cpu]
-    command=${cpuBlock}
-    interval=5
-
-    [gpu]
-    command=${gpuBlock}
-    interval=5
-
-    [memory]
-    command=${memoryBlock}
-    interval=10
-
-    [disk]
-    command=${diskBlock}
-    interval=60
-
-    [battery]
-    command=${batteryBlock}
-    interval=30
-
-    [power]
-    command=${powerBlock}
-    interval=10
-
-    [time]
-    command=${pkgs.coreutils}/bin/date "+%a %b %d %I:%M %p"
-    interval=10
-  '';
+      "custom/cpu" = {
+        exec = "${cpuBlock}";
+        interval = 5;
+      };
+      "custom/gpu" = {
+        exec = "${gpuBlock}";
+        interval = 5;
+      };
+      "custom/disk" = {
+        exec = "${diskBlock}";
+        interval = 60;
+      };
+      "custom/battery" = {
+        exec = "${batteryBlock}";
+        interval = 30;
+      };
+      "custom/power" = {
+        exec = "${powerBlock}";
+        interval = 10;
+      };
+    };
+    style = ''
+      * {
+        font-family: "JetBrainsMono Nerd Font";
+        font-size: 12px;
+        min-height: 0;
+      }
+      window#waybar {
+        background: rgba(30, 30, 46, 0.93);
+        color: #cdd6f4;
+      }
+      #workspaces button {
+        padding: 0 6px;
+        color: #cdd6f4;
+        background: transparent;
+        border-bottom: 2px solid transparent;
+      }
+      #workspaces button.focused {
+        border-bottom: 2px solid #89b4fa;
+      }
+      #workspaces button.urgent {
+        color: #c94f6d;
+      }
+      .module,
+      #network,
+      #backlight,
+      #wireplumber,
+      #memory,
+      #clock,
+      #tray {
+        padding: 0 8px;
+      }
+      #network     { color: #63cdcf; }
+      #backlight   { color: #f0e090; }
+      #wireplumber { color: #a0be82; }
+      #memory      { color: #e8a0a8; }
+      #clock       { color: #cdd6f4; }
+    '';
+  };
 }

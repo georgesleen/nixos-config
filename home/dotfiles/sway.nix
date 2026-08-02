@@ -122,28 +122,9 @@ in
           mod = config.my.modifier;
         in
         {
-          bars = [
-            {
-              colors = {
-                background = "#1e1e2eee";
-                separator = "#45475aff";
-                statusline = "#cdd6f4ff";
-              };
-              extraConfig = ''
-                height 26
-              '';
-              fonts = {
-                names = [ "JetBrainsMono Nerd Font" ];
-                size = 11.0;
-              };
-              mode = "dock";
-              position = "top";
-              statusCommand = "${pkgs.i3blocks}/bin/i3blocks -c ${config.xdg.configHome}/i3blocks/config";
-              # swaybar's tray renders SNI icons (e.g. librepods) as ugly blobs;
-              # disable it and drive tray apps via keybinds/GUI instead.
-              trayOutput = "none";
-            }
-          ];
+          # Status bar is waybar (see waybar.nix), not sway's built-in swaybar,
+          # whose tray rendered SNI icons as blobs.
+          bars = [ ];
           floating.border = borderWidth;
           floating.modifier = mod;
           # Remap caps to esc on every keyboard sway sees (internal + USB).

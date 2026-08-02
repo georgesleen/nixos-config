@@ -29,7 +29,6 @@
     ./dotfiles/git.nix
     ./dotfiles/gtk.nix
     ./dotfiles/helix.nix
-    ./dotfiles/i3blocks.nix
     ./dotfiles/kanshi.nix
     ./dotfiles/kitty.nix
     ./dotfiles/librepods.nix
@@ -43,6 +42,7 @@
     ./dotfiles/tmux.nix
     ./dotfiles/vscode.nix
     ./dotfiles/wallpaper.nix
+    ./dotfiles/waybar.nix
     ./dotfiles/xresources.nix
   ];
 }
