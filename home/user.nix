@@ -32,6 +32,7 @@
     ./dotfiles/i3blocks.nix
     ./dotfiles/kanshi.nix
     ./dotfiles/kitty.nix
+    ./dotfiles/librepods.nix
     ./dotfiles/mako.nix
     ./dotfiles/packages.nix
     (inputs.nixos-pi4 + "/home/pi-state-backup.nix")
