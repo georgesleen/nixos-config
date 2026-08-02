@@ -5,8 +5,10 @@
     enable = true;
     settings = {
       default-timeout = 5000;
-      max-icon-size = 1;
       icon-path = "";
+      # Render above fullscreen apps (default "top" layer sits under them).
+      layer = "overlay";
+      max-icon-size = 1;
     };
   };
 }
