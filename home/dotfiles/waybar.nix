@@ -323,33 +323,47 @@ in
         min-height: 0;
       }
       window#waybar {
-        background: rgba(25, 35, 48, 0.93);
+        background: rgba(25, 35, 48, 0.92);
         color: #cdcecf;
       }
+      /* Workspaces: flat with a green (tmux) focus underline. */
+      #workspaces { margin-left: 4px; }
       #workspaces button {
-        padding: 0 6px;
-        color: #cdcecf;
+        padding: 0 8px;
+        color: #71839b;
         background: transparent;
         border-bottom: 2px solid transparent;
       }
       #workspaces button.focused {
+        color: #cdcecf;
         border-bottom: 2px solid #00c781;
       }
       #workspaces button.urgent {
         color: #c94f6d;
       }
-      .module,
+      /* Each status block is a pill, so adjacent colours never blend. */
       #network,
+      #custom-brightness,
       #wireplumber,
+      #custom-cpu,
+      #custom-gpu,
       #memory,
+      #custom-disk,
+      #custom-battery,
+      #custom-power,
       #clock,
       #tray {
-        padding: 0 8px;
+        margin: 4px 2px;
+        padding: 0 10px;
+        background: rgba(57, 80, 109, 0.30);
+        border-radius: 7px;
       }
-      #network     { color: #63cdcf; }
-      #wireplumber { color: #81b29a; }
-      #memory      { color: #d67ad2; }
-      #clock       { color: #cdcecf; }
+      #tray { margin-right: 6px; }
+      /* Function-matched colours; custom modules colour themselves via pango. */
+      #network     { color: #63cdcf; } /* cyan  - connectivity */
+      #wireplumber { color: #81b29a; } /* green - audio */
+      #memory      { color: #d67ad2; } /* pink  - RAM */
+      #clock       { color: #cdcecf; } /* fg    - neutral */
     '';
     systemd.enable = true;
   };
