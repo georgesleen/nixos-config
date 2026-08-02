@@ -1,13 +1,17 @@
 # Status bar. Native waybar modules cover the simple readouts (network, volume,
-# brightness, memory, clock) and the SNI tray (swaybar rendered tray icons as
-# blobs). Blocks with deliberate custom logic stay shell scripts: battery counts
-# down to the hibernate target not 0% (see battery-thresholds.nix), gpu reads
-# Intel RC6 residency, cpu shows freq+temp, disk aggregates all real filesystems.
+# memory, clock) and the SNI tray (swaybar rendered tray icons as blobs). Blocks
+# with deliberate custom logic stay shell scripts: battery counts down to the
+# hibernate target not 0% (see battery-thresholds.nix), gpu reads Intel RC6, cpu
+# shows freq+temp, disk aggregates all real filesystems, brightness via
+# brightnessctl (waybar's native backlight module renders nothing here).
+# Palette: nightfox (matches the helix theme); #00c781 signature accent (tmux).
 
 { pkgs, ... }:
 
 let
   thresh = import ./battery-thresholds.nix;
+  # nightfox accents
+  muted = "#71839b";
   fmtFreq = pkgs.writeShellScript "fmt-freq" ''
     mhz="$1"
     if [ "$mhz" -ge 1000 ] 2>/dev/null; then
@@ -23,26 +27,32 @@ let
       else           { printf "%.2f/%.2f GiB", u/gib, t/gib }
     }'
   '';
+  brightnessBlock = pkgs.writeShellScript "waybar-brightness" ''
+    set -euo pipefail
+    cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
+    max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
+    echo "<span color='#dbc074'>󰃟 $((cur * 100 / max))%</span>"
+  '';
   powerBlock = pkgs.writeShellScript "waybar-power" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "<span color='#738091'>󱐋 n/a</span>"
+      echo "<span color='${muted}'>󱐋 n/a</span>"
       exit 0
     fi
     rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{print $2, $3}')
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    echo "<span color='#c9956c'>󱐋 $rate</span>"
+    echo "<span color='#f4a261'>󱐋 $rate</span>"
   '';
   batteryBlock = pkgs.writeShellScript "waybar-battery" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "<span color='#738091'>󰂑 n/a</span>"
+      echo "<span color='${muted}'>󰂑 n/a</span>"
       exit 0
     fi
     info="$("$upower_bin" -i "$bat")"
@@ -87,11 +97,11 @@ let
     pct_num="$(echo "$pct" | tr -d '%')"
     if [ "$state" = "charging" ]; then
       icon="󰂄"
-      color="#dbc074"
+      color="#81b29a"
       label="$pct (chg) $ttf_fmt"
     elif [ "$state" = "fully-charged" ]; then
       icon="󰁹"
-      color="#dbc074"
+      color="#81b29a"
       label="$pct (full)"
     elif [ "$pct_num" -le 15 ]; then
       icon="󰁺"
@@ -107,7 +117,7 @@ let
       label="$pct $tte_fmt"
     else
       icon="󰂁"
-      color="#dbc074"
+      color="#81b29a"
       label="$pct $tte_fmt"
     fi
     echo "<span color='$color'>$icon $label</span>"
@@ -202,13 +212,13 @@ let
     if ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms > /dev/null 2>&1; then
       busy=$(intel_busy); freq=$(intel_freq); temp=$(intel_temp)
     else
-      echo "<span color='#738091'>󰾲 GPU n/a</span>"
+      echo "<span color='${muted}'>󰾲 GPU n/a</span>"
       exit 0
     fi
 
     if [ "''${busy:-0}" -ge 80 ]; then color="#c94f6d"
     elif [ "''${busy:-0}" -ge 50 ]; then color="#dbc074"
-    else color="#8c78d2"
+    else color="#9d79d6"
     fi
 
     label="''${busy}%"
@@ -232,20 +242,49 @@ in
 {
   programs.waybar = {
     enable = true;
-    systemd.enable = true;
     settings.mainBar = {
+      clock = {
+        format = "{:%a %b %d %I:%M %p}";
+        tooltip-format = "<tt>{calendar}</tt>";
+      };
+      "custom/battery" = {
+        exec = "${batteryBlock}";
+        interval = 30;
+      };
+      "custom/brightness" = {
+        exec = "${brightnessBlock}";
+        interval = 2;
+      };
+      "custom/cpu" = {
+        exec = "${cpuBlock}";
+        interval = 5;
+      };
+      "custom/disk" = {
+        exec = "${diskBlock}";
+        interval = 60;
+      };
+      "custom/gpu" = {
+        exec = "${gpuBlock}";
+        interval = 5;
+      };
+      "custom/power" = {
+        exec = "${powerBlock}";
+        interval = 10;
+      };
+      height = 30;
       layer = "top";
-      position = "top";
-      height = 26;
-      spacing = 4;
+      memory = {
+        format = "󰒋 {used:0.1f}/{total:0.1f} GiB";
+        interval = 10;
+      };
+      modules-center = [ ];
       modules-left = [
         "sway/workspaces"
         "sway/mode"
       ];
-      modules-center = [ ];
       modules-right = [
         "network"
-        "backlight"
+        "custom/brightness"
         "wireplumber"
         "custom/cpu"
         "custom/gpu"
@@ -253,23 +292,22 @@ in
         "custom/disk"
         "custom/battery"
         "custom/power"
-        "tray"
         "clock"
+        "tray"
       ];
-
-      "sway/workspaces".format = "{name}";
-      "sway/mode".format = "<span style=\"italic\">{}</span>";
-
       network = {
-        format-wifi = "󰤨 {essid} {signalStrength}%";
-        format-ethernet = "󰲝 {ifname}";
         format-disconnected = "󰤭 down";
+        format-ethernet = "󰲝 {ifname}";
+        format-wifi = "󰤨 {essid} {signalStrength}%";
         tooltip-format = "{ifname}: {ipaddr}";
       };
-      backlight = {
-        format = "󰃟 {percent}%";
-        on-scroll-up = "${pkgs.brightnessctl}/bin/brightnessctl set 5%+";
-        on-scroll-down = "${pkgs.brightnessctl}/bin/brightnessctl set 5%-";
+      position = "top";
+      spacing = 4;
+      "sway/mode".format = "<span style=\"italic\">{}</span>";
+      "sway/workspaces".format = "{name}";
+      tray = {
+        icon-size = 18;
+        spacing = 8;
       };
       wireplumber = {
         format = "󰕾 {volume}%";
@@ -277,65 +315,31 @@ in
         on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
         scroll-step = 5;
       };
-      memory = {
-        format = "󰒋 {used:0.1f}/{total:0.1f} GiB";
-        interval = 10;
-      };
-      clock = {
-        format = "{:%a %b %d %I:%M %p}";
-        tooltip-format = "<tt>{calendar}</tt>";
-      };
-      tray = {
-        icon-size = 18;
-        spacing = 8;
-      };
-
-      "custom/cpu" = {
-        exec = "${cpuBlock}";
-        interval = 5;
-      };
-      "custom/gpu" = {
-        exec = "${gpuBlock}";
-        interval = 5;
-      };
-      "custom/disk" = {
-        exec = "${diskBlock}";
-        interval = 60;
-      };
-      "custom/battery" = {
-        exec = "${batteryBlock}";
-        interval = 30;
-      };
-      "custom/power" = {
-        exec = "${powerBlock}";
-        interval = 10;
-      };
     };
     style = ''
       * {
-        font-family: "JetBrainsMono Nerd Font";
-        font-size: 12px;
+        font-family: "JetBrains Mono", "JetBrainsMono Nerd Font";
+        font-size: 13px;
         min-height: 0;
       }
       window#waybar {
-        background: rgba(30, 30, 46, 0.93);
-        color: #cdd6f4;
+        background: rgba(25, 35, 48, 0.93);
+        color: #cdcecf;
       }
       #workspaces button {
         padding: 0 6px;
-        color: #cdd6f4;
+        color: #cdcecf;
         background: transparent;
         border-bottom: 2px solid transparent;
       }
       #workspaces button.focused {
-        border-bottom: 2px solid #89b4fa;
+        border-bottom: 2px solid #00c781;
       }
       #workspaces button.urgent {
         color: #c94f6d;
       }
       .module,
       #network,
-      #backlight,
       #wireplumber,
       #memory,
       #clock,
@@ -343,10 +347,10 @@ in
         padding: 0 8px;
       }
       #network     { color: #63cdcf; }
-      #backlight   { color: #f0e090; }
-      #wireplumber { color: #a0be82; }
-      #memory      { color: #e8a0a8; }
-      #clock       { color: #cdd6f4; }
+      #wireplumber { color: #81b29a; }
+      #memory      { color: #d67ad2; }
+      #clock       { color: #cdcecf; }
     '';
+    systemd.enable = true;
   };
 }
