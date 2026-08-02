@@ -4,15 +4,6 @@
 
 let
   libreoffice = pkgs."libreoffice-fresh";
-  # JMP renders a black screen (audio only) under Wayland-native Qt: EGL context
-  # creation fails, mpv logs "No render context set". Force XWayland so mpv's VO
-  # gets a working GL context. Scoped to this binary; a global QT_QPA_PLATFORM
-  # would push every Qt app onto XWayland.
-  jellyfin-media-player = pkgs.jellyfin-media-player.overrideAttrs (old: {
-    postFixup = (old.postFixup or "") + ''
-      wrapProgram $out/bin/jellyfin-desktop --set-default QT_QPA_PLATFORM xcb
-    '';
-  });
 in
 
 {
@@ -23,7 +14,7 @@ in
     obsidian # markdown notes
     qbittorrent # torrenting client
     jellyfin # media server
-    jellyfin-media-player # jellyfin desktop client (mpv-based; good subtitle rendering)
+    delfin # native GTK4 jellyfin client, mpv-backed (Direct Play HEVC/eac3, no browser codec limits)
     python313Packages.grip # render GitHub flavoured markdown
     vlc # media player
     moonlight-qt # game stream client for Sunshine on the win11 VM

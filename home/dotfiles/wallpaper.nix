@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ lib, pkgs, ... }:
 let
   snowflakeSvg = "${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake-white.svg";
 
@@ -66,13 +66,13 @@ let
         both = mkImage "${toString i}" lightSrc doWatermark;
       in
       {
-        light = both;
         dark = both;
+        light = both;
       }
     else
       {
-        light = mkImage "${toString i}-light" lightSrc doWatermark;
         dark = mkImage "${toString i}-dark" darkSrc doWatermark;
+        light = mkImage "${toString i}-light" lightSrc doWatermark;
       };
 
   wallpapers = lib.imap0 mkEntry (import ./wallpaper-list.nix);
@@ -118,55 +118,53 @@ let
 in
 {
   home.packages = [ pkgs.awww ];
-
   systemd.user.services.awww-daemon = {
-    Unit = {
-      Description = "awww wallpaper daemon";
-      PartOf = [ "sway-session.target" ];
-      After = [ "sway-session.target" ];
-    };
+    Install.WantedBy = [ "sway-session.target" ];
     Service = {
       ExecStart = "${pkgs.awww}/bin/awww-daemon";
       Restart = "on-failure";
     };
-    Install.WantedBy = [ "sway-session.target" ];
-  };
-
-  systemd.user.services.wallpaper-rotate = {
     Unit = {
-      Description = "Rotate to next wallpaper";
-      After = [ "awww-daemon.service" ];
-      Requires = [ "awww-daemon.service" ];
-    };
-    Service = {
-      Type = "oneshot";
-      ExecStart = "${wallpaperApply}/bin/wallpaper-apply --next";
-      Restart = "on-failure";
+      After = [ "sway-session.target" ];
+      Description = "awww wallpaper daemon";
+      PartOf = [ "sway-session.target" ];
     };
   };
-
   # Re-render the current wallpaper in the active light/dark mode; poked by the
   # darkman hooks on sunrise/sunset.
   systemd.user.services.wallpaper-refresh = {
-    Unit = {
-      Description = "Re-render current wallpaper for the active mode";
-      After = [ "awww-daemon.service" ];
-      Requires = [ "awww-daemon.service" ];
-    };
     Service = {
-      Type = "oneshot";
+      Environment = "WAYLAND_DISPLAY=wayland-1";
       ExecStart = "${wallpaperApply}/bin/wallpaper-apply";
       Restart = "on-failure";
+      Type = "oneshot";
+    };
+    Unit = {
+      After = [ "awww-daemon.service" ];
+      Description = "Re-render current wallpaper for the active mode";
+      Requires = [ "awww-daemon.service" ];
     };
   };
-
+  systemd.user.services.wallpaper-rotate = {
+    Service = {
+      Environment = "WAYLAND_DISPLAY=wayland-1";
+      ExecStart = "${wallpaperApply}/bin/wallpaper-apply --next";
+      Restart = "on-failure";
+      Type = "oneshot";
+    };
+    Unit = {
+      After = [ "awww-daemon.service" ];
+      Description = "Rotate to next wallpaper";
+      Requires = [ "awww-daemon.service" ];
+    };
+  };
   systemd.user.timers.wallpaper-rotate = {
-    Unit.Description = "Rotate wallpaper at midnight";
+    Install.WantedBy = [ "sway-session.target" ];
     Timer = {
       OnBootSec = "5s";
       OnCalendar = "daily";
       Persistent = true;
     };
-    Install.WantedBy = [ "sway-session.target" ];
+    Unit.Description = "Rotate wallpaper at midnight";
   };
 }
