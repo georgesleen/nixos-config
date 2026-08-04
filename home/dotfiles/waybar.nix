@@ -293,6 +293,7 @@ in
         "custom/battery"
         "custom/power"
         "clock"
+        "tray"
       ];
       network = {
         format-disconnected = "󰤭 down";
@@ -304,6 +305,10 @@ in
       spacing = 4;
       "sway/mode".format = "<span style=\"italic\">{}</span>";
       "sway/workspaces".format = "{name}";
+      tray = {
+        icon-size = 16;
+        spacing = 8;
+      };
       wireplumber = {
         format = "󰕾 {volume}%";
         format-muted = "󰖁 {volume}% (muted)";
@@ -352,7 +357,7 @@ in
         background: rgba(57, 80, 109, 0.30);
         border-radius: 7px;
       }
-      #clock { margin-right: 6px; }
+      #tray { margin-right: 6px; }
       /* Function-matched colours; custom modules colour themselves via pango. */
       #network     { color: #63cdcf; } /* cyan  - connectivity */
       #wireplumber { color: #81b29a; } /* green - audio */
