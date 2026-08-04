@@ -90,12 +90,13 @@
       editor.auto-format = false;
       editor.bufferline = "always";
       editor.line-number = "relative";
-      editor.rulers = [
-        80
-        120
-      ];
+      editor.rulers = [ 80 ];
       editor.soft-wrap.enable = false;
       theme = "nightfox";
     };
   };
+  xdg.configFile."rustfmt/rustfmt.toml".text = ''
+    max_width = 80
+    wrap_comments = true
+  '';
 }

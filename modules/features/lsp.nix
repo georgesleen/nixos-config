@@ -8,10 +8,6 @@
     nil
     nixfmt
 
-    # rust
-    rust-analyzer
-    rustfmt
-
     # c/c++
     clang-tools
     cmake-language-server
@@ -77,4 +73,5 @@
     # spell checking
     harper
   ];
+  imports = [ ./rust.nix ];
 }
