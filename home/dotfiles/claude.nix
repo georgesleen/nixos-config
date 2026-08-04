@@ -225,7 +225,9 @@ in
       "kotlin-lsp@claude-plugins-official" = true;
       "lua-lsp@claude-plugins-official" = true;
       "php-lsp@claude-plugins-official" = true;
-      "playwright@claude-plugins-official" = true;
+      # Disabled: the npx-based plugin cannot run a browser on NixOS; the
+      # nix playwright-mcp server (see mcpServers.playwright) replaces it.
+      "playwright@claude-plugins-official" = false;
       "pr-review-toolkit@claude-plugins-official" = true;
       "pyright-lsp@claude-plugins-official" = true;
       "ruby-lsp@claude-plugins-official" = true;
@@ -274,6 +276,23 @@ in
           "--"
         ];
         command = "nix";
+      };
+      # Browser automation via the pinned nix playwright-mcp, wired to the
+      # matching nix Chromium (playwright-driver.browsers). Deliberately NOT
+      # the playwright@claude-plugins-official plugin (disabled below): that
+      # runs `npx @playwright/mcp`, which pulls from npm and cannot locate a
+      # runnable browser on NixOS. --no-sandbox because NixOS ships no setuid
+      # chromium-sandbox helper; --headless to avoid Wayland display coupling.
+      playwright = {
+        args = [
+          "--headless"
+          "--no-sandbox"
+        ];
+        command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
+        env = {
+          PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
+          PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
+        };
       };
     };
     model = "sonnet";
