@@ -20,6 +20,13 @@ let
     pkgs.appimageTools.wrapType2 {
       pname = "moonfin";
       inherit version src;
+      # Not in the appimage FHS base: the first two are DT_NEEDED by the binary
+      # (Flutter GTK/GL); libmpv is dlopen'd by media_kit at playback time.
+      extraPkgs = p: [
+        p.libepoxy
+        p.xorg.libXv
+        p.mpv-unwrapped
+      ];
       extraInstallCommands = ''
         install -Dm444 ${contents}/org.moonfin.linux.desktop -t $out/share/applications
         install -Dm444 ${contents}/org.moonfin.linux.png -t $out/share/pixmaps
