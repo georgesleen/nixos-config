@@ -9,14 +9,21 @@ let
   moonfin =
     let
       version = "2.4.0";
-    in
-    pkgs.appimageTools.wrapType2 {
-      pname = "moonfin";
-      inherit version;
       src = pkgs.fetchurl {
         url = "https://github.com/Moonfin-Client/Moonfin-Core/releases/download/${version}/Moonfin_Linux_v${version}.AppImage";
         hash = "sha256-HJUwK2hMmQ4TP7VWWcKRn9v5a3rLf6Ej1+YvIyT8weI=";
       };
+      # wrapType2 only wraps the binary; pull the desktop entry + icon out of the
+      # AppImage so the launcher (fuzzel) lists it. Exec=moonfin already matches.
+      contents = pkgs.appimageTools.extractType2 { pname = "moonfin"; inherit version src; };
+    in
+    pkgs.appimageTools.wrapType2 {
+      pname = "moonfin";
+      inherit version src;
+      extraInstallCommands = ''
+        install -Dm444 ${contents}/org.moonfin.linux.desktop -t $out/share/applications
+        install -Dm444 ${contents}/org.moonfin.linux.png -t $out/share/pixmaps
+      '';
     };
 in
 
