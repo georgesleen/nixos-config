@@ -26,6 +26,10 @@ WISP: Wi-Fi client uplink (`wwan`, DHCP from the upstream AP) -> NAT -> local
 wired LAN (`192.168.1.1/24`, DHCP server) + a local AP on the other radio. STA
 and AP sit on separate radios (the unit has one 2.4GHz + one 5GHz).
 
+Because the uplink is Wi-Fi, the wired **2.5G WAN port (eth0)** is not needed as
+WAN; `10-wisp` folds it into `br-lan` alongside the **1G port (eth1)**, so both
+ethernet ports are LAN. This unit feeds a downstream switch off the 2.5G port.
+
 ## Secrets
 
 Wi-Fi credentials are sops-encrypted in `secrets/secrets.yaml` (this repo is

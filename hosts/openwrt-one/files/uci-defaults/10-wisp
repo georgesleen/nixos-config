@@ -10,6 +10,14 @@ uci -q batch <<'EOF'
 set network.wwan=interface
 set network.wwan.proto='dhcp'
 set system.@system[0].hostname='openwrt-one'
+
+# The internet uplink is the Wi-Fi STA (wwan), so the wired 2.5G WAN port (eth0)
+# is unused as WAN. Repurpose it as a LAN port feeding the downstream switch:
+# drop wired wan/wan6 and add eth0 to the br-lan bridge (which already carries
+# the 1G port eth1). Port names are specific to the OpenWrt One.
+delete network.wan
+delete network.wan6
+add_list network.@device[0].ports='eth0'
 EOF
 
 # Treat the Wi-Fi uplink as WAN: add wwan to the 'wan' firewall zone (inherits
