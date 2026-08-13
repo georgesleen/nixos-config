@@ -1,0 +1,41 @@
+#!/bin/sh
+# Wireless config for WISP mode. @WWAN_*@ / @AP_*@ are substituted at build
+# time from sops-encrypted secrets (see hosts/openwrt-one/default.nix, Makefile
+# `openwrt-one`). Runs once on first boot of a fresh flash, then self-deletes.
+#
+# TODO(finalize live): confirm on the unit which radioN is 2.4GHz vs 5GHz
+# (`iw phy | grep -e Wiphy -e MHz`, or LuCI) and that the STA radio matches the
+# UPSTREAM band. STA and AP are on separate radios (one 2.4 + one 5GHz), so if
+# the upstream network is 5GHz the STA must move to the 5GHz radio and the AP
+# to 2.4GHz. Below assumes radio0 = uplink band, radio1 = local AP band.
+# TODO(finalize live): set encryption to match upstream. 'psk2' = WPA2-PSK;
+# use 'sae' for WPA3 or 'sae-mixed' for a WPA2/WPA3 hotspot (e.g. iPhone).
+
+uci -q batch <<'EOF'
+# Uplink radio: client (STA) to the upstream AP.
+set wireless.radio0.disabled='0'
+delete wireless.wwan_sta
+set wireless.wwan_sta=wifi-iface
+set wireless.wwan_sta.device='radio0'
+set wireless.wwan_sta.mode='sta'
+set wireless.wwan_sta.network='wwan'
+set wireless.wwan_sta.encryption='psk2'
+
+# Local AP radio: the SSID this router broadcasts downstream.
+set wireless.radio1.disabled='0'
+delete wireless.local_ap
+set wireless.local_ap=wifi-iface
+set wireless.local_ap.device='radio1'
+set wireless.local_ap.mode='ap'
+set wireless.local_ap.network='lan'
+set wireless.local_ap.encryption='psk2'
+EOF
+
+# Secret values applied outside the heredoc.
+uci set wireless.wwan_sta.ssid='@WWAN_SSID@'
+uci set wireless.wwan_sta.key='@WWAN_KEY@'
+uci set wireless.local_ap.ssid='@AP_SSID@'
+uci set wireless.local_ap.key='@AP_KEY@'
+
+uci commit wireless
+exit 0

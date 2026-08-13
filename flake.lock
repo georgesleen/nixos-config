@@ -39,6 +39,27 @@
     "flake-parts": {
       "inputs": {
         "nixpkgs-lib": [
+          "openwrt-imagebuilder",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1772408722,
+        "narHash": "sha256-rHuJtdcOjK7rAHpHphUb1iCvgkU3GpfvicLMwwnfMT0=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "f20dc5d9b8027381c474144ecabc9034d6a839a3",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "type": "github"
+      }
+    },
+    "flake-parts_2": {
+      "inputs": {
+        "nixpkgs-lib": [
           "pedantix",
           "nixpkgs"
         ]
@@ -258,9 +279,31 @@
         "type": "indirect"
       }
     },
-    "pedantix": {
+    "openwrt-imagebuilder": {
       "inputs": {
         "flake-parts": "flake-parts",
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "systems": "systems"
+      },
+      "locked": {
+        "lastModified": 1786526871,
+        "narHash": "sha256-FXiu9LreqekMNM/B2yyih14XTUqbYfkkpNGd2nP/L1s=",
+        "owner": "astro",
+        "repo": "nix-openwrt-imagebuilder",
+        "rev": "2504b01dd9cd7c9395aee4d240022c1090fe484c",
+        "type": "github"
+      },
+      "original": {
+        "owner": "astro",
+        "repo": "nix-openwrt-imagebuilder",
+        "type": "github"
+      }
+    },
+    "pedantix": {
+      "inputs": {
+        "flake-parts": "flake-parts_2",
         "git-hooks-nix": "git-hooks-nix",
         "nixpkgs": "nixpkgs_3",
         "treefmt-nix": "treefmt-nix_2"
@@ -287,6 +330,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixos-pi4": "nixos-pi4",
         "nixpkgs": "nixpkgs_2",
+        "openwrt-imagebuilder": "openwrt-imagebuilder",
         "pedantix": "pedantix",
         "sops-nix": "sops-nix",
         "waveforms": "waveforms"
@@ -330,6 +374,21 @@
       "original": {
         "owner": "Mic92",
         "repo": "sops-nix",
+        "type": "github"
+      }
+    },
+    "systems": {
+      "locked": {
+        "lastModified": 1680978846,
+        "narHash": "sha256-Gtqg8b/v49BFDpDetjclCYXm8mAnTrUzR0JnE2nv5aw=",
+        "owner": "nix-systems",
+        "repo": "x86_64-linux",
+        "rev": "2ecfcac5e15790ba6ce360ceccddb15ad16d08a8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nix-systems",
+        "repo": "x86_64-linux",
         "type": "github"
       }
     },

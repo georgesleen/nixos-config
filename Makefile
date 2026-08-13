@@ -2,7 +2,7 @@
 # and boots it detached, then prints the URLs; `make stop` shuts it down.
 SHELL := bash
 .ONESHELL:
-.PHONY: vm build stop ssh log status
+.PHONY: vm build stop ssh log status openwrt-one
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 HOST    ?= gs-pi4-vm
@@ -33,6 +33,13 @@ vm:
 
 build:
 	nix build --no-link --print-out-paths '$(VMATTR)'
+
+# Build the OpenWrt One WISP image. sops exec-env decrypts the Wi-Fi secrets
+# into the environment; --impure lets the flake read them via builtins.getEnv.
+# Long build: consider `inhibit-sleep` first. Output .bin path is printed.
+openwrt-one:
+	@sops exec-env secrets/secrets.yaml \
+	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.openwrt-one" --impure'
 
 stop:
 	@ssh $(SSHOPT) $(LOGIN)@localhost 'sudo poweroff' 2>/dev/null || echo "(not running?)"

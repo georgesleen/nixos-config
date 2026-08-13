@@ -27,6 +27,11 @@
       url = "git+file:///home/george-sleen/Documents/projects/nixos-pi4";
     };
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    # Declarative OpenWrt images via the upstream ImageBuilder (openwrt-one).
+    openwrt-imagebuilder = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:astro/nix-openwrt-imagebuilder";
+    };
     # Pedantic Nix formatter (wraps nixfmt + adds attribute ordering)
     pedantix.url = "github:Swarsel/pedantix";
     # Secrets management
@@ -131,6 +136,12 @@
         };
         gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
+      };
+      # OpenWrt One firmware image (WISP mode). ImageBuilder is x86_64-linux
+      # only; build via `make openwrt-one` so sops injects the Wi-Fi secrets.
+      packages.x86_64-linux.openwrt-one = import ./hosts/openwrt-one {
+        openwrt-imagebuilder = inputs.openwrt-imagebuilder;
+        pkgs = nixpkgs.legacyPackages.x86_64-linux;
       };
     };
 }

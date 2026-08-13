@@ -1,0 +1,24 @@
+#!/bin/sh
+# WISP mode, non-secret structure: Wi-Fi client uplink (wwan) + local wired
+# LAN + local AP. SSIDs/keys are set by 20-wisp-wireless (secret-bearing).
+# Runs once on first boot of a fresh flash, then self-deletes.
+
+# Uplink logical interface. The STA wifi-iface binds network 'wwan'; it takes
+# its address via DHCP from the upstream AP. Merges with the board's default
+# lan/wan config rather than replacing it, so we don't depend on port names.
+uci -q batch <<'EOF'
+set network.wwan=interface
+set network.wwan.proto='dhcp'
+set system.@system[0].hostname='openwrt-one'
+EOF
+
+# Treat the Wi-Fi uplink as WAN: add wwan to the 'wan' firewall zone (inherits
+# masquerade + input reject). Look the zone up by name; its index isn't stable.
+zone=$(uci show firewall | sed -n "s/^firewall\.\(@zone\[[0-9]*\]\)\.name='wan'.*/\1/p" | head -n1)
+if [ -n "$zone" ]; then
+    uci -q del_list firewall."$zone".network='wwan'
+    uci add_list firewall."$zone".network='wwan'
+fi
+
+uci commit
+exit 0
