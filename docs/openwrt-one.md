@@ -56,13 +56,19 @@ image. Long build; `inhibit-sleep` first if on battery.
 
 ## Flash
 
-First time (over USB or the pre-installed OpenWrt), then declaratively via
-sysupgrade over SSH once reachable at `192.168.1.1`:
+The unit ships with OpenWrt, so the normal path is sysupgrade over SSH once
+reachable at `192.168.1.1`. `make openwrt-one` prints the store path; the
+sysupgrade image is `…-squashfs-sysupgrade.itb` inside it:
 
 ```bash
-scp result/sysupgrade.bin root@192.168.1.1:/tmp/
-ssh root@192.168.1.1 'sysupgrade -n /tmp/sysupgrade.bin'   # -n = don't keep config
+out=$(make openwrt-one | tail -1)
+scp "$out"/*-squashfs-sysupgrade.itb root@192.168.1.1:/tmp/sysupgrade.itb
+ssh root@192.168.1.1 'sysupgrade -n /tmp/sysupgrade.itb'   # -n = don't keep config
 ```
+
+The `…-nor-factory.bin` / `…-snand-factory.bin` / `…-factory.ubi` images in the
+same directory are for U-Boot/TFTP recovery (NOR vs SPI-NAND boot), not needed
+for a routine upgrade.
 
 `-n` wipes settings so the baked `uci-defaults` re-run cleanly (the declarative
 path). Drop `-n` only to preserve live changes.
