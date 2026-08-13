@@ -1,0 +1,9 @@
+#!/bin/sh
+# Lock SSH to key-only: disable dropbear password auth. Root's authorized key is
+# baked at /etc/dropbear/authorized_keys. The serial console and failsafe mode
+# stay open, so a lost key is never a lockout (recover there, or reflash this
+# declarative image, which re-installs the key).
+uci set dropbear.@dropbear[0].PasswordAuth='off'
+uci set dropbear.@dropbear[0].RootPasswordAuth='off'
+uci commit dropbear
+exit 0

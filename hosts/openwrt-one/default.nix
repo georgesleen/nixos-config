@@ -45,7 +45,12 @@ let
       --subst-var-by WWAN_KEY ${lib.escapeShellArg wwanKey} \
       --subst-var-by AP_SSID ${lib.escapeShellArg apSsid} \
       --subst-var-by AP_KEY ${lib.escapeShellArg apKey}
-    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless
+    cp ${./files/uci-defaults/30-ssh} $out/etc/uci-defaults/30-ssh
+    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh
+    # Root's authorized SSH public key; 30-ssh then disables password auth.
+    mkdir -p $out/etc/dropbear
+    cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys
+    chmod 600 $out/etc/dropbear/authorized_keys
   '';
 in
 openwrt-imagebuilder.lib.build (
