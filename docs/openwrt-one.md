@@ -30,6 +30,17 @@ Because the uplink is Wi-Fi, the wired **2.5G WAN port (eth0)** is not needed as
 WAN; `10-wisp` folds it into `br-lan` alongside the **1G port (eth1)**, so both
 ethernet ports are LAN. This unit feeds a downstream switch off the 2.5G port.
 
+## Performance
+
+- Uplink STA on **5GHz** (radio1, ch161): PHY negotiates ~700 Mbit/s vs ~130 on
+  the congested 2.4GHz band. Local AP on 2.4GHz (radio0).
+- **Flow offloading** (software + hardware) enabled in `10-wisp`.
+- Measured throughput is **~35 Mbit down / ~6 Mbit up, ~10ms** (2026-08). That's
+  the upstream PCVirus/VMedia plan, not the router or Wi-Fi: the 5GHz flip did
+  not change it (35 Mbit fits inside 2.4GHz too), but 5GHz stays for cleaner
+  airtime and headroom. Test servers vary wildly (a browser run at
+  speed.cloudflare.com gives the real plan number).
+
 ## Secrets
 
 Wi-Fi credentials are sops-encrypted in `secrets/secrets.yaml` (this repo is

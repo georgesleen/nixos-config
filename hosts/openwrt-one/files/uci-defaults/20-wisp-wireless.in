@@ -3,32 +3,35 @@
 # time from sops-encrypted secrets (see hosts/openwrt-one/default.nix, Makefile
 # `openwrt-one`). Runs once on first boot of a fresh flash, then self-deletes.
 #
-# Confirmed live on this unit: radio0 = 2.4GHz, radio1 = 5GHz. Upstream PCVirus
-# is 2.4GHz WPA2 (psk2), so STA -> radio0, local AP -> radio1 (5GHz). If the
-# upstream ever moves to 5GHz, swap the STA to radio1 and the AP to radio0.
+# Confirmed live on this unit: radio0 = 2.4GHz, radio1 = 5GHz. Uplink runs on
+# 5GHz (radio1): PCVirus broadcasts on both bands, but 5GHz (ch161) is far less
+# congested here (30+ APs crowd 2.4GHz) and leaves more headroom. Local AP is on
+# 2.4GHz (radio0); downstream devices are wired via the switch, so its band
+# matters little. STA and AP must be on separate radios.
 # Encryption 'psk2' = WPA2-PSK; use 'sae' (WPA3) or 'sae-mixed' if upstream changes.
 
 uci -q batch <<'EOF'
-# Uplink radio: client (STA) to the upstream AP.
+# Both radios on; drop the stock open 'OpenWrt' APs that wake up with them.
 set wireless.radio0.disabled='0'
-# Drop the stock open 'OpenWrt' APs; they come up once the radios are enabled.
+set wireless.radio1.disabled='0'
 delete wireless.default_radio0
 delete wireless.default_radio1
-# STA follows the upstream's channel ('auto'). The default ch1 pin blocks
-# association when the uplink is elsewhere (PCVirus 2.4GHz was on ch4).
-set wireless.radio0.channel='auto'
+
+# Uplink STA on radio1 = 5GHz. 'auto' lets it follow the upstream's channel
+# (a fixed channel would block association when PCVirus lands elsewhere).
+set wireless.radio1.channel='auto'
 delete wireless.wwan_sta
 set wireless.wwan_sta=wifi-iface
-set wireless.wwan_sta.device='radio0'
+set wireless.wwan_sta.device='radio1'
 set wireless.wwan_sta.mode='sta'
 set wireless.wwan_sta.network='wwan'
 set wireless.wwan_sta.encryption='psk2'
 
-# Local AP radio: the SSID this router broadcasts downstream.
-set wireless.radio1.disabled='0'
+# Local AP on radio0 = 2.4GHz. 'auto' picks the clearest channel.
+set wireless.radio0.channel='auto'
 delete wireless.local_ap
 set wireless.local_ap=wifi-iface
-set wireless.local_ap.device='radio1'
+set wireless.local_ap.device='radio0'
 set wireless.local_ap.mode='ap'
 set wireless.local_ap.network='lan'
 set wireless.local_ap.encryption='psk2'
