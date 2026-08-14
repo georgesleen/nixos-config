@@ -1,11 +1,17 @@
 {
   config,
-  pkgs,
   lib,
+  pkgs,
   ...
 }:
 
 let
+  swaymsg = "${pkgs.sway}/bin/swaymsg";
+  jq = "${pkgs.jq}/bin/jq";
+  grep = "${pkgs.gnugrep}/bin/grep";
+  head = "${pkgs.coreutils}/bin/head";
+  cut = "${pkgs.coreutils}/bin/cut";
+
   # Per-output workspace assignments expressed once, expanded per profile.
   # Odd workspaces on the internal panel, even on the external monitor.
   internalWorkspaces = [
@@ -35,69 +41,99 @@ let
     10
   ];
 
-  # Sets workspace-to-output creation rules. Does not move existing workspaces;
-  # the move scripts below handle that.
-  assignSplit =
-    internal: external:
-    let
-      rule = out: n: "workspace ${toString n} output \\\"${out}\\\"";
-    in
-    lib.concatStringsSep ", " (
-      (map (rule internal) internalWorkspaces) ++ (map (rule external) externalWorkspaces)
-    );
+  # Runtime discovery of the connected external. All profiles use a wildcard
+  # ("*") external so one set of modes works with any monitor (Acer, TV, ...);
+  # the actual output name isn't known until dock time, so scripts resolve it
+  # live instead of baking a name in.
+  detectExternal = ''ext=$(${swaymsg} -t get_outputs | ${jq} -r '.[] | select(.active and .name != "eDP-1") | .name' | ${head} -1)'';
 
-  assignAllTo =
-    out:
-    let
-      rule = n: "workspace ${toString n} output \\\"${out}\\\"";
-    in
-    lib.concatStringsSep ", " (map rule allWorkspaces);
+  # Shell tokens for the `workspace N output <target>` rules. eDP-1 is static;
+  # the external is the runtime `$ext`, quoted so names with spaces survive.
+  edpTarget = "eDP-1";
+  extTarget = "\\\"$ext\\\"";
 
-  # Moves existing workspaces to their target outputs.
-  # sway IPC does not support [workspace="N"] criteria (only window containers
-  # use criteria); use focus+move instead. Saves and restores the focused
-  # workspace so the user doesn't land on a random workspace after dock/undock.
-  mkMoveScript =
-    name: wsOuts:
-    pkgs.writeShellScript name ''
-      current=$(${swaymsg} -t get_workspaces | ${pkgs.jq}/bin/jq -r '.[] | select(.focused) | .name')
-      existing=$(${swaymsg} -t get_workspaces | ${pkgs.jq}/bin/jq -r '.[].name')
-      ${lib.concatStringsSep "\n" (
-        map (
-          { ws, out }:
-          ''echo "$existing" | grep -qx "${toString ws}" && ${swaymsg} "workspace ${toString ws}; move workspace to output \"${out}\""''
-        ) wsOuts
-      )}
-      [ -n "$current" ] && ${swaymsg} "workspace $current"
-    '';
+  assignLine = target: n: ''${swaymsg} "workspace ${toString n} output ${target}"'';
+  moveLine =
+    target: n:
+    ''echo "$existing" | ${grep} -qx "${toString n}" && ${swaymsg} "workspace ${toString n}; move workspace to output ${target}"'';
+  assignLines = target: ns: lib.concatMapStringsSep "\n" (assignLine target) ns;
+  moveLines = target: ns: lib.concatMapStringsSep "\n" (moveLine target) ns;
 
-  splitMoveScript = mkMoveScript "kanshi-split-workspaces" (
-    (map (n: {
-      ws = n;
-      out = "eDP-1";
-    }) internalWorkspaces)
-    ++ (map (n: {
-      ws = n;
-      out = externalCriteria;
-    }) externalWorkspaces)
-  );
+  # Snapshot the focused workspace so a reassignment doesn't dump the user on a
+  # random one, and list existing workspaces so we only move ones that exist.
+  wsPreamble = ''
+    current=$(${swaymsg} -t get_workspaces | ${jq} -r '.[] | select(.focused) | .name')
+    existing=$(${swaymsg} -t get_workspaces | ${jq} -r '.[].name')
+  '';
+  wsRestore = ''[ -n "$current" ] && ${swaymsg} "workspace $current"'';
 
-  allToInternalScript = mkMoveScript "kanshi-all-to-internal" (
-    map (n: {
-      ws = n;
-      out = "eDP-1";
-    }) allWorkspaces
-  );
+  # Odd -> internal, even -> external. sway IPC can't select workspaces by
+  # criteria (only window containers), so use focus+move.
+  splitWorkspacesScript = pkgs.writeShellScript "kanshi-split-workspaces" ''
+    ${detectExternal}
+    [ -z "$ext" ] && exit 0
+    ${wsPreamble}
+    ${assignLines edpTarget internalWorkspaces}
+    ${assignLines extTarget externalWorkspaces}
+    ${moveLines edpTarget internalWorkspaces}
+    ${moveLines extTarget externalWorkspaces}
+    ${wsRestore}
+  '';
 
-  allToExternalScript = mkMoveScript "kanshi-all-to-external" (
-    map (n: {
-      ws = n;
-      out = externalCriteria;
-    }) allWorkspaces
-  );
+  allToInternalScript = pkgs.writeShellScript "kanshi-all-to-internal" ''
+    ${wsPreamble}
+    ${assignLines edpTarget allWorkspaces}
+    ${moveLines edpTarget allWorkspaces}
+    ${wsRestore}
+  '';
 
-  swaymsg = "${pkgs.sway}/bin/swaymsg";
-  externalCriteria = "Acer Technologies SA240Y 0x90801B39";
+  allToExternalScript = pkgs.writeShellScript "kanshi-all-to-external" ''
+    ${detectExternal}
+    [ -z "$ext" ] && exit 0
+    ${wsPreamble}
+    ${assignLines extTarget allWorkspaces}
+    ${moveLines extTarget allWorkspaces}
+    ${wsRestore}
+  '';
+
+  # Size and place the connected external. The Acer keeps its deliberate
+  # 1080p60 + RGB-subpixel tuning; any other display (e.g. a 4K TV) keeps its
+  # own preferred/native mode (so a 4K@60 panel comes up at 60Hz on its own)
+  # and gets an integer scale from its height (>= 2160 -> 2x) so the UI matches
+  # the internal panel instead of rendering tiny. $1 is the layout: extend
+  # places the external to the right of eDP-1, external-only puts it at origin.
+  applyExternalScript = pkgs.writeShellScript "kanshi-apply-external" ''
+    layout="$1"
+    ${detectExternal}
+    [ -z "$ext" ] && exit 0
+    info=$(${swaymsg} -t get_outputs | ${jq} -r --arg o "$ext" '.[] | select(.name==$o) | "\(.make)\t\(.current_mode.height)"')
+    make=$(printf '%s' "$info" | ${cut} -f1)
+    height=$(printf '%s' "$info" | ${cut} -f2)
+    case "$make" in
+      Acer*)
+        ${swaymsg} "output \"$ext\" mode 1920x1080@60Hz scale 1 subpixel rgb"
+        ;;
+      *)
+        if [ "''${height:-0}" -ge 2160 ]; then scale=2; else scale=1; fi
+        ${swaymsg} "output \"$ext\" scale $scale"
+        ;;
+    esac
+    if [ "$layout" = extend ]; then
+      ${swaymsg} "output eDP-1 position 0 0"
+      ${swaymsg} "output \"$ext\" position 1920 0"
+    else
+      ${swaymsg} "output \"$ext\" position 0 0"
+    fi
+  '';
+
+  # Mirror the internal panel onto the external. Reset the external to scale 1
+  # first in case it carried a scale over from extend.
+  mirrorScript = pkgs.writeShellScript "kanshi-mirror" ''
+    ${detectExternal}
+    [ -z "$ext" ] && exit 0
+    ${swaymsg} "output \"$ext\" scale 1"
+    ${swaymsg} "output \"$ext\" mirror eDP-1"
+  '';
 
   # awww resets a re-added output to black; re-apply the current wallpaper
   # whenever a profile lands (wallpaper.nix owns the unit).
@@ -111,67 +147,66 @@ let
   # rules in place so sway pulls the internal workspaces back when the lid
   # reopens; sway auto-moves eDP-1's workspaces to the external in the meantime.
   lidReconcileScript = pkgs.writeShellScript "kanshi-lid-reconcile" ''
-    ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state || exit 0
+    ${grep} -q closed /proc/acpi/button/lid/LID/state || exit 0
     ${swaymsg} "output eDP-1 disable"
   '';
 
-  # Mode profiles. All four docked modes share the same matching criteria
-  # (both outputs connected); kanshi auto-applies the first match (extend)
-  # on dock, and the picker switches between them via `kanshictl switch`.
+  # Docked mode profiles. All four share the same match (eDP-1 + one external
+  # via the "*" wildcard), so they work with any monitor and are reachable via
+  # `kanshictl switch`. extend is first, so it auto-applies on any dock.
   extendProfile = {
     profile = {
+      exec = [
+        "${applyExternalScript} extend"
+        "${splitWorkspacesScript}"
+        "${lidReconcileScript}"
+        wallpaperRefresh
+      ];
       name = "extend";
       outputs = [
         {
           criteria = "eDP-1";
-          status = "enable";
           position = "0,0";
+          status = "enable";
         }
         {
-          criteria = externalCriteria;
-          status = "enable";
+          criteria = "*";
           position = "1920,0";
-          mode = "1920x1080@60Hz";
+          status = "enable";
         }
-      ];
-      exec = [
-        ''${swaymsg} "output eDP-1 position 0 0"''
-        ''${swaymsg} "output \"${externalCriteria}\" position 1920 0"''
-        ''${swaymsg} "${assignSplit "eDP-1" externalCriteria}"''
-        "${splitMoveScript}"
-        ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
-        "${lidReconcileScript}"
-        wallpaperRefresh
       ];
     };
   };
 
   mirrorProfile = {
     profile = {
+      exec = [
+        "${mirrorScript}"
+        "${allToInternalScript}"
+        wallpaperRefresh
+      ];
       name = "mirror";
       outputs = [
         {
           criteria = "eDP-1";
-          status = "enable";
           position = "0,0";
+          status = "enable";
         }
         {
-          criteria = externalCriteria;
+          criteria = "*";
           status = "enable";
-          mode = "1920x1080@60Hz";
         }
-      ];
-      exec = [
-        ''${swaymsg} "output \"${externalCriteria}\" mirror eDP-1"''
-        ''${swaymsg} "${assignAllTo "eDP-1"}"''
-        "${allToInternalScript}"
-        wallpaperRefresh
       ];
     };
   };
 
   externalOnlyProfile = {
     profile = {
+      exec = [
+        "${applyExternalScript} external-only"
+        "${allToExternalScript}"
+        wallpaperRefresh
+      ];
       name = "external-only";
       outputs = [
         {
@@ -179,88 +214,41 @@ let
           status = "disable";
         }
         {
-          criteria = externalCriteria;
-          status = "enable";
+          criteria = "*";
           position = "0,0";
-          mode = "1920x1080@60Hz";
+          status = "enable";
         }
-      ];
-      exec = [
-        ''${swaymsg} "${assignAllTo externalCriteria}"''
-        "${allToExternalScript}"
-        ''${swaymsg} "output \"${externalCriteria}\" subpixel rgb"''
-        wallpaperRefresh
       ];
     };
   };
 
   internalOnlyProfile = {
     profile = {
+      exec = [
+        "${allToInternalScript}"
+        wallpaperRefresh
+      ];
       name = "internal-only";
       outputs = [
         {
           criteria = "eDP-1";
-          status = "enable";
           position = "0,0";
-        }
-        {
-          criteria = externalCriteria;
-          status = "disable";
-        }
-      ];
-      exec = [
-        ''${swaymsg} "${assignAllTo "eDP-1"}"''
-        "${allToInternalScript}"
-        wallpaperRefresh
-      ];
-    };
-  };
-
-  extendTvProfile = {
-    profile = {
-      name = "extend-tv";
-      outputs = [
-        {
-          criteria = "eDP-1";
           status = "enable";
-          position = "0,0";
         }
         {
           criteria = "*";
-          status = "enable";
-          position = "1920,0";
-        }
-      ];
-      exec = [
-        ''${swaymsg} "output eDP-1 position 0 0"''
-        "${lidReconcileScript}"
-        wallpaperRefresh
-      ];
-    };
-  };
-
-  tvOnlyProfile = {
-    profile = {
-      name = "tv-only";
-      outputs = [
-        {
-          criteria = "eDP-1";
           status = "disable";
         }
-        {
-          criteria = "*";
-          status = "enable";
-          position = "0,0";
-        }
-      ];
-      exec = [
-        wallpaperRefresh
       ];
     };
   };
 
   undockedProfile = {
     profile = {
+      exec = [
+        "${allToInternalScript}"
+        wallpaperRefresh
+      ];
       name = "undocked";
       outputs = [
         {
@@ -268,26 +256,21 @@ let
           status = "enable";
         }
       ];
-      exec = [
-        ''${swaymsg} "${assignAllTo "eDP-1"}"''
-        "${allToInternalScript}"
-        wallpaperRefresh
-      ];
     };
   };
 
   # Toggle script: read eDP-1's current X position and flip the laptop
   # to the opposite side of whichever external is connected. Works for
-  # any dock — no coupling to kanshi profile names.
+  # any dock -- no coupling to kanshi profile names.
   toggleScript = pkgs.writeShellScript "swap-monitor-sides" ''
     set -eu
     outputs=$(${swaymsg} -t get_outputs)
-    external=$(echo "$outputs" | ${pkgs.jq}/bin/jq -r '.[] | select(.active and .name != "eDP-1") | .name' | ${pkgs.coreutils}/bin/head -1)
+    external=$(echo "$outputs" | ${jq} -r '.[] | select(.active and .name != "eDP-1") | .name' | ${head} -1)
     if [ -z "$external" ]; then
       ${pkgs.libnotify}/bin/notify-send "Monitor swap" "No external monitor connected"
       exit 0
     fi
-    edp_x=$(echo "$outputs" | ${pkgs.jq}/bin/jq -r '.[] | select(.name=="eDP-1") | .rect.x')
+    edp_x=$(echo "$outputs" | ${jq} -r '.[] | select(.name=="eDP-1") | .rect.x')
     if [ "$edp_x" = "0" ]; then
       ${swaymsg} "output eDP-1 position 1920 0"
       ${swaymsg} "output \"$external\" position 0 0"
@@ -297,44 +280,49 @@ let
     fi
   '';
 
-  # Fuzzel picker: switch kanshi profile by name. kanshictl rejects
-  # profiles whose outputs don't match the current connection set, in
-  # which case we surface the failure via notify-send.
+  # Windows-style display picker (Win+P). One universal set of modes that works
+  # with any external; kanshictl rejects a switch whose outputs don't match the
+  # current connection set, which we surface via notify-send.
   modePickerScript = pkgs.writeShellScript "display-mode-picker" ''
     set -eu
-    choice=$(printf 'extend\nmirror\nexternal-only\ninternal-only\nextend-tv\ntv-only\nundocked\n' \
+    choice=$(printf 'Extend\nDuplicate\nInternal only\nExternal only\n' \
       | ${pkgs.fuzzel}/bin/fuzzel --dmenu --prompt 'Display: ')
     [ -z "$choice" ] && exit 0
-    if ${pkgs.kanshi}/bin/kanshictl switch "$choice" 2>/dev/null; then
+    case "$choice" in
+      "Extend") profile=extend ;;
+      "Duplicate") profile=mirror ;;
+      "Internal only") profile=internal-only ;;
+      "External only") profile=external-only ;;
+      *) exit 0 ;;
+    esac
+    if ${pkgs.kanshi}/bin/kanshictl switch "$profile" 2>/dev/null; then
       ${pkgs.libnotify}/bin/notify-send -t 1500 "Display mode" "$choice"
     else
       ${pkgs.libnotify}/bin/notify-send -t 2500 -u critical \
-        "Display mode" "Cannot switch to $choice (outputs don't match)"
+        "Display mode" "Cannot switch to $choice (no external connected?)"
     fi
   '';
 in
 {
   services.kanshi = {
     enable = true;
-    systemdTarget = "sway-session.target";
     settings = [
       # First-match-wins for auto-apply: extend is the default when docked.
       # The other three docked profiles match the same outputs and are
-      # reached manually via kanshictl switch.
+      # reached manually via kanshictl switch. undocked matches eDP-1 alone.
       extendProfile
       mirrorProfile
       externalOnlyProfile
       internalOnlyProfile
-      extendTvProfile
-      tvOnlyProfile
       undockedProfile
     ];
+    systemdTarget = "sway-session.target";
   };
 
   wayland.windowManager.sway.config.keybindings = {
     # swap which side the laptop is on (within the current docked kanshi profile).
     "${config.my.modifier}+Shift+m" = "exec ${toggleScript}";
-    # pick display mode (extend / mirror / single-output).
+    # Windows-style display picker (Extend / Duplicate / Internal / External).
     "${config.my.modifier}+Shift+p" = "exec ${modePickerScript}";
   };
 }
