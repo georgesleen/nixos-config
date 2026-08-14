@@ -117,3 +117,7 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 - `modules/features/virtualization.nix`: `set_sched` removed from the libvirt qemu hook; those CFS sysctls don't exist post-EEVDF (Linux 6.6+).
 - `hooks/pre-commit`: nixfmt re-stages the *whole* .nix file, so committing one hunk of a multi-hunk file sweeps the other hunks in. For a partial commit, format first then `git commit --no-verify`.
 
+### nixpkgs / packaging
+
+- `flake.nix` `pinnedOverlay` + `nixpkgs-lastgood` input: pins `jetbrains-mono` and `moonlight-qt` to the 2026-06-26 nixpkgs because the 2026-08-13 unstable bump broke both (jetbrains-mono's nanoemoji source fetch hit a GitHub tarball hash drift; moonlight-qt 6.1.0 fails against ffmpeg 8's removed `AVCodec.pix_fmts`). Remove the two `inherit` entries and the input once upstream fixes land.
+
