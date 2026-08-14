@@ -113,7 +113,6 @@ in
   };
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   sops.defaultSopsFile = ../../secrets/secrets.yaml;
-  sops.secrets.example = { };
   sops.secrets.github_pat.owner = user;
   system.stateVersion = "25.11";
   # Auto-restart wpa_supplicant on crash so NM can reconnect without a reboot.
