@@ -46,7 +46,8 @@ let
       --subst-var-by AP_SSID ${lib.escapeShellArg apSsid} \
       --subst-var-by AP_KEY ${lib.escapeShellArg apKey}
     cp ${./files/uci-defaults/30-ssh} $out/etc/uci-defaults/30-ssh
-    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh
+    cp ${./files/uci-defaults/40-adblock-dns} $out/etc/uci-defaults/40-adblock-dns
+    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns
     # Root's authorized SSH public key; 30-ssh then disables password auth.
     mkdir -p $out/etc/dropbear
     cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys

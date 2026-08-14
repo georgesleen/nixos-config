@@ -41,6 +41,15 @@ ethernet ports are LAN. This unit feeds a downstream switch off the 2.5G port.
   airtime and headroom. Test servers vary wildly (a browser run at
   speed.cloudflare.com gives the real plan number).
 
+## DNS / adblock
+
+LAN DNS is routed through the AdGuard Home on **gs-pi4** (adblock + Cloudflare
+DoH upstream). `40-adblock-dns` sets the router's dnsmasq to forward to the pi
+(`192.168.1.219`) with a strict `1.1.1.1` fallback (so a pi reboot never kills
+DNS), and pins the pi at `.219` via a DHCP reservation (AdGuard binds that exact
+address). Note: a client running its own resolver (the T480s's dnscrypt-proxy)
+bypasses this.
+
 ## Secrets
 
 Wi-Fi credentials are sops-encrypted in `secrets/secrets.yaml` (this repo is

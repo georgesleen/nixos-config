@@ -1,0 +1,19 @@
+#!/bin/sh
+# Route LAN DNS through the AdGuard Home on gs-pi4 (adblock + Cloudflare DoH
+# upstream), pinned at 192.168.1.219 via a DHCP reservation because AdGuard
+# binds that exact address. 1.1.1.1 is a strict fallback, so a reboot of the
+# AdGuard host never takes DNS down.
+uci -q batch <<'EOF'
+set dhcp.adguard=host
+set dhcp.adguard.name='gs-pi4'
+set dhcp.adguard.mac='dc:a6:32:1f:4b:7f'
+set dhcp.adguard.ip='192.168.1.219'
+set dhcp.adguard.dns='1'
+set dhcp.@dnsmasq[0].noresolv='1'
+set dhcp.@dnsmasq[0].strictorder='1'
+delete dhcp.@dnsmasq[0].server
+add_list dhcp.@dnsmasq[0].server='192.168.1.219'
+add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+EOF
+uci commit dhcp
+exit 0
