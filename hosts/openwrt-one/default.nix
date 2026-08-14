@@ -32,6 +32,8 @@ let
   wwanKey = envOr "openwrt_one_wwan_key" "CHANGEME_wwan_key";
   apSsid = envOr "openwrt_one_ap_ssid" "CHANGEME_ap_ssid";
   apKey = envOr "openwrt_one_ap_key" "CHANGEME_ap_key";
+  # Reusable Tailscale auth key (from sops); used once at the first-boot join.
+  tsAuthkey = envOr "openwrt_one_ts_authkey" "";
 
   # /etc/uci-defaults/* run once on first boot (of a fresh flash) and then
   # remove themselves: a reflash re-asserts this exact state. Non-secret
@@ -47,7 +49,10 @@ let
       --subst-var-by AP_KEY ${lib.escapeShellArg apKey}
     cp ${./files/uci-defaults/30-ssh} $out/etc/uci-defaults/30-ssh
     cp ${./files/uci-defaults/40-adblock-dns} $out/etc/uci-defaults/40-adblock-dns
-    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns
+    substitute ${./files/uci-defaults/50-tailscale.in} \
+      $out/etc/uci-defaults/50-tailscale \
+      --subst-var-by TS_AUTHKEY ${lib.escapeShellArg tsAuthkey}
+    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns $out/etc/uci-defaults/50-tailscale
     # Root's authorized SSH public key; 30-ssh then disables password auth.
     mkdir -p $out/etc/dropbear
     cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys
@@ -65,6 +70,8 @@ openwrt-imagebuilder.lib.build (
       "wpad-mbedtls"
       # Web UI for live debugging / iterating the WISP setup.
       "luci"
+      # Tailscale (pulls kmod-tun); node joins on first boot via 50-tailscale.
+      "tailscale"
     ];
   }
 )

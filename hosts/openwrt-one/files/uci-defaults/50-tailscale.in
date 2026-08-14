@@ -1,0 +1,33 @@
+#!/bin/sh
+# Join the tailnet on first boot and advertise the LAN as a subnet route. The
+# reusable auth key is substituted from sops at build time (@TS_AUTHKEY@); it is
+# used once, then the node key in /etc/tailscale/tailscaled.state carries the
+# node across reboots (disable key expiry for this node in the admin console).
+# A `sysupgrade -n` wipes that state, so the reusable key re-joins the node;
+# after such a reflash the new node needs its subnet route re-approved (or set
+# an ACL autoApprover to make it hands-off).
+
+# Put tailscale0 in the LAN firewall zone: tailnet <-> LAN (subnet routing +
+# reaching the router itself for management).
+lanzone=$(uci show firewall | sed -n "s/^firewall\.\(@zone\[[0-9]*\]\)\.name=.lan.*/\1/p" | head -n1)
+if [ -n "$lanzone" ]; then
+    uci -q del_list firewall."$lanzone".device='tailscale0'
+    uci add_list firewall."$lanzone".device='tailscale0'
+    uci commit firewall
+fi
+
+/etc/init.d/tailscale enable
+/etc/init.d/tailscale start
+
+# Authenticate once the WISP uplink has internet (backgrounded so first boot
+# isn't blocked while the STA associates).
+(
+    for i in $(seq 1 60); do
+        ping -c1 -W2 1.1.1.1 >/dev/null 2>&1 && break
+        sleep 5
+    done
+    tailscale up --authkey='@TS_AUTHKEY@' \
+        --advertise-routes=192.168.1.0/24 --accept-routes --hostname=openwrt-one
+) >/tmp/tailscale-up.log 2>&1 &
+
+exit 0
