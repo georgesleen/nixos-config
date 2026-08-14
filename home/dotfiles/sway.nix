@@ -94,9 +94,7 @@ let
 
   brightnessScript = pkgs.writeShellScript "brightness" ''
     step=${toString avStep}
-    cur=$(${pkgs.brightnessctl}/bin/brightnessctl get)
-    max=$(${pkgs.brightnessctl}/bin/brightnessctl max)
-    pct=$(( cur * 100 / max ))
+    pct=$(${pkgs.brightnessctl}/bin/brightnessctl -m info | cut -d, -f4 | tr -d '%')
     case "$1" in
       up)   new=$(( (pct / step + 1) * step )) ;;
       down) new=$(( ((pct - 1) / step) * step )) ;;
