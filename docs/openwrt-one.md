@@ -23,7 +23,7 @@ board's default `/etc/config` (we don't override port names we can't verify).
 ## Topology
 
 WISP: Wi-Fi client uplink (`wwan`, DHCP from the upstream AP) -> NAT -> local
-wired LAN (`192.168.1.1/24`, DHCP server) + a local AP on the other radio. STA
+wired LAN (`192.168.10.1/24`, DHCP server) + a local AP on the other radio. STA
 and AP sit on separate radios (the unit has one 2.4GHz + one 5GHz).
 
 Because the uplink is Wi-Fi, the wired **2.5G WAN port (eth0)** is not needed as
@@ -44,11 +44,12 @@ ethernet ports are LAN. This unit feeds a downstream switch off the 2.5G port.
 ## DNS / adblock
 
 LAN DNS is routed through the AdGuard Home on **gs-pi4** (adblock + Cloudflare
-DoH upstream). `40-adblock-dns` sets the router's dnsmasq to forward to the pi
-(`192.168.1.219`) with a strict `1.1.1.1` fallback (so a pi reboot never kills
-DNS), and pins the pi at `.219` via a DHCP reservation (AdGuard binds that exact
-address). Note: a client running its own resolver (the T480s's dnscrypt-proxy)
-bypasses this.
+DoH upstream). `40-adblock-dns` sets the router's dnsmasq to forward to the pi's
+**Tailscale IP** (`100.126.186.49`, which AdGuard binds and which never changes
+on a LAN renumber) with a strict `1.1.1.1` fallback (so a pi/Tailscale hiccup
+never kills DNS), and pins gs-pi4 at `192.168.10.219` via a DHCP reservation.
+Note: a client running its own resolver (the T480s's dnscrypt-proxy) bypasses
+this.
 
 ## Tailscale
 
@@ -92,13 +93,13 @@ image. Long build; `inhibit-sleep` first if on battery.
 ## Flash
 
 The unit ships with OpenWrt, so the normal path is sysupgrade over SSH once
-reachable at `192.168.1.1`. `make openwrt-one` prints the store path; the
+reachable at `192.168.10.1`. `make openwrt-one` prints the store path; the
 sysupgrade image is `…-squashfs-sysupgrade.itb` inside it:
 
 ```bash
 out=$(make openwrt-one | tail -1)
-scp "$out"/*-squashfs-sysupgrade.itb root@192.168.1.1:/tmp/sysupgrade.itb
-ssh root@192.168.1.1 'sysupgrade -n /tmp/sysupgrade.itb'   # -n = don't keep config
+scp "$out"/*-squashfs-sysupgrade.itb root@192.168.10.1:/tmp/sysupgrade.itb
+ssh root@192.168.10.1 'sysupgrade -n /tmp/sysupgrade.itb'   # -n = don't keep config
 ```
 
 The `…-nor-factory.bin` / `…-snand-factory.bin` / `…-factory.ubi` images in the
