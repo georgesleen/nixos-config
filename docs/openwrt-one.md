@@ -53,12 +53,13 @@ bypasses this.
 ## Tailscale
 
 The `tailscale` package is in the image; `50-tailscale` puts `tailscale0` in the
-LAN firewall zone (subnet routing + management) and, on first boot, runs
-`tailscale up` with a reusable auth key from sops (`openwrt_one_ts_authkey`),
-advertising `192.168.1.0/24 --accept-routes`. The node key then persists across
-reboots (disable key expiry on the node in the admin console). After a
-`sysupgrade -n` the reusable key re-joins a fresh node, whose subnet route needs
-re-approval unless you configure an ACL `autoApprovers` for it.
+LAN firewall zone (for management) and, on first boot, runs `tailscale up` with a
+reusable auth key from sops (`openwrt_one_ts_authkey`). The router joins as a
+plain **management node** -- it does *not* advertise a subnet route, because
+gs-pi4 already advertises `192.168.1.0/24` and the LAN hosts that matter have
+their own Tailscale. The node key persists across reboots (disable key expiry on
+the node in the admin console); a `sysupgrade -n` wipes state and the reusable
+key re-joins.
 
 ## Secrets
 
