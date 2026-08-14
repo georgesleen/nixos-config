@@ -51,7 +51,7 @@
     enable = true;
     enableCompletion = true;
     shellAliases = {
-      gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an, %ar)%Creset%(if)%(trailers:key=Co-authored-by,only=true,valueonly=true)%(then) %C(dim cyan)· %(trailers:key=Co-authored-by,only=true,valueonly=true,separator=, )%Creset%(end)'";
+      gitlog = "git log --graph --decorate --abbrev-commit --pretty=format:'%C(yellow)%h%Creset %C(white)%s%Creset %C(dim white)(%an, %ar)%Creset %C(dim cyan)%(trailers:key=Co-authored-by,only=true,valueonly=true,separator=%x2C )%Creset'";
       shutdown-server = "ssh gs-server sudo shutdown -h now";
       wake-server = "wakeonlan 4c:cc:6a:fb:a9:73";
     };
