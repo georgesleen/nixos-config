@@ -31,6 +31,12 @@
       "noatime"
       "compress=zstd:1"
       "nofail"
+      # 2-partition btrfs on one disk: the by-label .device can lose the boot
+      # readiness race and fail the hard mount, dropping the media stack.
+      # automount defers the mount to first access (both members scanned by then);
+      # device-timeout bounds the wait.
+      "x-systemd.automount"
+      "x-systemd.device-timeout=30s"
     ];
   };
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
