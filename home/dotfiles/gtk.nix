@@ -1,31 +1,28 @@
-{ pkgs, config, ... }:
+{ config, pkgs, ... }:
 
 {
   gtk = {
     enable = true;
-
     font = {
       name = "Inter";
       size = 11;
     };
-
-    theme = {
-      name = "Adwaita";
-      package = pkgs.gnome-themes-extra;
-    };
-
+    gtk4.theme = config.gtk.theme;
     iconTheme = {
       name = "Adwaita";
       package = pkgs.adwaita-icon-theme;
     };
-
-    gtk4.theme = config.gtk.theme;
+    theme = {
+      name = "Adwaita";
+      package = pkgs.gnome-themes-extra;
+    };
   };
 
   home.pointerCursor = {
+    enable = true;
+    gtk.enable = true;
     name = "Adwaita";
     package = pkgs.adwaita-icon-theme;
     size = 24;
-    gtk.enable = true;
   };
 }
