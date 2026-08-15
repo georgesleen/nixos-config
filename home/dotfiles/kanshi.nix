@@ -10,7 +10,6 @@ let
   jq = "${pkgs.jq}/bin/jq";
   grep = "${pkgs.gnugrep}/bin/grep";
   head = "${pkgs.coreutils}/bin/head";
-  cut = "${pkgs.coreutils}/bin/cut";
 
   # Per-output workspace assignments expressed once, expanded per profile.
   # Odd workspaces on the internal panel, even on the external monitor.
@@ -42,7 +41,7 @@ let
   ];
 
   # Runtime discovery of the connected external. All profiles use a wildcard
-  # ("*") external so one set of modes works with any monitor (Acer, TV, ...);
+  # ("*") external so one set of modes works with any monitor (desk LCD, TV);
   # the actual output name isn't known until dock time, so scripts resolve it
   # live instead of baking a name in.
   detectExternal = ''ext=$(${swaymsg} -t get_outputs | ${jq} -r '.[] | select(.active and .name != "eDP-1") | .name' | ${head} -1)'';
@@ -96,28 +95,22 @@ let
     ${wsRestore}
   '';
 
-  # Size and place the connected external. The Acer keeps its deliberate
-  # 1080p60 + RGB-subpixel tuning; any other display (e.g. a 4K TV) keeps its
-  # own preferred/native mode (so a 4K@60 panel comes up at 60Hz on its own)
-  # and gets an integer scale from its height (>= 2160 -> 2x) so the UI matches
-  # the internal panel instead of rendering tiny. $1 is the layout: extend
-  # places the external to the right of eDP-1, external-only puts it at origin.
+  # Size and place the connected external, derived from the display itself so
+  # no monitor is named here. Every display keeps its own preferred/native mode
+  # (a 4K@60 panel comes up at 60Hz, a 100Hz 1080p one at 100Hz) and gets an
+  # integer scale from its height (>= 2160 -> 2x) so the UI matches the
+  # internal panel instead of rendering tiny. `subpixel rgb` is asserted for
+  # every external: desktop LCDs are RGB stripe in practice but most omit
+  # subpixel order from their EDID, and sway then falls back to greyscale
+  # antialiasing. $1 is the layout: extend places the external to the right of
+  # eDP-1, external-only puts it at origin.
   applyExternalScript = pkgs.writeShellScript "kanshi-apply-external" ''
     layout="$1"
     ${detectExternal}
     [ -z "$ext" ] && exit 0
-    info=$(${swaymsg} -t get_outputs | ${jq} -r --arg o "$ext" '.[] | select(.name==$o) | "\(.make)\t\(.current_mode.height)"')
-    make=$(printf '%s' "$info" | ${cut} -f1)
-    height=$(printf '%s' "$info" | ${cut} -f2)
-    case "$make" in
-      Acer*)
-        ${swaymsg} "output \"$ext\" mode 1920x1080@60Hz scale 1 subpixel rgb"
-        ;;
-      *)
-        if [ "''${height:-0}" -ge 2160 ]; then scale=2; else scale=1; fi
-        ${swaymsg} "output \"$ext\" scale $scale"
-        ;;
-    esac
+    height=$(${swaymsg} -t get_outputs | ${jq} -r --arg o "$ext" '.[] | select(.name==$o) | .current_mode.height')
+    if [ "''${height:-0}" -ge 2160 ]; then scale=2; else scale=1; fi
+    ${swaymsg} "output \"$ext\" scale $scale subpixel rgb"
     if [ "$layout" = extend ]; then
       ${swaymsg} "output eDP-1 position 0 0"
       ${swaymsg} "output \"$ext\" position 1920 0"
