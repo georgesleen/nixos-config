@@ -263,6 +263,15 @@ Textareas, all `Details[N].*`:
 Plus `Details[N].TechnicalContactDetails.{Name,Role,Phone,Email}`. **Phone is
 `type=number`**, so pass digits only.
 
+**Every textarea caps at 1000 characters.** Over that, submit silently fails:
+the page does not navigate and a single "Message cannot exceed 1000 characters"
+appears, with no indication of which field. Measure before submitting:
+
+```js
+[...document.querySelectorAll('textarea[name^="Details[0]"]')]
+  .filter(t => t.value.length > 1000).map(t => t.name + '=' + t.value.length)
+```
+
 Write the `Issue` field like a bug report: symptom, then the swap tests that
 isolate the fault, then the conclusion. A well-evidenced defect claim is the
 difference between an approved RMA and a request for more information.
@@ -315,6 +324,17 @@ magick photo.jpg -crop 830x830+1270+1080 +repage -rotate 270 part_markings.jpg
 
 Check the rotation by viewing the result; getting it 180 degrees out is easy.
 Downscale big uploads (`-resize 2400x`) in case the form caps file size.
+
+## Submit
+
+The control is a plain **Submit** button at the bottom of the form. Success
+lands on `/MyDigiKey/Returns/GuestSuccess` with "Your request has been sent to
+Customer Service."
+
+**No RMA number is issued at submit time** for a defect claim: DigiKey reviews
+the questionnaire and contacts George. Nothing may be shipped back until that
+RMA arrives. Tell him this explicitly, since it differs from Amazon where the
+return is authorised immediately.
 
 ---
 
