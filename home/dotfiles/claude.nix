@@ -315,14 +315,12 @@ in
     };
   };
 
-  # Link the whole skills tree individually (recursive) so the directory stays
-  # writable for ad-hoc/experimental skills, and any skill added under
-  # ./claude/skills auto-wires without editing this file.
-  home.file.".claude/skills" = {
-    recursive = true;
-    source = ./claude/skills;
-  };
-  # The gs-pi4 operator skill lives in the private nixos-pi4 input, kept out of
-  # this public repo; link it in alongside the recursive tree above.
-  home.file.".claude/skills/gs-pi4".source = inputs.nixos-pi4 + "/home/skills/gs-pi4";
+  # Each skill under ./claude/skills is a self-contained module: a <name>.nix
+  # that links its ./<name> content dir (recursively, so ~/.claude/skills stays
+  # writable for ad-hoc skills) and declares any runtime deps of its own. Auto-
+  # import every such file, so adding a skill is just dropping in a <name>/ dir
+  # plus a sibling <name>.nix, with no edit here.
+  imports = map (n: ./claude/skills + "/${n}") (
+    builtins.filter (lib.hasSuffix ".nix") (builtins.attrNames (builtins.readDir ./claude/skills))
+  );
 }
