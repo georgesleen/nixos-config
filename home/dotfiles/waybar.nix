@@ -1,9 +1,10 @@
 # Status bar. Native waybar modules cover the simple readouts (network, volume,
-# memory, clock) and the SNI tray (swaybar rendered tray icons as blobs). Blocks
-# with deliberate custom logic stay shell scripts: battery counts down to the
+# memory) and the SNI tray (swaybar rendered tray icons as blobs). Blocks with
+# deliberate custom logic stay shell scripts: battery counts down to the
 # hibernate target not 0% (see battery-thresholds.nix), gpu reads Intel RC6, cpu
 # shows freq+temp, disk aggregates all real filesystems, brightness via
-# brightnessctl (waybar's native backlight module renders nothing here).
+# brightnessctl (waybar's native backlight module renders nothing here), clock
+# via glibc `date` (waybar's own is an hour behind, see clockBlock).
 # Palette: nightfox (matches the helix theme); #00c781 signature accent (tmux).
 
 { pkgs, ... }:
@@ -227,6 +228,17 @@ let
 
     echo "<span color='$color'>󰾲 $label</span>"
   '';
+  # Clock via glibc `date`, not waybar's native module: libstdc++'s std::chrono
+  # tzdb drops the DST offset on a zone line whose RULES column is a literal
+  # amount, which is what America/Vancouver uses until 2026-11-01 (BC ending
+  # seasonal clock changes), so the native clock reads an hour behind.
+  clockBlock = pkgs.writeShellScript "waybar-clock" ''
+    set -euo pipefail
+    now="$(${pkgs.coreutils}/bin/date '+%a %b %d %I:%M %p')"
+    cal="$(${pkgs.util-linux}/bin/cal)"
+    ${pkgs.jq}/bin/jq -n -c --arg t "$now" --arg c "$cal" \
+      '{text: $t, tooltip: ("<tt>" + $c + "</tt>")}'
+  '';
   diskBlock = pkgs.writeShellScript "waybar-disk" ''
     set -euo pipefail
     stats="$(${pkgs.coreutils}/bin/df -B1 \
@@ -243,10 +255,6 @@ in
   programs.waybar = {
     enable = true;
     settings.mainBar = {
-      clock = {
-        format = "{:%a %b %d %I:%M %p}";
-        tooltip-format = "<tt>{calendar}</tt>";
-      };
       "custom/battery" = {
         exec = "${batteryBlock}";
         interval = 30;
@@ -254,6 +262,11 @@ in
       "custom/brightness" = {
         exec = "${brightnessBlock}";
         interval = 2;
+      };
+      "custom/clock" = {
+        exec = "${clockBlock}";
+        interval = 5;
+        return-type = "json";
       };
       "custom/cpu" = {
         exec = "${cpuBlock}";
@@ -292,7 +305,7 @@ in
         "custom/disk"
         "custom/battery"
         "custom/power"
-        "clock"
+        "custom/clock"
         "tray"
       ];
       network = {
@@ -351,7 +364,7 @@ in
       #custom-disk,
       #custom-battery,
       #custom-power,
-      #clock {
+      #custom-clock {
         margin: 4px 2px;
         padding: 0 10px;
         background: rgba(57, 80, 109, 0.30);
@@ -362,7 +375,7 @@ in
       #network     { color: #63cdcf; } /* cyan  - connectivity */
       #wireplumber { color: #81b29a; } /* green - audio */
       #memory      { color: #d67ad2; } /* pink  - RAM */
-      #clock       { color: #cdcecf; } /* fg    - neutral */
+      #custom-clock { color: #cdcecf; } /* fg   - neutral */
     '';
     systemd.enable = true;
   };
