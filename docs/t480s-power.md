@@ -9,8 +9,8 @@ State as of 2026-07-13. Config lives in `modules/hardware/thinkpad.nix`
 Handled by `lidSleepAction`, debounced 3 s via acpid (logind lid handling is
 disabled). In order:
 
-1. **Docked** (authorized Thunderbolt device, or HP USB-C Dock G5 visible on
-   USB): stay awake, treat as desktop.
+1. **Docked** (authorized Thunderbolt device, or any non-eDP DRM connector
+   reporting `connected`): stay awake, treat as desktop.
 2. **On AC:** plain suspend (S3).
 3. **On battery:** `suspend-then-hibernate`; S3 for 30 minutes
    (`HibernateDelaySec=30min`), then an RTC wake fires and the machine

@@ -19,14 +19,13 @@ let
       [ -e "$f" ] && [ "$(${pkgs.coreutils}/bin/cat "$f")" = "1" ] && exit 0
     done
 
-    # HP USB-C Dock G5 USB presence (covers USB-only mode or pre-Thunderbolt
-    # authorization, where the Thunderbolt check above misses the dock).
-    for vid_pid in 036b 046b 056b 066b 076b 086b; do
-      for f in /sys/bus/usb/devices/*/idVendor; do
-        dir=$(${pkgs.coreutils}/bin/dirname "$f")
-        [ "$(${pkgs.coreutils}/bin/cat "$f" 2>/dev/null)" = "03f0" ] && \
-        [ "$(${pkgs.coreutils}/bin/cat "$dir/idProduct" 2>/dev/null)" = "$vid_pid" ] && exit 0
-      done
+    # Any external display connected → treat as desktop. Dock-agnostic (covers
+    # a plain USB-C dock, which enumerates no Thunderbolt device at all, and a
+    # bare HDMI cable). Connector status is cached by the kernel, so it reads
+    # correctly in the early-resume window before re-enumeration finishes.
+    for f in /sys/class/drm/card*/card*-*/status; do
+      case "$f" in *eDP*) continue ;; esac
+      [ -e "$f" ] && [ "$(${pkgs.coreutils}/bin/cat "$f")" = "connected" ] && exit 0
     done
 
     # On AC: plain S3. On battery: S3 first, then hibernate via RTC wake after
@@ -169,7 +168,9 @@ in
 
     # USB devices behind a Thunderbolt controller (PCIe `removable`) — let a
     # dock's power button or attached keyboard wake the laptop from suspend.
-    ACTION=="add", SUBSYSTEM=="usb", ATTRS{removable}=="removable", ATTR{power/wakeup}="enabled"
+    # DEVTYPE guard: usb_interface nodes match too but have no power/wakeup,
+    # so each resume logged a "could not chase sysfs attribute" per interface.
+    ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{removable}=="removable", ATTR{power/wakeup}="enabled"
 
     # Never let the Thunderbolt NHI runtime-suspend: runtime-resume from deep
     # D3cold trips the nhi.c "RX ring already enabled" bug, hangs the ICM, and
