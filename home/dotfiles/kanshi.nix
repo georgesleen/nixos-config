@@ -132,6 +132,11 @@ let
   # whenever a profile lands (wallpaper.nix owns the unit).
   wallpaperRefresh = "${pkgs.systemd}/bin/systemctl --user start wallpaper-refresh.service";
 
+  # waybar disables sway/workspaces for the life of the process if an IPC
+  # subscribe loses the race with the output churn a profile causes, so restart
+  # it once the profile has landed.
+  barRefresh = "${pkgs.systemd}/bin/systemctl --user restart waybar.service";
+
   # kanshi can't see the lid switch, so a profile applied at boot/hotplug with
   # the lid already closed would re-enable eDP-1 onto the dark internal panel.
   # The sway `bindswitch` only fires on lid *transitions*, not at startup, so
@@ -154,6 +159,7 @@ let
         "${splitWorkspacesScript}"
         "${lidReconcileScript}"
         wallpaperRefresh
+        barRefresh
       ];
       name = "extend";
       outputs = [
@@ -177,6 +183,7 @@ let
         "${mirrorScript}"
         "${allToInternalScript}"
         wallpaperRefresh
+        barRefresh
       ];
       name = "mirror";
       outputs = [
@@ -199,6 +206,7 @@ let
         "${applyExternalScript} external-only"
         "${allToExternalScript}"
         wallpaperRefresh
+        barRefresh
       ];
       name = "external-only";
       outputs = [
@@ -220,6 +228,7 @@ let
       exec = [
         "${allToInternalScript}"
         wallpaperRefresh
+        barRefresh
       ];
       name = "internal-only";
       outputs = [
@@ -241,6 +250,7 @@ let
       exec = [
         "${allToInternalScript}"
         wallpaperRefresh
+        barRefresh
       ];
       name = "undocked";
       outputs = [
