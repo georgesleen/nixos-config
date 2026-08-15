@@ -10,27 +10,30 @@ let
     let
       version = "2.4.0";
       src = pkgs.fetchurl {
-        url = "https://github.com/Moonfin-Client/Moonfin-Core/releases/download/${version}/Moonfin_Linux_v${version}.AppImage";
         hash = "sha256-HJUwK2hMmQ4TP7VWWcKRn9v5a3rLf6Ej1+YvIyT8weI=";
+        url = "https://github.com/Moonfin-Client/Moonfin-Core/releases/download/${version}/Moonfin_Linux_v${version}.AppImage";
       };
       # wrapType2 only wraps the binary; pull the desktop entry + icon out of the
       # AppImage so the launcher (fuzzel) lists it. Exec=moonfin already matches.
-      contents = pkgs.appimageTools.extractType2 { pname = "moonfin"; inherit version src; };
+      contents = pkgs.appimageTools.extract {
+        inherit version src;
+        pname = "moonfin";
+      };
     in
     pkgs.appimageTools.wrapType2 {
-      pname = "moonfin";
       inherit version src;
-      # Not in the appimage FHS base: the first two are DT_NEEDED by the binary
-      # (Flutter GTK/GL); libmpv is dlopen'd by media_kit at playback time.
-      extraPkgs = p: [
-        p.libepoxy
-        p.xorg.libXv
-        p.mpv-unwrapped
-      ];
       extraInstallCommands = ''
         install -Dm444 ${contents}/org.moonfin.linux.desktop -t $out/share/applications
         install -Dm444 ${contents}/org.moonfin.linux.png -t $out/share/pixmaps
       '';
+      # Not in the appimage FHS base: the first two are DT_NEEDED by the binary
+      # (Flutter GTK/GL); libmpv is dlopen'd by media_kit at playback time.
+      extraPkgs = p: [
+        p.libepoxy
+        p.libxv
+        p.mpv-unwrapped
+      ];
+      pname = "moonfin";
     };
 in
 
@@ -54,6 +57,6 @@ in
     zed-editor # code editor
     zoom-us # video conferencing
     pandoc # Markdown Renderer
-    texlive.combined.scheme-medium # LaTeX engine
+    texliveMedium # LaTeX engine
   ];
 }
