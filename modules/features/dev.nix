@@ -13,7 +13,7 @@
     # llm cli
     codex
     claude-code
-    gemini-cli
+    antigravity-cli
     bubblewrap
     nodejs # npx, needed by some Claude Code MCP servers (context7, playwright)
 
