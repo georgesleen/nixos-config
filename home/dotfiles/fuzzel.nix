@@ -23,7 +23,7 @@
         # panel vs the 82 DPI external, and flipped to scale-sizing everywhere
         # the moment a 2x output (4K TV) was plugged in anywhere.
         dpi-aware = "no";
-        font = "monospace:size=11";
+        font = "monospace:size=12";
         horizontal-pad = 4;
         inner-pad = 4;
         lines = 1;
