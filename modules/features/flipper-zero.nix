@@ -1,14 +1,16 @@
 # Flipper Zero desktop app (qFlipper) + USB access.
 #
-# uaccess/udev-acl tags don't fire under sway/Wayland; use GROUP="plugdev" +
-# MODE="0660" so the user reaches the CDC serial (normal mode) and the STM32
-# DFU device (firmware flashing) without a logind seat grant. Same pattern as
-# keychron.nix; the user is already in plugdev.
+# hardware.flipperzero brings qFlipper and its shipped 42-flipperzero.rules
+# (ESP32 BlackMagic + U2F coverage we'd otherwise miss). Those rules grant via
+# TAG+="uaccess", which doesn't fire under sway/Wayland, so the rules below
+# re-grant the two devices that matter with GROUP="plugdev" + MODE="0660".
+# extraRules land in 99-local.rules, applied after 42-*, so they win. Same
+# pattern as keychron.nix; the user is already in plugdev.
 
-{ pkgs, ... }:
+{ ... }:
 
 {
-  environment.systemPackages = [ pkgs.qFlipper ];
+  hardware.flipperzero.enable = true;
 
   services.udev.extraRules = ''
     # Flipper Zero CDC serial / CLI (STM32, vendor 0483 product 5740).
