@@ -157,9 +157,11 @@ in
     HandleLidSwitchDocked = "ignore";
     HandleLidSwitchExternalPower = "ignore";
   };
-  # TLP's RUNTIME_PM_ON_BAT=auto would flip the NHI back to runtime suspend on
-  # every switch to battery, defeating the udev hold above. Default denylist
-  # plus `thunderbolt`.
+  # TLP's RUNTIME_PM_ON_BAT=auto would flip the NHI and the Alpine Ridge xHCI
+  # back to runtime suspend on every switch to battery, defeating the udev
+  # holds below. Default denylist plus `thunderbolt`. Note the denylist only
+  # stops TLP managing these drivers; it does not set `on` itself, so the udev
+  # rules do the actual holding.
   services.tlp.settings.RUNTIME_PM_DRIVER_DENYLIST = "mei_me nouveau radeon xhci_hcd thunderbolt";
   # Mic-mute LED: let the `input` group flip the brightness file so the sway
   # micmute binding can update it without sudo.
@@ -182,6 +184,18 @@ in
     # returns. Covers boot, resume, and tb-recover rescans alike. TLP is kept
     # from undoing this by RUNTIME_PM_DRIVER_DENYLIST below.
     ACTION=="bind", SUBSYSTEM=="pci", DRIVER=="thunderbolt", ATTR{power/control}="on"
+
+    # Same hold for the Alpine Ridge xHCI (8086:15c1), the other function of
+    # the same JHL6240 chip and the only USB path the USB-C dock has. Left at
+    # `auto` it drops to D3cold while undocked and can fail the runtime-resume
+    # a dock plug needs, silently: DP alt mode is muxed inside Alpine Ridge and
+    # needs no awake PCI function, so the monitor lights up while every dock
+    # USB device stays invisible (2026-08-16 22:39, no enumeration at all; the
+    # same controller logged "xHC error in resume, USBSTS 0x401, Reinit" on an
+    # S3 resume hours earlier). Matched on PCI ID, not DRIVER=="xhci_hcd"
+    # alone, which would also pin the PCH controller at 00:14.0 and cost
+    # battery on every port. `bind` for the same reason as the NHI rule above.
+    ACTION=="bind", SUBSYSTEM=="pci", DRIVER=="xhci_hcd", ATTR{vendor}=="0x8086", ATTR{device}=="0x15c1", ATTR{power/control}="on"
   '';
   # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports, scoped to
   # sleep.target (not boot), so only LID wakes from S4; otherwise they
