@@ -2,11 +2,11 @@
 
 Declarative firmware for the OpenWrt One, built from the upstream OpenWrt
 ImageBuilder via [`astro/nix-openwrt-imagebuilder`][ib]. It is **not** a NixOS
-host: `flake.nix` exposes it as `packages.x86_64-linux.openwrt-one`, a
+host: `flake.nix` exposes it as `packages.x86_64-linux.gs-openwrt-one`, a
 sysupgrade `.bin`. ImageBuilder is x86_64-linux only, so the T480s is the only
 builder (same constraint as `gs-pi4`).
 
-Config lives in `hosts/openwrt-one/`:
+Config lives in `hosts/gs-openwrt-one/`:
 
 - `default.nix` - image definition: profile `openwrt_one` (target
   `mediatek/filogic`), release pinned to `24.10.8`, packages, and the
@@ -82,22 +82,22 @@ Values must not contain a single quote (they land inside `uci set ... '...'`).
 ## Build
 
 ```bash
-make openwrt-one        # sops exec-env decrypts -> nix build --impure
+make gs-openwrt-one        # sops exec-env decrypts -> nix build --impure
 ```
 
 `--impure` lets the flake read the secrets via `builtins.getEnv`. Without them
-(plain `nix build .#openwrt-one` / `nix flake check`) the values fall back to
+(plain `nix build .#gs-openwrt-one` / `nix flake check`) the values fall back to
 `CHANGEME_*` placeholders and eval still succeeds, producing a non-secret test
 image. Long build; `inhibit-sleep` first if on battery.
 
 ## Flash
 
 The unit ships with OpenWrt, so the normal path is sysupgrade over SSH once
-reachable at `192.168.10.1`. `make openwrt-one` prints the store path; the
+reachable at `192.168.10.1`. `make gs-openwrt-one` prints the store path; the
 sysupgrade image is `…-squashfs-sysupgrade.itb` inside it:
 
 ```bash
-out=$(make openwrt-one | tail -1)
+out=$(make gs-openwrt-one | tail -1)
 scp "$out"/*-squashfs-sysupgrade.itb root@192.168.10.1:/tmp/sysupgrade.itb
 ssh root@192.168.10.1 'sysupgrade -n /tmp/sysupgrade.itb'   # -n = don't keep config
 ```

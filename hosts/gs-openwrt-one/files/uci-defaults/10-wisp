@@ -9,7 +9,7 @@
 uci -q batch <<'EOF'
 set network.wwan=interface
 set network.wwan.proto='dhcp'
-set system.@system[0].hostname='openwrt-one'
+set system.@system[0].hostname='gs-openwrt-one'
 
 # LAN on an uncommon subnet. This router hops onto arbitrary upstream networks
 # (WISP) and shares a tailnet with other 192.168.1.0/24 sites, so the default

@@ -31,7 +31,7 @@
     # (jetbrains-mono source build, moonlight-qt vs ffmpeg 8). See pinnedOverlay;
     # drop it once upstream catches up.
     nixpkgs-lastgood.url = "github:nixos/nixpkgs/e73de5be04e0eff4190a1432b946d469c794e7b4";
-    # Declarative OpenWrt images via the upstream ImageBuilder (openwrt-one).
+    # Declarative OpenWrt images via the upstream ImageBuilder (gs-openwrt-one).
     openwrt-imagebuilder = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:astro/nix-openwrt-imagebuilder";
@@ -156,8 +156,8 @@
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
       };
       # OpenWrt One firmware image (WISP mode). ImageBuilder is x86_64-linux
-      # only; build via `make openwrt-one` so sops injects the Wi-Fi secrets.
-      packages.x86_64-linux.openwrt-one = import ./hosts/openwrt-one {
+      # only; build via `make gs-openwrt-one` so sops injects the Wi-Fi secrets.
+      packages.x86_64-linux.gs-openwrt-one = import ./hosts/gs-openwrt-one {
         openwrt-imagebuilder = inputs.openwrt-imagebuilder;
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
       };

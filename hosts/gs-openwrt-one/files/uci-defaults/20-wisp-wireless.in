@@ -1,7 +1,8 @@
 #!/bin/sh
 # Wireless config for WISP mode. @WWAN_*@ / @AP_*@ are substituted at build
-# time from sops-encrypted secrets (see hosts/openwrt-one/default.nix, Makefile
-# `openwrt-one`). Runs once on first boot of a fresh flash, then self-deletes.
+# time from sops-encrypted secrets (see hosts/gs-openwrt-one/default.nix,
+# Makefile `gs-openwrt-one`). Runs once on first boot of a fresh flash, then
+# self-deletes.
 #
 # Confirmed live on this unit: radio0 = 2.4GHz, radio1 = 5GHz. Uplink runs on
 # 5GHz (radio1): PCVirus broadcasts on both bands, but 5GHz (ch161) is far less

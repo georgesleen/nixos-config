@@ -26,7 +26,7 @@ fi
         ping -c1 -W2 1.1.1.1 >/dev/null 2>&1 && break
         sleep 5
     done
-    tailscale up --authkey='@TS_AUTHKEY@' --accept-routes --hostname=openwrt-one
+    tailscale up --authkey='@TS_AUTHKEY@' --accept-routes --hostname=gs-openwrt-one
 ) >/tmp/tailscale-up.log 2>&1 &
 
 exit 0

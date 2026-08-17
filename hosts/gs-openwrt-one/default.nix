@@ -1,7 +1,7 @@
 # OpenWrt One (mediatek/filogic) firmware image, built declaratively via the
 # upstream OpenWrt ImageBuilder (astro/nix-openwrt-imagebuilder). Not a NixOS
 # host: this evaluates to a sysupgrade .bin package, built on the T480s only
-# (ImageBuilder is x86_64-linux only). See docs/openwrt-one.md.
+# (ImageBuilder is x86_64-linux only). See docs/gs-openwrt-one.md.
 #
 # WISP mode: Wi-Fi client uplink (wwan) -> NAT -> wired LAN + a local AP.
 {
@@ -19,9 +19,9 @@ let
   profiles = openwrt-imagebuilder.lib.profiles { inherit pkgs release; };
 
   # Secret Wi-Fi values, decrypted at build time by `sops exec-env` (Makefile
-  # `openwrt-one` target). builtins.getEnv needs `--impure`; when absent (plain
-  # `nix flake check`) these fall back to obvious placeholders so eval still
-  # succeeds and yields a harmless non-secret test image.
+  # `gs-openwrt-one` target). builtins.getEnv needs `--impure`; when absent
+  # (plain `nix flake check`) these fall back to obvious placeholders so eval
+  # still succeeds and yields a harmless non-secret test image.
   envOr =
     name: default:
     let
@@ -38,7 +38,7 @@ let
   # /etc/uci-defaults/* run once on first boot (of a fresh flash) and then
   # remove themselves: a reflash re-asserts this exact state. Non-secret
   # structure and the secret-bearing wireless script are kept separate.
-  files = pkgs.runCommand "openwrt-one-files" { } ''
+  files = pkgs.runCommand "gs-openwrt-one-files" { } ''
     mkdir -p $out/etc/uci-defaults
     cp ${./files/uci-defaults/10-wisp} $out/etc/uci-defaults/10-wisp
     substitute ${./files/uci-defaults/20-wisp-wireless.in} \
