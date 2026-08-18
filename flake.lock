@@ -208,11 +208,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1786949799,
-        "narHash": "sha256-60twDBt0PHI3JsL5PW5SBEkmsylEH3JUSbya15GeUB8=",
+        "lastModified": 1787030014,
+        "narHash": "sha256-FQ8T03h/J9a60JO74B2PhNY2mu+M5ebUhoczHt2yC2Y=",
         "ref": "refs/heads/main",
-        "rev": "9910be011e2dbd424b6a32d19b958888d73eb7ac",
-        "revCount": 19,
+        "rev": "5a818f2d0e51ec77d3d3f1b91a1960d835f050f4",
+        "revCount": 27,
         "type": "git",
         "url": "file:///home/george-sleen/Documents/projects/nixos-pi4"
       },
@@ -304,11 +304,11 @@
         "systems": "systems"
       },
       "locked": {
-        "lastModified": 1786613621,
-        "narHash": "sha256-5iO4/BzBszuhM39yqdQCsapDEFE4u+AvEss192pPD2E=",
+        "lastModified": 1786957108,
+        "narHash": "sha256-y1jJt6cw8UykCt+Ca8UgK+UA2Y1PS62FexYmu+zFANc=",
         "owner": "astro",
         "repo": "nix-openwrt-imagebuilder",
-        "rev": "960032329ccc82025a8c957f1920cdc008d0d372",
+        "rev": "c704c2faae3a1132c5f5672d8edee127bfec0a6b",
         "type": "github"
       },
       "original": {

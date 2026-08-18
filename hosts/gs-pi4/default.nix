@@ -22,19 +22,36 @@
   boot.supportedFilesystems.zfs = lib.mkForce false;
   # kitty terminfo so tmux (and other programs) work when SSHing from kitty.
   environment.systemPackages = [ pkgs.kitty.terminfo ];
-  # btrfs data drive (single filesystem so apps can hardlink across dirs). zstd:1
-  # is cheap compression; large binaries barely compress but text/metadata does.
-  fileSystems."/srv/media" = {
-    device = "/dev/disk/by-label/media";
+  # Top-level of the same filesystem (unfiltered by subvol=), so the T480s can
+  # btrfs-send /home snapshots to it over ssh now that the SSD lives on gs-pi4
+  # instead of being locally attached to the laptop.
+  fileSystems."/mnt/backup" = {
+    device = "/dev/disk/by-label/BACKUP";
     fsType = "btrfs";
     options = [
       "noatime"
+      "nofail"
+      "x-systemd.automount"
+      "x-systemd.device-timeout=30s"
+    ];
+  };
+  # Original "media"-labeled USB drive failed (stopped enumerating on the USB3
+  # bus, 2026-08-18). Storage moved to the "BACKUP" SSD instead, which now does
+  # double duty: its pre-existing top-level "snapshot" subvolume keeps taking
+  # T480s /home backups (see fileSystems."/mnt/backup" below), and a sibling
+  # "media" subvolume (btrfs quota-capped at 128GiB so downloads/library growth
+  # can never eat into backup headroom) replaces the dead drive here.
+  fileSystems."/srv/media" = {
+    device = "/dev/disk/by-label/BACKUP";
+    fsType = "btrfs";
+    options = [
+      "subvol=media"
+      "noatime"
       "compress=zstd:1"
       "nofail"
-      # 2-partition btrfs on one disk: the by-label .device can lose the boot
-      # readiness race and fail the hard mount, dropping the media stack.
-      # automount defers the mount to first access (both members scanned by then);
-      # device-timeout bounds the wait.
+      # by-label .device can lose the boot readiness race and fail the hard
+      # mount, dropping the media stack. automount defers the mount to first
+      # access; device-timeout bounds the wait.
       "x-systemd.automount"
       "x-systemd.device-timeout=30s"
     ];
