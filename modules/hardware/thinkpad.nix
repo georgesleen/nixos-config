@@ -4,41 +4,29 @@
 { config, pkgs, ... }:
 
 let
-  # Decide what to do with a closed lid and act on it: stay awake when docked,
-  # otherwise suspend on AC / hibernate on battery. Shared by the acpid lid
-  # handler (debounced) and the resume reconcile in the host's power.nix.
+  # Which sysfs signals mean "docked" lives in lid-decision.sh, with fixture
+  # tests run by `make test`.
+  lidDecision = pkgs.writeShellScript "lid-decision" (builtins.readFile ./lid-decision.sh);
+
+  # Act on that decision. On AC: plain S3. On battery: S3 first, then hibernate
+  # via RTC wake after HibernateDelaySec (sleep.conf below); fast resume when
+  # the lid reopens soon, S4 when it doesn't. An older revision jumped straight
+  # to S4 out of distrust of the firmware RTC wake on battery; unverified,
+  # retested with systemd 260 as of 2026-07-13. --no-block so callers running
+  # inside the resume transition don't block sleep.target. Shared by the acpid
+  # lid handler (debounced) and the resume reconcile in the host's power.nix.
   lidSleepAction = pkgs.writeShellScript "lid-sleep-action" ''
-    ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state || exit 0
-
-    # Authorized Thunderbolt dock → treat as desktop, do nothing. Skip route-0
-    # entries (`<domain>-0`): those are the host controllers themselves, always
-    # authorized=1, and would otherwise make every lid close look "docked".
-    for f in /sys/bus/thunderbolt/devices/*-*/authorized; do
-      dev=$(${pkgs.coreutils}/bin/basename "$(${pkgs.coreutils}/bin/dirname "$f")")
-      case "$dev" in *-0) continue ;; esac
-      [ -e "$f" ] && [ "$(${pkgs.coreutils}/bin/cat "$f")" = "1" ] && exit 0
-    done
-
-    # Any external display connected → treat as desktop. Dock-agnostic (covers
-    # a plain USB-C dock, which enumerates no Thunderbolt device at all, and a
-    # bare HDMI cable). Connector status is cached by the kernel, so it reads
-    # correctly in the early-resume window before re-enumeration finishes.
-    for f in /sys/class/drm/card*/card*-*/status; do
-      case "$f" in *eDP*) continue ;; esac
-      [ -e "$f" ] && [ "$(${pkgs.coreutils}/bin/cat "$f")" = "connected" ] && exit 0
-    done
-
-    # On AC: plain S3. On battery: S3 first, then hibernate via RTC wake after
-    # HibernateDelaySec (sleep.conf below); fast resume when the lid reopens
-    # soon, S4 when it doesn't. An older revision jumped straight to S4 out of
-    # distrust of the firmware RTC wake on battery; unverified, retested with
-    # systemd 260 as of 2026-07-13. --no-block so callers running inside the
-    # resume transition don't block sleep.target.
-    if ${pkgs.gnugrep}/bin/grep -q 1 /sys/class/power_supply/AC/online 2>/dev/null; then
-      exec ${pkgs.systemd}/bin/systemctl --no-block suspend
-    else
-      exec ${pkgs.systemd}/bin/systemctl --no-block suspend-then-hibernate
-    fi
+    case "$(${lidDecision})" in
+      suspend)
+        exec ${pkgs.systemd}/bin/systemctl --no-block suspend
+        ;;
+      suspend-then-hibernate)
+        exec ${pkgs.systemd}/bin/systemctl --no-block suspend-then-hibernate
+        ;;
+      *)
+        exit 0
+        ;;
+    esac
   '';
 
   # Hard reset of the whole Alpine Ridge chip: drop its PCI functions (a rescan
@@ -127,29 +115,22 @@ let
   # present with an empty thunderbolt domain; either way hotplug is invisible
   # and replugging the dock does nothing. If recovery fails, unplug the dock,
   # rerun, and replug.
+  # Wedge detection, kept in its own file so it is testable against fixture
+  # sysfs trees; tests run by `make test`.
+  tbState = pkgs.writeShellScript "tb-state" (builtins.readFile ./tb-state.sh);
+
   tbRecover = pkgs.writeShellScript "tb-recover" ''
     fp=$(echo /sys/bus/wmi/devices/86CCFD48-205E-4A77-9C48-2021CBEDE341*/force_power)
     [ -e "$fp" ] || exit 0
 
-    present() {
-      for d in /sys/bus/pci/devices/*; do
-        [ "$(${pkgs.coreutils}/bin/cat "$d/vendor" 2>/dev/null)" = "0x8086" ] &&
-        [ "$(${pkgs.coreutils}/bin/cat "$d/device" 2>/dev/null)" = "$1" ] && return 0
-      done
-      return 1
-    }
-
     # Let boot/resume enumeration settle before judging.
     ${pkgs.coreutils}/bin/sleep 5
 
-    domain_up() { ${pkgs.coreutils}/bin/ls /sys/bus/thunderbolt/devices/ 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q .; }
-    if present 0x15c0 && ! present 0x15bf; then :;   # bridges alive, NHI gone
-    elif present 0x15bf && ! domain_up; then :;      # NHI alive, ICM dead
-    else exit 0; fi
+    [ "$(${tbState})" = wedged ] || exit 0
 
     echo "wedged Thunderbolt controller detected, power cycling"
     ${tbPowerCycle}
-    domain_up && echo "thunderbolt domain recovered" ||
+    ${tbState} domain-up && echo "thunderbolt domain recovered" ||
       echo "recovery failed; unplug the dock, restart tb-recover, replug (else reboot)"
   '';
 

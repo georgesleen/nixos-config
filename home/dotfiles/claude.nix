@@ -100,11 +100,19 @@ let
   # (the real gap: /run/secrets is 0400 locally, but an ssh login user or sudo
   # routes around file perms). Guardrail against casual/accidental reads, not a
   # hard sandbox: string matching can be defeated by obfuscation.
+  # The match itself lives in secrets-guard-match.sh so it can be tested
+  # adversarially, including the cases it deliberately does not catch;
+  # tests run by `make test`.
+  secretsGuardMatch = pkgs.writeShellScript "secrets-guard-match" ''
+    PATH="${pkgs.gnugrep}/bin:$PATH"
+    ${builtins.readFile ./secrets-guard-match.sh}
+  '';
+
   secretsHook = pkgs.writeShellScript "claude-secrets-guard" ''
     input="$(${pkgs.coreutils}/bin/cat)"
     cmd="$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.tool_input.command // empty')"
     [ -z "$cmd" ] && exit 0
-    if printf '%s\n' "$cmd" | ${pkgs.gnugrep}/bin/grep -qE '/run/secrets(\.d)?\b|\bsops\b[^|]*(-d|--decrypt)'; then
+    if ${secretsGuardMatch} "$cmd"; then
       printf 'Blocked: reading decrypted secrets (/run/secrets or sops -d) is denied by policy. Ask the user to act on the secret value directly.\n' >&2
       exit 2
     fi

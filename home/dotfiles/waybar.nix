@@ -13,21 +13,18 @@ let
   thresh = import ./battery-thresholds.nix;
   # nightfox accents
   muted = "#71839b";
-  fmtFreq = pkgs.writeShellScript "fmt-freq" ''
-    mhz="$1"
-    if [ "$mhz" -ge 1000 ] 2>/dev/null; then
-      awk -v m="$mhz" 'BEGIN{printf "%.2f GHz", m/1000}'
-    else
-      echo "''${mhz} MHz"
-    fi
+  # Pure formatting (GHz/MHz, GiB/TiB, hours to h/m) lives in waybar-fmt.sh
+  # so the rounding and unit boundaries are testable; run by `make test`.
+  waybarFmt = pkgs.writeShellScript "waybar-fmt" ''
+    PATH="${pkgs.gawk}/bin:$PATH"
+    ${builtins.readFile ./waybar-fmt.sh}
   '';
-  fmtBytes = pkgs.writeShellScript "fmt-bytes" ''
-    awk -v u="$1" -v t="$2" 'BEGIN{
-      gib=1024*1024*1024; tib=gib*1024
-      if (t >= tib) { printf "%.2f/%.2f TiB", u/tib, t/tib }
-      else           { printf "%.2f/%.2f GiB", u/gib, t/gib }
-    }'
-  '';
+  # RC6 residency delta maths, split out so the clamps and the counter-reset
+  # case are testable; run by `make test`.
+  gpuBusy = pkgs.writeShellScript "gpu-busy" (builtins.readFile ./gpu-busy.sh);
+  fmtFreq = pkgs.writeShellScript "fmt-freq" ''exec ${waybarFmt} freq "$@"'';
+  fmtBytes = pkgs.writeShellScript "fmt-bytes" ''exec ${waybarFmt} bytes "$@"'';
+
   brightnessBlock = pkgs.writeShellScript "waybar-brightness" ''
     set -euo pipefail
     cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
@@ -62,25 +59,7 @@ let
     energy="$(printf "%s\n" "$info" | awk '/energy:/ {print $2; exit}')"
     energy_full="$(printf "%s\n" "$info" | awk '/energy-full:/ {print $2; exit}')"
     rate="$(printf "%s\n" "$info" | awk '/energy-rate:/ {print $2; exit}')"
-    fmt_time() {
-      local n="$1"
-      if [ -z "$n" ]; then
-        echo ""
-        return
-      fi
-      local hrs mins
-      hrs=$(printf "%.0f" "$(echo "$n" | awk '{print $1}')")
-      mins=$(printf "%.0f" "$(echo "$n" | awk '{print ($1 - int($1)) * 60}')")
-      if [ "$mins" -ge 60 ]; then
-        hrs=$((hrs+1))
-        mins=0
-      fi
-      if [ "$hrs" -gt 0 ]; then
-        printf "%dh%02dm" "$hrs" "$mins"
-      else
-        printf "%dm" "$mins"
-      fi
-    }
+    fmt_time() { ${waybarFmt} time "$1"; }
     tte_hours=""
     ttf_hours=""
     if [ -n "$rate" ] && awk -v r="$rate" 'BEGIN{exit (r>0.1)?0:1}'; then
@@ -173,7 +152,7 @@ let
 
     # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
     intel_busy() {
-      local rc6_path now rc6 dt drc6 busy prev_time prev_rc6
+      local rc6_path now rc6 busy prev_time prev_rc6
       rc6_path=$(ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
       [ -f "$rc6_path" ] || { echo 0; return; }
       rc6=$(${pkgs.coreutils}/bin/cat "$rc6_path")
@@ -181,13 +160,7 @@ let
       busy=0
       if [ -f "$STATE" ]; then
         read -r prev_time prev_rc6 < "$STATE" 2>/dev/null || true
-        dt=$(( now - ''${prev_time:-$now} ))
-        drc6=$(( rc6 - ''${prev_rc6:-$rc6} ))
-        if [ "$dt" -gt 0 ]; then
-          busy=$(( (100 * (dt - drc6)) / dt ))
-          [ "$busy" -lt 0 ] && busy=0
-          [ "$busy" -gt 100 ] && busy=100
-        fi
+        busy=$(${gpuBusy} "''${prev_time:-}" "''${prev_rc6:-}" "$now" "$rc6")
       fi
       printf '%s %s\n' "$now" "$rc6" > "$STATE"
       echo "$busy"

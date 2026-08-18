@@ -118,27 +118,42 @@
         };
     in
     {
-      # Unit tests for the shell logic embedded in this config. Each entry runs
-      # a `*.test.sh` against the script it covers; `nix flake check` runs them
-      # all. Add a line here when a new script gets a test file.
+      # Unit tests for the shell logic embedded in this config. Each suite is a
+      # `<base>.sh` script paired with a `<base>.test.sh`, both given to the
+      # shared harness in tests/lib.sh. Run them with `make test`; a plain
+      # `nix flake check` also tries to build gs-openwrt-one, whose ImageBuilder
+      # package index is a fixed-output derivation that drifts upstream.
+      # Adding a suite is one line here.
       checks = forAllSystems (
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
+          suites = {
+            battery-level = ./home/dotfiles/battery-level;
+            dock-ss-state = ./modules/hardware/dock-ss-state;
+            gpu-busy = ./home/dotfiles/gpu-busy;
+            lid-decision = ./modules/hardware/lid-decision;
+            secrets-guard-match = ./home/dotfiles/secrets-guard-match;
+            snapper-orphans = ./modules/features/snapper-orphans;
+            tb-state = ./modules/hardware/tb-state;
+            waybar-fmt = ./home/dotfiles/waybar-fmt;
+          };
           shellTest =
-            name: script: test:
-            pkgs.runCommand "test-${name}" { nativeBuildInputs = [ pkgs.bash ]; } ''
-              bash ${test} ${script} 2>&1 | tee "$out"
-            '';
+            name: base:
+            pkgs.runCommand "test-${name}"
+              {
+                nativeBuildInputs = [
+                  pkgs.bash
+                  pkgs.gawk
+                  pkgs.gnugrep
+                  pkgs.findutils
+                ];
+              }
+              ''
+                bash ${base + ".test.sh"} ${base + ".sh"} ${./tests/lib.sh} 2>&1 | tee "$out"
+              '';
         in
-        {
-          dock-ss-state =
-            shellTest "dock-ss-state" ./modules/hardware/dock-ss-state.sh
-              ./modules/hardware/dock-ss-state.test.sh;
-          snapper-orphans =
-            shellTest "snapper-orphans" ./modules/features/snapper-orphans.sh
-              ./modules/features/snapper-orphans.test.sh;
-        }
+        builtins.mapAttrs shellTest suites
       );
 
       devShells = forAllSystems (
