@@ -54,9 +54,17 @@ Consequences and handling:
 
 ## Hibernate caveats
 
-- Resume in the same dock state you hibernated in: dock state at POST shifts
-  the e820 map and the kernel rejects the image
-  (`Image mismatch: architecture specific data`). No bypass exists.
+- Resume never works. The firmware places the low ACPI-data e820 reservation
+  at a different address on every POST, so the kernel e820 checksum test in
+  `arch_hibernation_header_restore` rejects the image
+  (`Image mismatch: architecture specific data`). No bypass exists. All 4
+  resumes in the retained journal failed, docked and undocked alike; the
+  earlier "same dock state" rule was wrong. Hibernate still does its job of
+  saving the pack, but the session is lost each time.
+- Confirm a rejection with
+  `journalctl -b -1 -k | grep -E 'Image mismatch|hibernation entry'` and
+  compare the maps with
+  `diff <(journalctl -b -1 -k | grep BIOS-e820) <(journalctl -b 0 -k | grep BIOS-e820)`.
 - A rebuild between hibernate and resume causes a different, kernel-version
   image rejection.
 - If the Thunderbolt dock is dead after a resume, `tb-recover` runs
