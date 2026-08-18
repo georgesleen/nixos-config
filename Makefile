@@ -2,7 +2,7 @@
 # and boots it detached, then prints the URLs; `make stop` shuts it down.
 SHELL := bash
 .ONESHELL:
-.PHONY: vm build stop ssh log status gs-openwrt-one
+.PHONY: vm build stop ssh log status gs-openwrt-one test
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 HOST    ?= gs-pi4-vm
@@ -33,6 +33,20 @@ vm:
 
 build:
 	nix build --no-link --print-out-paths '$(VMATTR)'
+
+# Run the shell unit tests (every flake `checks` output). Use this instead of
+# `nix flake check`, which also builds gs-openwrt-one, whose ImageBuilder
+# package index is a fixed-output derivation that drifts upstream and fails.
+test:
+	@names=$$(nix eval --raw '$(ROOT)#checks.x86_64-linux' \
+	    --apply 'cs: builtins.concatStringsSep " " (builtins.attrNames cs)')
+	failed=0
+	for n in $$names; do
+	  echo "== $$n"
+	  nix build --no-link -L "$(ROOT)#checks.x86_64-linux.$$n" || failed=1
+	done
+	if [ $$failed -ne 0 ]; then echo "SUITES FAILED"; exit 1; fi
+	echo "all suites passed"
 
 # Build the OpenWrt One WISP image. sops exec-env decrypts the Wi-Fi secrets
 # into the environment; --impure lets the flake read them via builtins.getEnv.
