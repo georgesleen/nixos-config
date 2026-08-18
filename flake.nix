@@ -135,6 +135,9 @@
           dock-ss-state =
             shellTest "dock-ss-state" ./modules/hardware/dock-ss-state.sh
               ./modules/hardware/dock-ss-state.test.sh;
+          snapper-orphans =
+            shellTest "snapper-orphans" ./modules/features/snapper-orphans.sh
+              ./modules/features/snapper-orphans.test.sh;
         }
       );
 

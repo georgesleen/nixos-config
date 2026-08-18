@@ -6,6 +6,15 @@
   ...
 }:
 
+let
+  # Which snapshot directories count as orphans. Kept in its own file so the
+  # decision is testable against fixture trees without deleting anything;
+  # tests in snapper-orphans.test.sh, run by `nix flake check`.
+  snapperOrphans = pkgs.writeShellScript "snapper-orphans" ''
+    export FIND="${pkgs.findutils}/bin/find"
+    ${builtins.readFile ./snapper-orphans.sh}
+  '';
+in
 {
   environment.systemPackages = with pkgs; [
     snapper
@@ -47,14 +56,10 @@
   systemd.services.snapper-reap-orphans = {
     description = "Delete snapper snapshots that have no info.xml";
     script = ''
-      for d in /home/.snapshots/*/; do
-        [ -d "$d/snapshot" ] || continue
-        [ -e "$d/info.xml" ] && continue
-        # Skip anything recent: an in-flight snapper create looks identical.
-        [ -n "$(${pkgs.findutils}/bin/find "$d" -maxdepth 0 -mmin +60)" ] || continue
+      ${snapperOrphans} | while read -r d; do
         echo "reaping orphan snapshot $d"
         if ${pkgs.btrfs-progs}/bin/btrfs subvolume delete "$d/snapshot"; then
-          rmdir "$d"
+          ${pkgs.coreutils}/bin/rmdir "$d"
         else
           echo "failed to delete $d/snapshot, leaving it for the next run" >&2
         fi
