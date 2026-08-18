@@ -62,6 +62,40 @@ Each host declares `sops.defaultSopsFile` + `sops.age.sshKeyPaths` + its `sops.s
 
 `hooks/pre-commit` is tracked in the repo; `.envrc` wires it via `core.hooksPath` when direnv loads. It formats staged `.nix` files with nixfmt and validates them with `nix-instantiate --parse`.
 
+## Tests
+
+Shell logic embedded in this config is split into plain `.sh` files with
+fixture tests. Run them all with:
+
+```bash
+make test            # runs every flake `checks` output
+```
+
+Do NOT use `nix flake check` as the test command: it also builds
+`gs-openwrt-one`, whose OpenWrt ImageBuilder package index is a fixed-output
+derivation that drifts upstream and fails for unrelated reasons.
+
+**The pattern: split the decision from the action.** The decision half is a
+dependency-free `.sh` file that reads its inputs from an env var (a fixture
+sysfs tree, or JSON on stdin) and prints a result or a plan. The acting half
+stays in Nix, stays tiny, and just does what it is told. Only the decision half
+is tested, which is where the bugs actually live.
+
+Adding a suite:
+
+1. Write `foo.sh` (the decision) and `foo.test.sh` next to the module.
+2. `foo.test.sh` takes the script as `$1` and sources the shared harness from
+   `$2` (`tests/lib.sh`, giving `check_eq`, `check_exit`, `finish`).
+3. Add one line to `suites` in `flake.nix`, pointing at the shared base path.
+
+**A suite must be proven to fail.** After writing one, reintroduce the bug it
+covers and confirm the suite goes red; a check that cannot fail is exactly the
+`dock-ss-recover` bug below, which silently no-opped for its whole life.
+
+Current suites: `av-step`, `battery-level`, `display-plan`, `dock-ss-state`,
+`gpu-busy`, `lid-decision`, `secrets-guard-match`, `snapper-orphans`,
+`tb-state`, `waybar-fmt`, `workspace-plan`.
+
 ## Workarounds
 
 One-liners: file, what, and why. Full detail lives in comments at the referenced definitions.

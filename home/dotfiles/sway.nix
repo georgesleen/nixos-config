@@ -54,18 +54,15 @@ let
   # Volume/brightness step, in percent. Presses snap to the next multiple of
   # this, so levels always land on multiples of 5 (45, 50, 55...) not 49, 54.
   avStep = 5;
+  # Step rounding for the volume and brightness keys, split out so the
+  # boundary cases and clamping are testable; run by `make test`.
+  avStepScript = pkgs.writeShellScript "av-step" (builtins.readFile ./av-step.sh);
+
   volumeScript = pkgs.writeShellScript "volume" ''
-    step=${toString avStep}
     case "$1" in
       up | down)
         cur=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{printf "%d", $2 * 100}')
-        if [ "$1" = up ]; then
-          new=$(( (cur / step + 1) * step ))
-        else
-          new=$(( ((cur - 1) / step) * step ))
-        fi
-        [ "$new" -lt 0 ] && new=0
-        [ "$new" -gt 100 ] && new=100
+        new=$(${avStepScript} "$1" "$cur" ${toString avStep})
         ${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ "''${new}%"
         ;;
       mute) ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
@@ -93,15 +90,8 @@ let
   '';
 
   brightnessScript = pkgs.writeShellScript "brightness" ''
-    step=${toString avStep}
     pct=$(${pkgs.brightnessctl}/bin/brightnessctl -m info | cut -d, -f4 | tr -d '%')
-    case "$1" in
-      up)   new=$(( (pct / step + 1) * step )) ;;
-      down) new=$(( ((pct - 1) / step) * step )) ;;
-      *)    new=$pct ;;
-    esac
-    [ "$new" -lt 0 ] && new=0
-    [ "$new" -gt 100 ] && new=100
+    new=$(${avStepScript} "$1" "$pct" ${toString avStep})
     ${pkgs.brightnessctl}/bin/brightnessctl set "''${new}%" >/dev/null
     ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "''${new}%"
   '';

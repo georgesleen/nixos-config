@@ -129,7 +129,9 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           suites = {
+            av-step = ./home/dotfiles/av-step;
             battery-level = ./home/dotfiles/battery-level;
+            display-plan = ./home/dotfiles/display-plan;
             dock-ss-state = ./modules/hardware/dock-ss-state;
             gpu-busy = ./home/dotfiles/gpu-busy;
             lid-decision = ./modules/hardware/lid-decision;
@@ -137,6 +139,7 @@
             snapper-orphans = ./modules/features/snapper-orphans;
             tb-state = ./modules/hardware/tb-state;
             waybar-fmt = ./home/dotfiles/waybar-fmt;
+            workspace-plan = ./home/dotfiles/workspace-plan;
           };
           shellTest =
             name: base:
@@ -147,6 +150,7 @@
                   pkgs.gawk
                   pkgs.gnugrep
                   pkgs.findutils
+                  pkgs.jq
                 ];
               }
               ''
