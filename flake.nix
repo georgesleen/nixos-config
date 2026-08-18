@@ -118,6 +118,26 @@
         };
     in
     {
+      # Unit tests for the shell logic embedded in this config. Each entry runs
+      # a `*.test.sh` against the script it covers; `nix flake check` runs them
+      # all. Add a line here when a new script gets a test file.
+      checks = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          shellTest =
+            name: script: test:
+            pkgs.runCommand "test-${name}" { nativeBuildInputs = [ pkgs.bash ]; } ''
+              bash ${test} ${script} 2>&1 | tee "$out"
+            '';
+        in
+        {
+          dock-ss-state =
+            shellTest "dock-ss-state" ./modules/hardware/dock-ss-state.sh
+              ./modules/hardware/dock-ss-state.test.sh;
+        }
+      );
+
       devShells = forAllSystems (
         system:
         let

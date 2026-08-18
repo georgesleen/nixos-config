@@ -73,19 +73,18 @@ let
   # SuperSpeed root port stuck with no connect event to notice. Escalates
   # least-disruptive first: capture portsc, power-cycle just that root port,
   # and only fall back to the full chip reset if the port cycle does not take.
+  # Dock/SuperSpeed detection, kept in its own file so it can be tested against
+  # fixture sysfs trees. Tests: modules/hardware/dock-ss-state.test.sh, run by
+  # `nix flake check`.
+  dockSsState = pkgs.writeShellScript "dock-ss-state" (builtins.readFile ./dock-ss-state.sh);
+
   dockSsRecover = pkgs.writeShellScript "dock-ss-recover" ''
     xhci=/sys/bus/pci/devices/0000:3c:00.0
     ssport=/sys/bus/usb/devices/usb4/4-0:1.0/usb4-port1
     stamp=/run/dock-ss-recover.stamp
 
-    docked() {
-      for d in /sys/bus/usb/devices/*; do
-        [ "$(${pkgs.coreutils}/bin/cat "$d/idVendor" 2>/dev/null)" = "17ef" ] &&
-        [ "$(${pkgs.coreutils}/bin/cat "$d/idProduct" 2>/dev/null)" = "30af" ] && return 0
-      done
-      return 1
-    }
-    ss_up() { ${pkgs.coreutils}/bin/ls -d /sys/bus/usb/devices/4-[0-9]* 2>/dev/null | ${pkgs.gnugrep}/bin/grep -q .; }
+    docked() { ${dockSsState} docked; }
+    ss_up() { ${dockSsState} ss-up; }
 
     # Let the plug finish enumerating before judging it.
     ${pkgs.coreutils}/bin/sleep 8
