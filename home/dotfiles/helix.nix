@@ -10,7 +10,10 @@
             args = [ "-" ];
             command = "pedantix";
           };
-          language-servers = [ "nil" ];
+          language-servers = [
+            "nil"
+            "harper"
+          ];
           name = "nix";
         }
         {
@@ -21,7 +24,10 @@
             ];
             command = "black";
           };
-          language-servers = [ "pylsp" ];
+          language-servers = [
+            "pylsp"
+            "harper"
+          ];
           name = "python";
         }
         {
@@ -56,6 +62,37 @@
             "harper"
           ];
           name = "typst";
+        }
+        {
+          language-servers = [
+            "clangd"
+            "harper"
+          ];
+          name = "c";
+        }
+        {
+          language-servers = [
+            "clangd"
+            "harper"
+          ];
+          name = "cpp";
+        }
+        {
+          language-servers = [
+            "rust-analyzer"
+            "harper"
+          ];
+          name = "rust";
+        }
+        {
+          # harper keys its comment parsers off the LSP language ID, which for
+          # shell is "shellscript", not helix's language name "bash".
+          language-id = "shellscript";
+          language-servers = [
+            "bash-language-server"
+            "harper"
+          ];
+          name = "bash";
         }
       ];
 
