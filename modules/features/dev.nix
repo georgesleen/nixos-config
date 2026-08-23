@@ -14,6 +14,7 @@
     codex
     claude-code
     antigravity-cli
+    opencode
     bubblewrap
     nodejs # npx, needed by some Claude Code MCP servers (context7, playwright)
 
