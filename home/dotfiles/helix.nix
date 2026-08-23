@@ -1,4 +1,9 @@
-{ pkgs, ... }:
+{
+  config,
+  inputs,
+  pkgs,
+  ...
+}:
 
 {
   programs.helix = {
@@ -132,6 +137,50 @@
       theme = "nightfox";
     };
   };
+  # Steel session cog plus its glue. Stock hx (gs-pi4) ignores these files.
+  # The cog lives in its own repo, pinned via the helix-session input; init
+  # and the typed-command module are machine glue, so they stay here.
+  xdg.configFile."helix/cogs/session.scm".source = "${inputs.helix-session}/session.scm";
+  xdg.configFile."helix/helix.scm".text = ''
+    (require (prefix-in helix. "helix/commands.scm"))
+    (require (prefix-in helix.static. "helix/static.scm"))
+    (require "cogs/session.scm")
+
+    (provide
+      session-save
+      session-restore
+      open-helix-scm
+      open-init-scm)
+
+    ;;@doc
+    ;; Open the helix.scm file
+    (define (open-helix-scm)
+      (helix.open (helix.static.get-helix-scm-path)))
+
+    ;;@doc
+    ;; Opens the init.scm file
+    (define (open-init-scm)
+      (helix.open (helix.static.get-init-scm-path)))
+  '';
+  xdg.configFile."helix/init.scm".text = ''
+    (require "cogs/session.scm")
+    ;; enqueue-thread-local-callback(-with-delay) live here.
+    (require "helix/misc.scm")
+
+    (set-session-location! "${config.xdg.cacheHome}/helix")
+
+    ;; Snapshot every minute so any quit path (or a crash) restores the same
+    ;; buffer set on the next bare launch. First run after 30s.
+    (define (session-autosave-loop)
+      (session-save)
+      (enqueue-thread-local-callback-with-delay 60000 session-autosave-loop))
+    (enqueue-thread-local-callback-with-delay 30000 session-autosave-loop)
+
+    ;; Bare `hx`: reopen the last snapshot. Launches with file arguments are
+    ;; left alone.
+    (when (equal? (command-line) '("hx"))
+      (enqueue-thread-local-callback session-restore))
+  '';
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80
     wrap_comments = true

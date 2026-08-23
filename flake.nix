@@ -7,10 +7,20 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:AshleyYakeley/NixVirt";
     };
-    # Helix nightly
+    # Helix nightly. Feeds only the gs-pi4 cross build now; native hosts get
+    # the Steel fork below.
     helix = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:helix-editor/helix";
+    };
+    # Session save/restore cog for steel helix, local clone (published
+    # repo pending). Consumed by home/dotfiles/helix.nix.
+    helix-session.url = "git+file:///home/george-sleen/Documents/projects/helix-session";
+    # Helix with the Steel plugin system (upstream PR #8675, not merged yet).
+    # Native hosts only, see helixOverlay.
+    helix-steel = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:mattwparas/helix/steel-event-system";
     };
     home-manager = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -50,6 +60,7 @@
   outputs =
     inputs@{
       helix,
+      helix-steel,
       home-manager,
       nixpkgs,
       pedantix,
@@ -60,9 +71,10 @@
     let
       user = "george-sleen";
 
-      # Git helix from the flake, for native x86_64 hosts.
+      # Git helix with the Steel plugin system, from the flake, for native
+      # x86_64 hosts. gs-pi4 keeps the cross build of upstream master.
       helixOverlay = final: _prev: {
-        helix = helix.packages.${final.stdenv.hostPlatform.system}.default;
+        helix = helix-steel.packages.${final.stdenv.hostPlatform.system}.default;
       };
 
       # Cross-compiled helix + pedantix for gs-pi4 (see overlays file).
