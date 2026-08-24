@@ -105,6 +105,10 @@
         harper = {
           args = [ "--stdio" ];
           command = "harper-ls";
+          # harper pulls workspace/configuration on every document update and
+          # bails on a null reply ("Settings must be an object"), so hand it
+          # the object shape it wants.
+          config.harper-ls = { };
         };
         marksman = {
           command = "marksman";
