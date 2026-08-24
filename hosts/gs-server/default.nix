@@ -31,6 +31,7 @@
   imports = [
     ../../modules/roles/server.nix
     ./hardware-configuration.nix
+    ./wifi.nix
     ./win11-vm.nix
   ];
   # Networking
@@ -71,6 +72,8 @@
     options = "caps:escape";
     variant = "";
   };
+  sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  sops.defaultSopsFile = ../../secrets/secrets.yaml;
   system.stateVersion = "25.11";
   systemd.services.wol-enp0s31f6 = {
     after = [ "network-online.target" ];

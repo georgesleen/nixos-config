@@ -145,6 +145,11 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 - Steam Remote Play (win11 host): LAN discovery/pairing only; full runbook in `docs/steam-remote-play.md`. After any RDP session run `tscon 1 /dest:console` (RDP disconnect locks the console and the stream captures a lock screen). RX580 lands in Code 43 when the VM starts after host amdgpu owned the card; in-guest device restart won't clear it, a graceful VM power cycle will (stop rebinds to amdgpu, which re-POSTs the card).
 - Steam Remote Play host encode is permanently degraded on the RX580 (Steam's AMF crashes, Polaris legacy driver will never get the 23.30+ fixes, x264 fallback starves against the game on 6 vCPUs). Moonlight + Sunshine is the playable gaming path (Sunshine's AMF works on the same driver); details in `docs/steam-remote-play.md`.
 
+### gs-openwrt-one / gs-server Wi-Fi
+
+- `hosts/gs-server/wifi.nix` `allowInsecurePredicate`: gs-server's BCM4352 [14e4:43b1] is driven only by `broadcom_sta`, which nixpkgs marks insecure (unfixed CVE-2019-9501/9502, remote code execution from crafted Wi-Fi frames, unmaintained since 2016). No in-tree driver claims the chip, so the predicate allows that one package by name (`lib.getName`, not the versioned derivation name, which carries the kernel version and would break eval on every kernel bump). Retire the whole driver stanza if a mainline-supported USB adapter replaces the card.
+- `hosts/gs-server/wifi.nix` route metrics: failover is done with route metric 700 and DNS priority 200 on the Wi-Fi profile, not by keeping the radio down, so the association is already up when the wire drops. NetworkManager gives ethernet metric 100, so the wire wins whenever it is up.
+
 ### gs-pi4 / misc
 
 - `flake.nix` gs-pi4: QEMU binfmt emulation, not cross-compilation; cross hit unrelated package bugs (gh, marksman, Haskell TH). Hardcode `buildPlatform = "x86_64-linux"` if retried.

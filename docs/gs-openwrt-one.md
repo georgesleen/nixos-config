@@ -62,6 +62,28 @@ their own Tailscale. The node key persists across reboots (disable key expiry on
 the node in the admin console); a `sysupgrade -n` wipes state and the reusable
 key re-joins.
 
+## gs-server Wi-Fi failover
+
+`hosts/gs-server/wifi.nix` makes gs-server join this router's AP automatically
+as a backup uplink. The wired `enp0s31f6` link stays primary: the Wi-Fi profile
+takes route metric 700 and DNS priority 200, both worse than NetworkManager's
+ethernet defaults (metric 100), so Wi-Fi carries traffic only when the wire is
+down. The association is held at all times, so the switch-over needs no
+reconnect.
+
+The AP SSID and password come from the same two sops keys the router image uses
+(`openwrt_one_ap_ssid`, `openwrt_one_ap_key`), rendered into an env file that
+`networking.networkmanager.ensureProfiles.environmentFiles` reads, so neither
+value reaches the nix store or git. gs-server is now an age recipient of
+`secrets/secrets.yaml`.
+
+Note the two links land on different subnets: wired on the home `192.168.1.0/24`
+and Wi-Fi on the router's `192.168.10.0/24` behind its WISP NAT. Reach gs-server
+over Tailscale when it runs on Wi-Fi.
+
+gs-server's BCM4352 card works only with the unmaintained `broadcom_sta` driver;
+see the security caveat in `CLAUDE.md` Workarounds.
+
 ## Secrets
 
 Wi-Fi credentials (and the Tailscale auth key) are sops-encrypted in
