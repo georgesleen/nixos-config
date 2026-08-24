@@ -1,0 +1,17 @@
+<!-- libvirt's stock NAT network, with a fixed lease for the win11 guest. The
+     uuid and bridge name match the network libvirtd created on first run, so
+     this definition replaces it rather than adding a second bridge. -->
+<network>
+  <name>default</name>
+  <uuid>4d24cf43-66cd-4dc0-a787-d9fce08955a9</uuid>
+  <forward mode='nat'/>
+  <bridge name='virbr0' stp='on' delay='0'/>
+  <mac address='52:54:00:c3:da:8e'/>
+  <ip address='192.168.122.1' netmask='255.255.255.0'>
+    <dhcp>
+      <range start='192.168.122.2' end='192.168.122.247'/>
+      <!-- Fixed, because the host port-forward rules target this address. -->
+      <host mac='52:54:00:cd:23:2a' name='win11' ip='192.168.122.248'/>
+    </dhcp>
+  </ip>
+</network>

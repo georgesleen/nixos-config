@@ -151,6 +151,7 @@
             snapper-orphans = ./modules/features/snapper-orphans;
             tb-state = ./modules/hardware/tb-state;
             waybar-fmt = ./home/dotfiles/waybar-fmt;
+            win11-forward = ./hosts/gs-server/win11-forward;
             workspace-plan = ./home/dotfiles/workspace-plan;
           };
           shellTest =

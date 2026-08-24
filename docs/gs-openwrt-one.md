@@ -77,9 +77,12 @@ The AP SSID and password come from the same two sops keys the router image uses
 value reaches the nix store or git. gs-server is now an age recipient of
 `secrets/secrets.yaml`.
 
-Note the two links land on different subnets: wired on the home `192.168.1.0/24`
-and Wi-Fi on the router's `192.168.10.0/24` behind its WISP NAT. Reach gs-server
-over Tailscale when it runs on Wi-Fi.
+Both links land on the same subnet: this router's AP (`phy0-ap0`) is bridged
+into `br-lan`, so a Wi-Fi client gets a `192.168.10.x` lease from the same pool
+as the wired ports. Verified 2026-08-23: wired `192.168.10.227`, Wi-Fi
+`192.168.10.228`, wired default route metric 100 against the Wi-Fi's 700.
+gs-server keeps its Tailscale address (`100.111.59.110`) across the switch
+either way.
 
 gs-server's BCM4352 card works only with the unmaintained `broadcom_sta` driver;
 see the security caveat in `CLAUDE.md` Workarounds.

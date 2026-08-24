@@ -5,6 +5,11 @@
   ...
 }:
 
+let
+  # The T480s deploys this host, so its key opens both accounts. Deploys go to
+  # root@ because an untrusted remote user cannot add unsigned store paths.
+  deployKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDS8y5OdyR6OIy91fTAzt2GHg+aqm9H5F2l+G9/aWFJF george-sleen@GS-ThinkPad-T480s";
+in
 {
   boot.initrd.kernelModules = [
     "vfio_pci"
@@ -41,11 +46,19 @@
     "nix-command"
     "flakes"
   ];
+  # Lets the same deploy also work as george-sleen, without root@.
+  nix.settings.trusted-users = [
+    "root"
+    "@wheel"
+  ];
   nixpkgs.config.allowUnfree = true;
   programs.dconf.enable = true;
   # Passwordless power-off for remote/scripted use (wake-do-work-sleep flows).
   # Both idioms are whitelisted since scripts reach for either; `systemctl` is
   # pinned to the `poweroff` verb so this isn't a blanket systemctl grant.
+  # Headless box reached only over SSH with keys; unattended `nixos-rebuild
+  # switch --target-host` needs sudo not to prompt.
+  security.sudo.wheelNeedsPassword = false;
   security.sudo.extraRules = [
     {
       commands = [
@@ -90,6 +103,7 @@
   time.timeZone = "America/Vancouver";
   # USB permissions
   users.groups.plugdev = { };
+  users.users.root.openssh.authorizedKeys.keys = [ deployKey ];
   # User account
   users.users.${user} = {
     description = "George Sleen";
@@ -104,8 +118,6 @@
       "render"
     ];
     isNormalUser = true;
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDS8y5OdyR6OIy91fTAzt2GHg+aqm9H5F2l+G9/aWFJF george-sleen@GS-ThinkPad-T480s"
-    ];
+    openssh.authorizedKeys.keys = [ deployKey ];
   };
 }

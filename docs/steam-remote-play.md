@@ -18,13 +18,30 @@ deliberately out of the path (see below).
   why nothing ever reached the VM over the tailnet.
 
 Resolution: the Tailscale service inside the guest is stopped and disabled
-(`sc stop Tailscale`, `sc config Tailscale start= disabled`). The guest lives
-only on the LAN at `192.168.1.248` (macvtap, MAC `52:54:00:cd:23:2a`, DHCP).
+(`sc stop Tailscale`, `sc config Tailscale start= disabled`).
 
-Consequence: away-from-home RDP to the guest is gone. At home, RDP straight
-to `192.168.1.248`. If remote access is wanted again, prefer a subnet router
-(gs-pi4 advertising `192.168.1.0/24`) over reinstalling Tailscale in the
-guest, because of #4320.
+## Guest addressing (changed 2026-08-23)
+
+The guest no longer sits on the LAN. It is on libvirt's NAT bridge at a fixed
+`192.168.122.248` (MAC `52:54:00:cd:23:2a`), because macvtap cannot ride the
+Wi-Fi uplink gs-server falls back to; see `hosts/gs-server/win11-vm.nix`.
+
+Reach it at **gs-server's own address** on the forwarded ports: `gs-server`
+(Tailscale `100.111.59.110`) works from anywhere on the tailnet, or its LAN
+address (`192.168.10.227` wired, `192.168.10.228` on Wi-Fi). RDP is
+`gs-server:3389`; the Sunshine web UI is `https://gs-server:47990`.
+
+Forwarded by the `60-win11-network` libvirt hook: TCP 3389, 47984, 47989,
+47990, 48010 and UDP 3389, 47998, 47999, 48000, 48002, 48010. The rules exist
+only while the domain runs.
+
+Two consequences:
+
+- **Steam Remote Play discovery no longer works.** It finds hosts by UDP
+  broadcast on 27036, which no NAT carries. Moonlight, which is addressed
+  directly, is unaffected. Steam in-home streaming would need the guest back
+  on the LAN, which needs the wired uplink.
+- **RDP is now reachable from the whole tailnet**, not LAN-only as before.
 
 ## Start sequence
 
@@ -36,7 +53,8 @@ ssh gs-server virsh -c qemu:///system start win11
 The VM is headless: the domain has `<video model='none'/>` and the RX580 is
 the only GPU, so the virt-manager console is black by design. Windows
 auto-logs-in; Steam auto-starts and binds UDP 27036 a minute or two after
-boot. SSH into the guest: `ssh "George Sleen"@192.168.1.248`.
+boot. SSH into the guest is not available: the guest has no listener on 22
+(checked 2026-08-23).
 
 ## RX580 Code 43 after a dirty handoff
 
@@ -69,7 +87,7 @@ fix (see CLAUDE.md Workarounds).
 Both ends signed into the same Steam account on the same LAN. On the client:
 Settings, Remote Play, the guest appears under Computers & Devices, click
 Connect. Steam shows a 4-digit PIN that must be typed into Steam on the
-guest, which is headless, so RDP in (Remmina, `192.168.1.248`) and enter it
+guest, which is headless, so RDP in (Remmina, `gs-server`) and enter it
 there.
 
 ## Console lock: always hand the session back
@@ -79,7 +97,8 @@ Play then captures a lock screen (black stream). After any RDP use, hand the
 session back to the physical console instead of just closing the client:
 
 ```
-ssh "George Sleen"@192.168.1.248 "tscon 1 /dest:console"
+# From an RDP session on the guest, or any guest shell:
+tscon 1 /dest:console
 ```
 
 (Session id from `query session`; it is 1 with the standard autologon.) This
