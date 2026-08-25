@@ -16,6 +16,7 @@
     ../features/dev.nix
     ../features/lsp.nix
     ../features/dns.nix
+    ../features/firmware.nix
     ../features/laptop-power.nix
     ../features/steam.nix
     ../features/keychron.nix
