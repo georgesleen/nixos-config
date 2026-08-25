@@ -148,7 +148,6 @@
             av-step = ./home/dotfiles/av-step;
             battery-level = ./home/dotfiles/battery-level;
             display-plan = ./home/dotfiles/display-plan;
-            dock-ss-state = ./modules/hardware/dock-ss-state;
             gpu-busy = ./home/dotfiles/gpu-busy;
             lid-decision = ./modules/hardware/lid-decision;
             media-free = inputs.nixos-pi4 + "/gs-pi4/media-free";

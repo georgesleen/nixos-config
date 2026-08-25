@@ -34,9 +34,9 @@ let
   # the intel-wmi-thunderbolt force_power knob for a long off dwell (2s failed
   # to reset a hung ICM; 10s recovered it), rescan, then release force_power so
   # the firmware can power-gate the controller when idle. A plugged-in dock can
-  # hold the chip powered through the cycle. Shared by tb-recover and
-  # dock-ss-recover; it is the only thing that resets this controller, and a
-  # bare xhci_hcd unbind/rebind is not a substitute (the rebind times out).
+  # hold the chip powered through the cycle. It is the only thing that resets
+  # this controller; a bare xhci_hcd unbind/rebind is not a substitute (the
+  # rebind times out).
   tbPowerCycle = pkgs.writeShellScript "tb-power-cycle" ''
     fp=$(echo /sys/bus/wmi/devices/86CCFD48-205E-4A77-9C48-2021CBEDE341*/force_power)
     [ -e "$fp" ] || exit 1
@@ -51,62 +51,6 @@ let
     echo 1 > "$fp"; ${pkgs.coreutils}/bin/sleep 5
     echo 1 > /sys/bus/pci/rescan; ${pkgs.coreutils}/bin/sleep 3
     echo 0 > "$fp"
-  '';
-
-  # The dock's SuperSpeed bus intermittently comes up dead: the USB2 side
-  # enumerates in full while bus 4 stays empty, so the RTL8153 ethernet (the
-  # only USB3-only device on the dock) never appears and nothing but a reboot
-  # brings it back. Seen 2026-08-15 14:12 and 2026-08-17 00:50; the port reads
-  # `state=not attached, disable=0, over_current_count=0`, the picture of a
-  # SuperSpeed root port stuck with no connect event to notice. Escalates
-  # least-disruptive first: capture portsc, power-cycle just that root port,
-  # and only fall back to the full chip reset if the port cycle does not take.
-  # Dock/SuperSpeed detection, kept in its own file so it can be tested against
-  # fixture sysfs trees. Tests: modules/hardware/dock-ss-state.test.sh, run by
-  # `nix flake check`.
-  dockSsState = pkgs.writeShellScript "dock-ss-state" (builtins.readFile ./dock-ss-state.sh);
-
-  dockSsRecover = pkgs.writeShellScript "dock-ss-recover" ''
-    xhci=/sys/bus/pci/devices/0000:3c:00.0
-    ssport=/sys/bus/usb/devices/usb4/4-0:1.0/usb4-port1
-    stamp=/run/dock-ss-recover.stamp
-
-    docked() { ${dockSsState} docked; }
-    ss_up() { ${dockSsState} ss-up; }
-
-    # Let the plug finish enumerating before judging it.
-    ${pkgs.coreutils}/bin/sleep 8
-    docked || exit 0
-    ss_up && exit 0
-
-    # The recovery re-plugs the dock hub, which re-triggers this unit. A
-    # cooldown makes each dock plug get exactly one attempt.
-    now=$(${pkgs.coreutils}/bin/date +%s)
-    if [ -f "$stamp" ] && [ $(( now - $(${pkgs.coreutils}/bin/cat "$stamp") )) -lt 180 ]; then
-      echo "recovery already attempted for this plug, not retrying"
-      exit 0
-    fi
-    echo "$now" > "$stamp"
-
-    echo "dock present but SuperSpeed bus empty; capturing port state"
-    for p in /sys/kernel/debug/usb/xhci/0000:3c:00.0/ports/*/portsc; do
-      [ -e "$p" ] && echo "  $(${pkgs.coreutils}/bin/basename "$(${pkgs.coreutils}/bin/dirname "$p")"): $(${pkgs.coreutils}/bin/cat "$p")"
-    done
-    echo "  port: state=$(${pkgs.coreutils}/bin/cat "$ssport/state" 2>/dev/null) disable=$(${pkgs.coreutils}/bin/cat "$ssport/disable" 2>/dev/null) oc=$(${pkgs.coreutils}/bin/cat "$ssport/over_current_count" 2>/dev/null)"
-    echo "  pci: power_state=$(${pkgs.coreutils}/bin/cat "$xhci/power_state" 2>/dev/null) control=$(${pkgs.coreutils}/bin/cat "$xhci/power/control" 2>/dev/null)"
-
-    if [ -w "$ssport/disable" ]; then
-      echo "power cycling the SuperSpeed root port"
-      echo 1 > "$ssport/disable"; ${pkgs.coreutils}/bin/sleep 2
-      echo 0 > "$ssport/disable"; ${pkgs.coreutils}/bin/sleep 5
-      ss_up && { echo "recovered by port power cycle"; exit 0; }
-    fi
-
-    echo "port cycle did not take; full Thunderbolt power cycle"
-    ${tbPowerCycle}
-    ${pkgs.coreutils}/bin/sleep 5
-    ss_up && echo "recovered by Thunderbolt power cycle" ||
-      echo "recovery failed; unplug and replug the dock (else reboot)"
   '';
 
   # Detect and recover a wedged Thunderbolt controller. A hung ICM (e.g. the
@@ -248,10 +192,6 @@ in
     # it lands long after probe, so the driver's pm_runtime_allow() cannot
     # overwrite it. `bind` still covers rebinds and tb-recover rescans.
     ACTION=="add|bind", SUBSYSTEM=="pci", DRIVER=="xhci_hcd", ATTR{vendor}=="0x8086", ATTR{device}=="0x15c1", ATTR{power/control}="on"
-
-    # Dock plugged in: check the SuperSpeed bus actually came up. Matched on
-    # the dock's own USB2 root hub, the first thing to enumerate on a plug.
-    ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="17ef", ATTR{idProduct}=="30af", TAG+="systemd", ENV{SYSTEMD_WANTS}+="dock-ss-recover.service"
   '';
   # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports, scoped to
   # sleep.target (not boot), so only LID wakes from S4; otherwise they
@@ -264,13 +204,6 @@ in
     script = "${pcieWakeup "disabled"}";
     serviceConfig.Type = "oneshot";
     wantedBy = [ "sleep.target" ];
-  };
-  # Started by udev when the dock's USB2 hub appears (rule below). No-op on a
-  # healthy plug, which is every plug but two so far.
-  systemd.services.dock-ss-recover = {
-    description = "Recover a dead dock SuperSpeed bus";
-    script = "${dockSsRecover}";
-    serviceConfig.Type = "oneshot";
   };
   # Arm the EC-hang backstop for the duration of each sleep transition.
   # `PartOf = sleep.target` ties its lifetime to the sleep: it starts when
