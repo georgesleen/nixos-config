@@ -39,6 +39,11 @@ in
         "ctrl+space>8" = "goto_tab 8";
         "ctrl+space>9" = "goto_tab 9";
         "ctrl+space>=" = "resize_window reset";
+        # tmux-style panes under a ctrl+space leader (kitty replaces tmux here).
+        # s = horizontal split, v = vertical split, matching tmux; h/j/k/l navigate; z zooms; x closes.
+        # { and } rotate the active pane backward/forward (tmux swap-pane -U/-D).
+        # ? opens the command palette (searchable list of every shortcut; tmux list-keys).
+        "ctrl+space>?" = "command_palette";
         "ctrl+space>[" = "kitten ${kittyGrab}/grab.py";
         # tmux-style window (tab) and pane-resize binds.
         "ctrl+space>c" = "new_tab_with_cwd";
@@ -49,8 +54,6 @@ in
         "ctrl+space>n" = "next_tab";
         "ctrl+space>o" = "next_window";
         "ctrl+space>p" = "previous_tab";
-        # tmux-style panes under a ctrl+space leader (kitty replaces tmux here).
-        # s = horizontal split, v = vertical split, matching tmux; h/j/k/l navigate; z zooms; x closes.
         "ctrl+space>s" = "launch --location=hsplit --cwd=current";
         "ctrl+space>shift+h" = "resize_window narrower 2";
         "ctrl+space>shift+j" = "resize_window taller 2";
@@ -59,6 +62,8 @@ in
         "ctrl+space>v" = "launch --location=vsplit --cwd=current";
         "ctrl+space>x" = "close_window";
         "ctrl+space>z" = "toggle_layout stack";
+        "ctrl+space>{" = "move_window_backward";
+        "ctrl+space>}" = "move_window_forward";
       };
       settings = {
         # tmux-style panes: splits layout with green single-line dividers, active
