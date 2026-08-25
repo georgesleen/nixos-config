@@ -141,12 +141,17 @@
         let
           pkgs = nixpkgs.legacyPackages.${system};
           suites = {
+            # Lives in the private nixos-pi4 input; the harness only needs a
+            # base path, so a store path from an input works the same as a
+            # local one.
+            arr-season-plan = inputs.nixos-pi4 + "/gs-pi4/arr-season-plan";
             av-step = ./home/dotfiles/av-step;
             battery-level = ./home/dotfiles/battery-level;
             display-plan = ./home/dotfiles/display-plan;
             dock-ss-state = ./modules/hardware/dock-ss-state;
             gpu-busy = ./home/dotfiles/gpu-busy;
             lid-decision = ./modules/hardware/lid-decision;
+            media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
             secrets-guard-match = ./home/dotfiles/secrets-guard-match;
             snapper-orphans = ./modules/features/snapper-orphans;
             tb-state = ./modules/hardware/tb-state;
