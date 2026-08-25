@@ -140,7 +140,7 @@
   # "snapshot" (T480s /home backups) keeps the rest of the 460G drive.
   systemd.services.btrfs-media-layout =
     let
-      quotaGiB = 192;
+      quotaGiB = 256;
     in
     {
       after = [ "local-fs-pre.target" ];
