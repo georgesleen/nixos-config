@@ -39,8 +39,12 @@
   # bus, 2026-08-18). Storage moved to the "BACKUP" SSD instead, which now does
   # double duty: its pre-existing top-level "snapshot" subvolume keeps taking
   # T480s /home backups (see fileSystems."/mnt/backup" below), and a sibling
-  # "media" subvolume (btrfs quota-capped at 128GiB so downloads/library growth
-  # can never eat into backup headroom) replaces the dead drive here.
+  # "media" subvolume (btrfs quota-capped, currently 192GiB, so downloads/library
+  # growth can never eat into backup headroom) replaces the dead drive here. The
+  # cap itself is applied out-of-band with `btrfs qgroup limit` (persists on-disk,
+  # not Nix-managed); raised from 128GiB 2026-08-25 after it filled completely and
+  # silently truncated in-progress imports (metadata written, ebook file EDQUOT'd
+  # partway through).
   fileSystems."/srv/media" = {
     device = "/dev/disk/by-label/BACKUP";
     fsType = "btrfs";
