@@ -1,13 +1,13 @@
 ---
 name: project-conventions
-description: George's conventions for what good software looks like across design and types, testing, repo setup and tooling, and project hygiene. Consult when starting or scaffolding a project, wiring tooling/CI/devshell, making a type/API/error-handling design decision, or reviewing code against these conventions. Invoke as /project-conventions. For the review cadence (plan, small chunks, wait for go-ahead) use /setup-workflow instead.
+description: George's conventions for what good software looks like across design and types, testing, repo setup and tooling, and project hygiene. Consult when starting or scaffolding a project, wiring tooling/CI/devshell, making a type/API/error-handling design decision, or reviewing code against these conventions. Invoke as /project-conventions. For the review cadence (plan, small chunks, wait for go-ahead) use /workflow instead.
 ---
 
 # Project conventions
 
 What good output looks like, distilled from how George builds software. This is
 *taste*: the design, testing, tooling, and hygiene standards code should meet.
-The companion `/setup-workflow` skill owns the *mechanics* (plan first, one small
+The companion `/workflow` skill owns the *mechanics* (plan first, one small
 reviewed chunk at a time, flag design choices, wait for the go-ahead). Reach for
 that when the question is "how do we proceed"; reach for this when the question
 is "what should the result look like".
@@ -227,6 +227,6 @@ The repository these conventions were distilled from, one anchor per pillar:
 
 This skill is *taste*. For the *mechanics* of producing it (plan first, one small
 reviewed chunk at a time, flag the cheap-to-reverse choices, wait for the
-go-ahead, commit at coherent file boundaries), invoke `/setup-workflow`. The two
+go-ahead, commit at coherent file boundaries), invoke `/workflow`. The two
 are meant to be used together: the workflow paces the work, these conventions
 judge it.
