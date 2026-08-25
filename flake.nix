@@ -151,6 +151,7 @@
             dock-ss-state = ./modules/hardware/dock-ss-state;
             gpu-busy = ./home/dotfiles/gpu-busy;
             lid-decision = ./modules/hardware/lid-decision;
+            media-free = inputs.nixos-pi4 + "/gs-pi4/media-free";
             media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
             secrets-guard-match = ./home/dotfiles/secrets-guard-match;
             snapper-orphans = ./modules/features/snapper-orphans;
