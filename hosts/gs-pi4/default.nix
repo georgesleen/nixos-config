@@ -39,12 +39,9 @@
   # bus, 2026-08-18). Storage moved to the "BACKUP" SSD instead, which now does
   # double duty: its pre-existing top-level "snapshot" subvolume keeps taking
   # T480s /home backups (see fileSystems."/mnt/backup" below), and a sibling
-  # "media" subvolume (btrfs quota-capped, currently 192GiB, so downloads/library
-  # growth can never eat into backup headroom) replaces the dead drive here. The
-  # cap itself is applied out-of-band with `btrfs qgroup limit` (persists on-disk,
-  # not Nix-managed); raised from 128GiB 2026-08-25 after it filled completely and
-  # silently truncated in-progress imports (metadata written, ebook file EDQUOT'd
-  # partway through).
+  # "media" subvolume (btrfs quota-capped, see btrfs-media-layout below, so
+  # downloads/library growth can never eat into backup headroom) replaces the
+  # dead drive here.
   fileSystems."/srv/media" = {
     device = "/dev/disk/by-label/BACKUP";
     fsType = "btrfs";
@@ -131,6 +128,48 @@
   };
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   system.stateVersion = "25.11";
+  # The two subvolumes above and the quota on "media" were created by hand when
+  # storage moved to this drive, so a rebuild onto a fresh disk would mount
+  # nothing. This asserts both: it creates either subvolume if absent and sets
+  # the cap every boot, which also repairs a cap cleared by a manual
+  # `btrfs quota disable`. Runs before the mounts, since creating a subvolume
+  # needs the top level (subvolid=5), not the already-mounted child.
+  #
+  # The cap bounds only the media subvolume; "state" is deliberately left
+  # unlimited so app databases can never be starved by library growth, and
+  # "snapshot" (T480s /home backups) keeps the rest of the 460G drive.
+  systemd.services.btrfs-media-layout =
+    let
+      quotaGiB = 192;
+    in
+    {
+      after = [ "local-fs-pre.target" ];
+      before = [ "srv-media.mount" ];
+      description = "Ensure the media/state subvolumes and the media quota exist";
+      path = with pkgs; [
+        btrfs-progs
+        util-linux
+      ];
+      script = ''
+        set -euo pipefail
+        top=$(mktemp -d)
+        trap 'umount "$top" 2>/dev/null || true; rmdir "$top" 2>/dev/null || true' EXIT
+        mount -o subvolid=5 /dev/disk/by-label/BACKUP "$top"
+        for sub in media state; do
+          if [ ! -e "$top/$sub" ]; then
+            btrfs subvolume create "$top/$sub"
+          fi
+        done
+        # Quotas must be on before a limit will stick; enabling twice is a no-op.
+        btrfs quota enable "$top" 2>/dev/null || true
+        btrfs qgroup limit ${toString quotaGiB}G "$top/media"
+      '';
+      serviceConfig = {
+        RemainAfterExit = true;
+        Type = "oneshot";
+      };
+      wantedBy = [ "multi-user.target" ];
+    };
   # State dirs live under /srv; systemd-tmpfiles refuses to create root-owned
   # subdirs beneath a non-root-owned parent ("unsafe path transition"). /srv had
   # drifted to george-sleen ownership; pin it root-owned so activation is
