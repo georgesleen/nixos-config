@@ -115,15 +115,20 @@
     enable = true;
     settings.PasswordAuthentication = false;
   };
-  # Tailscale subnet router for the home LAN. The Moonlight/Sunshine host is the
-  # win11 VM (192.168.1.248), which has no Tailscale of its own (macvtap isolates
-  # it from gs-server, and #4320 keeps it off the tailnet). Advertising the LAN
-  # here lets a roaming client reach the VM and other non-tailnet gear (router,
-  # 3D printer) over the tailnet. useRoutingFeatures = "server" turns on the IP
-  # forwarding sysctls; the route still needs one-time approval in the admin
-  # console. extraUpFlags merges with common.nix's ["--ssh"].
+  # Tailscale subnet router for the home LAN. The win11 Moonlight/Sunshine host
+  # has no Tailscale of its own (#4320 keeps it off the tailnet), so advertising
+  # the LAN here is what lets a roaming client reach it, and the other
+  # non-tailnet gear (router, 3D printer), over the tailnet.
+  # useRoutingFeatures = "server" turns on the IP forwarding sysctls; the route
+  # still needs one-time approval in the admin console. extraUpFlags merges with
+  # common.nix's ["--ssh"].
+  #
+  # 192.168.10.0/24, not the 192.168.1.0/24 this advertised until 2026-08-25:
+  # the LAN moved when gs-openwrt-one took over routing, so the advertised
+  # prefix covered nothing that exists and every roaming client silently failed
+  # to reach anything on the LAN. The Pi itself is 192.168.10.219.
   services.tailscale = {
-    extraUpFlags = [ "--advertise-routes=192.168.1.0/24" ];
+    extraUpFlags = [ "--advertise-routes=192.168.10.0/24" ];
     useRoutingFeatures = "server";
   };
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
