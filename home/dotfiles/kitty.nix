@@ -22,13 +22,6 @@ in
     fonts.fontconfig.enable = true;
     programs.kitty = {
       enable = true;
-      # Wheel steps over the stock 5-line scroll_up/scroll_down so long TUI
-      # transcripts move faster. ungrabbed only: apps that take the mouse
-      # (opencode) set their own speed.
-      extraConfig = ''
-        mouse_map wheel up ungrabbed scroll_up 10
-        mouse_map wheel down ungrabbed scroll_down 10
-      '';
       keybindings = {
         "ctrl+shift+enter" = "launch --cwd=current";
         # Copy mode (kitty_grab); grab.conf below sets helix-style binds.
@@ -99,6 +92,10 @@ in
         tab_bar_style = "custom";
         tab_separator = "";
         tab_title_template = "| {index}:{title} ";
+        # Wheel at 10 lines per notch, double the stock 5, so long TUI
+        # transcripts move faster. Ungrabbed only: apps that take the mouse
+        # (opencode) set their own speed.
+        wheel_scroll_multiplier = "10";
         window_border_width = "1pt";
         window_padding_width = 0;
       };
