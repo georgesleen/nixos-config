@@ -56,6 +56,25 @@
       "x-systemd.device-timeout=30s"
     ];
   };
+  # .state (SQLite DBs for the arrs/jellyfin/seerr) lived inside the "media"
+  # subvolume until its 128GiB qgroup filled from library growth and blocked
+  # every app write with EDQUOT (2026-08-25), restart-looping the arrs and
+  # stalling a nixos-rebuild switch that was waiting on them. .state doesn't
+  # need to share a subvolume with media/downloads (that's only required for
+  # the arrs' hardlink-based import), so it now lives in its own unquota'd
+  # sibling subvolume, immune to library growth.
+  fileSystems."/srv/media/.state" = {
+    device = "/dev/disk/by-label/BACKUP";
+    fsType = "btrfs";
+    options = [
+      "subvol=state"
+      "noatime"
+      "compress=zstd:1"
+      "nofail"
+      "x-systemd.automount"
+      "x-systemd.device-timeout=30s"
+    ];
+  };
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
   # adding Rockchip/sun4i/etc. modules (dw-hdmi, dw-mipi-dsi, ...) that don't exist in
   # the RPi kernel. makeModulesClosure hard-fails on any listed-but-absent module.
