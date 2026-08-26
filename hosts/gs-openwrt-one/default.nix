@@ -11,29 +11,15 @@
 let
   inherit (pkgs) lib;
 
-  # 25.12 switched the package manager from opkg to apk, so `opkg update` and
-  # `opkg install` are gone on the router; use `apk update` / `apk add`. That
-  # change is why this sat on 24.10.8 until 2026-08-25. Both releases carry the
-  # openwrt_one profile (mediatek/filogic).
-  #
-  # Everything this image configures lives in files/uci-defaults, which run once
-  # on the first boot of a CLEAN flash and then delete themselves. A sysupgrade
-  # that keeps settings will NOT re-run them, so the box would come up on the
-  # new release still carrying the old generation's uci state. Flash without
-  # keeping settings to get what this file actually describes.
+  # 25.12 replaces opkg with apk on the router (`apk add`, not `opkg install`).
+  # uci-defaults run once on the first boot of a CLEAN flash, so a sysupgrade
+  # that keeps settings will not re-run them. Flash without keeping settings.
   release = "25.12.5";
 
-  # OpenWrt rebuilds a release's package indexes in place, after astro's cache
-  # was generated, so every `packages.adb` hash under cache/25.12.5 is stale and
-  # each one fails its fixed-output derivation ("hash mismatch"). Updating the
-  # openwrt-imagebuilder input does not help; its cache is behind too. This is
-  # the drift that also makes `nix flake check` unusable here.
-  #
-  # profiles takes a cachePath for exactly this case ("Users may supply their
-  # own fresh hashes"), so hand it a copy of the cache with the six drifted
-  # hashes rewritten. Refresh a value with:
-  #   nix store prefetch-file --json <url>
-  # Expect to redo this whenever the build fails on a hash mismatch again.
+  # OpenWrt rebuilds package indexes in place, so every cached `packages.adb`
+  # hash goes stale and fails its fixed-output derivation; updating the input
+  # does not help. profiles takes cachePath for this. Refresh a value with
+  # `nix store prefetch-file --json <url>` whenever a hash mismatch appears.
   freshHashes = {
     # luci/packages.adb
     "sha256-33oou+C7XNKX5bfzolAWc1swNtI157xA/HE281ZwBak=" =

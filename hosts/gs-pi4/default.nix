@@ -115,22 +115,10 @@
     enable = true;
     settings.PasswordAuthentication = false;
   };
-  # No subnet router here. This host used to declare
-  #   extraUpFlags = [ "--advertise-routes=192.168.1.0/24" ];
-  # which was doubly wrong and is worth recording so it is not re-added:
-  #
-  #  1. The option is INERT on this host. The nixpkgs tailscale module only
-  #     feeds extraUpFlags to `tailscale up` from tailscaled-autoconnect, and
-  #     that unit exists only when authKeyFile is set. It is not, so the unit
-  #     was never generated and the flag never reached tailscaled. Confirmed by
-  #     `tailscale debug prefs`: AdvertiseRoutes was null the whole time.
-  #  2. The prefix was stale anyway; the LAN moved to 192.168.10.0/24 when
-  #     gs-openwrt-one took over routing.
-  #
-  # Advertising the LAN is also not wanted (decided 2026-08-25). To bring it
-  # back, set it at runtime with `tailscale set --advertise-routes=...`, or add
-  # an authKeyFile so the autoconnect unit exists; either way it still needs
-  # one-time approval in the admin console.
+  # No subnet router. `extraUpFlags` is inert without an authKeyFile: the
+  # module only feeds it to tailscaled-autoconnect, which is then never
+  # generated, so the old --advertise-routes never took effect. To restore,
+  # use `tailscale set --advertise-routes=...` and approve in the console.
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   system.stateVersion = "25.11";
   # The two subvolumes above and the quota on "media" were created by hand when
