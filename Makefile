@@ -2,7 +2,7 @@
 # and boots it detached, then prints the URLs; `make stop` shuts it down.
 SHELL := bash
 .ONESHELL:
-.PHONY: vm build stop ssh log status gs-openwrt-one test
+.PHONY: vm build stop ssh log status gs-openwrt-one gs-openwrt-one-flash test
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 HOST    ?= gs-pi4-vm
@@ -54,6 +54,34 @@ test:
 gs-openwrt-one:
 	@sops exec-env secrets/secrets.yaml \
 	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-openwrt-one" --impure'
+
+# Build then flash the router. Nix only builds the image; this is not a NixOS
+# host, so there is no `nixos-rebuild switch` equivalent.
+#
+# -n does NOT keep config, which is required: everything the image configures
+# lives in files/uci-defaults, and those run only on the first boot of a clean
+# flash. Keeping settings would land on the new release with the old uci state.
+#
+# The transfer is `cat | ssh`, not scp: OpenSSH 9+ speaks SFTP by default and
+# Dropbear ships no sftp-server, so plain scp fails with
+# "/usr/libexec/sftp-server: not found". `scp -O` also works.
+#
+# Reachability is LAN-side (both ports are in br-lan), so a failed first boot
+# leaves it on OpenWrt's default 192.168.1.1, recoverable over the wire.
+gs-openwrt-one-flash: ROUTER ?= 192.168.10.1
+gs-openwrt-one-flash:
+	@out=$$(sops exec-env secrets/secrets.yaml \
+	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-openwrt-one" --impure')
+	img=$$(echo "$$out"/*-squashfs-sysupgrade.itb)
+	[ -f "$$img" ] || { echo "no sysupgrade image in $$out"; exit 1; }
+	echo "image: $$img"
+	cat "$$img" | ssh root@$(ROUTER) 'cat > /tmp/sysupgrade.itb'
+	local=$$(sha256sum "$$img" | awk '{print $$1}')
+	remote=$$(ssh root@$(ROUTER) 'sha256sum /tmp/sysupgrade.itb' | awk '{print $$1}')
+	[ "$$local" = "$$remote" ] || { echo "checksum mismatch, refusing to flash"; exit 1; }
+	ssh root@$(ROUTER) 'sysupgrade -T /tmp/sysupgrade.itb' || { echo "image rejected by device"; exit 1; }
+	echo "flashing; the router drops for 2-3 min and returns on $(ROUTER)"
+	ssh root@$(ROUTER) 'sysupgrade -n /tmp/sysupgrade.itb' || true
 
 stop:
 	@ssh $(SSHOPT) $(LOGIN)@localhost 'sudo poweroff' 2>/dev/null || echo "(not running?)"

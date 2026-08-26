@@ -118,14 +118,22 @@ image. Long build; `inhibit-sleep` first if on battery.
 ## Flash
 
 The unit ships with OpenWrt, so the normal path is sysupgrade over SSH once
-reachable at `192.168.10.1`. `make gs-openwrt-one` prints the store path; the
-sysupgrade image is `…-squashfs-sysupgrade.itb` inside it:
+reachable at `192.168.10.1`. Nix only builds the image; this is not a NixOS
+host, so there is no `nixos-rebuild switch` equivalent.
 
 ```bash
-out=$(make gs-openwrt-one | tail -1)
-scp "$out"/*-squashfs-sysupgrade.itb root@192.168.10.1:/tmp/sysupgrade.itb
-ssh root@192.168.10.1 'sysupgrade -n /tmp/sysupgrade.itb'   # -n = don't keep config
+make gs-openwrt-one-flash              # build, copy, verify, sysupgrade -n
+make gs-openwrt-one-flash ROUTER=1.2.3.4   # if it is not on the usual address
 ```
+
+The target copies with `cat | ssh`, not `scp`: OpenSSH 9+ speaks SFTP by
+default and Dropbear ships no sftp-server, so plain `scp` fails with
+`/usr/libexec/sftp-server: not found` (`scp -O` also works). It checksums the
+copy and runs `sysupgrade -T` before committing, so a truncated transfer or a
+wrong-device image stops before it writes anything.
+
+Do not wrap `sysupgrade` in `nohup`: BusyBox ash has no `nohup`, so the command
+dies instantly and nothing is flashed while looking like it succeeded.
 
 The `…-nor-factory.bin` / `…-snand-factory.bin` / `…-factory.ubi` images in the
 same directory are for U-Boot/TFTP recovery (NOR vs SPI-NAND boot), not needed
