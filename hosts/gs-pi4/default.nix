@@ -76,6 +76,24 @@
       "x-systemd.device-timeout=30s"
     ];
   };
+  # Immich's photo/video library. Own sibling subvolume (not "media"): photos
+  # are originals, not re-downloadable like the arr library, so their growth
+  # shouldn't compete with it for the same quota. Own quota (see
+  # btrfs-media-layout below) rather than left uncapped like "state": unlike
+  # app databases, a photo import can be large and unpredictable, and the
+  # drive only has 144G free shared with the arr library and T480s backups.
+  fileSystems."/srv/media/immich" = {
+    device = "/dev/disk/by-label/BACKUP";
+    fsType = "btrfs";
+    options = [
+      "subvol=immich"
+      "noatime"
+      "compress=zstd:1"
+      "nofail"
+      "x-systemd.automount"
+      "x-systemd.device-timeout=30s"
+    ];
+  };
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
   # adding Rockchip/sun4i/etc. modules (dw-hdmi, dw-mipi-dsi, ...) that don't exist in
   # the RPi kernel. makeModulesClosure hard-fails on any listed-but-absent module.
@@ -128,17 +146,20 @@
   # `btrfs quota disable`. Runs before the mounts, since creating a subvolume
   # needs the top level (subvolid=5), not the already-mounted child.
   #
-  # The cap bounds only the media subvolume; "state" is deliberately left
-  # unlimited so app databases can never be starved by library growth, and
-  # "snapshot" (T480s /home backups) keeps the rest of the 460G drive.
+  # The cap bounds the media and immich subvolumes; "state" is deliberately
+  # left unlimited so app databases can never be starved by library growth,
+  # and "snapshot" (T480s /home backups) keeps the rest of the 460G drive.
+  # immich's cap is much smaller than media's: it's a stopgap ahead of a
+  # 12TiB drive replacing this 460G one, not a sized-for-real-use limit.
   systemd.services.btrfs-media-layout =
     let
       quotaGiB = 256;
+      immichQuotaGiB = 64;
     in
     {
       after = [ "local-fs-pre.target" ];
       before = [ "srv-media.mount" ];
-      description = "Ensure the media/state subvolumes and the media quota exist";
+      description = "Ensure the media/state/immich subvolumes and quotas exist";
       path = with pkgs; [
         btrfs-progs
         util-linux
@@ -148,7 +169,7 @@
         top=$(mktemp -d)
         trap 'umount "$top" 2>/dev/null || true; rmdir "$top" 2>/dev/null || true' EXIT
         mount -o subvolid=5 /dev/disk/by-label/BACKUP "$top"
-        for sub in media state; do
+        for sub in media state immich; do
           if [ ! -e "$top/$sub" ]; then
             btrfs subvolume create "$top/$sub"
           fi
@@ -156,6 +177,7 @@
         # Quotas must be on before a limit will stick; enabling twice is a no-op.
         btrfs quota enable "$top" 2>/dev/null || true
         btrfs qgroup limit ${toString quotaGiB}G "$top/media"
+        btrfs qgroup limit ${toString immichQuotaGiB}G "$top/immich"
       '';
       serviceConfig = {
         RemainAfterExit = true;
