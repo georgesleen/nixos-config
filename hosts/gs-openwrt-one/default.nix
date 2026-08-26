@@ -23,7 +23,51 @@ let
   # keeping settings to get what this file actually describes.
   release = "25.12.5";
 
-  profiles = openwrt-imagebuilder.lib.profiles { inherit pkgs release; };
+  # OpenWrt rebuilds a release's package indexes in place, after astro's cache
+  # was generated, so every `packages.adb` hash under cache/25.12.5 is stale and
+  # each one fails its fixed-output derivation ("hash mismatch"). Updating the
+  # openwrt-imagebuilder input does not help; its cache is behind too. This is
+  # the drift that also makes `nix flake check` unusable here.
+  #
+  # profiles takes a cachePath for exactly this case ("Users may supply their
+  # own fresh hashes"), so hand it a copy of the cache with the six drifted
+  # hashes rewritten. Refresh a value with:
+  #   nix store prefetch-file --json <url>
+  # Expect to redo this whenever the build fails on a hash mismatch again.
+  freshHashes = {
+    # luci/packages.adb
+    "sha256-33oou+C7XNKX5bfzolAWc1swNtI157xA/HE281ZwBak=" =
+      "sha256-xXbsxmyS99gw3NFD3sJNljM5PH+kgFjLsL1fkQGaL50=";
+    # telephony/packages.adb
+    "sha256-5rkxNdgfQ2IUESSe5EepqWrOPLAVYiX6S2MsmLfLZPM=" =
+      "sha256-Q5uLMEqdvkzh6OwmBrUQotQ/oGaPHwDVluvnJH7J2HE=";
+    # base/packages.adb
+    "sha256-IHRKrNsMoJ+jqrd8kqq6KuotxdfdHPiAOsakV/nJH+Q=" =
+      "sha256-AW83oJVu3ituBAlSEcGWMoqmcW0mgnKynf72wPPVaVk=";
+    # packages/packages.adb
+    "sha256-LxQKYJRKCAA8/mG6jedNUjuac8VvrJdwcOagCO7j76I=" =
+      "sha256-YWpG0HCCzpnUy739B0uAaQK3nRbNxqmrK1ZtSKvJDLs=";
+    # routing/packages.adb
+    "sha256-O/W9OMfGgyKRKincjsLtltYt3kCJuWMIyEd9ndZXJuQ=" =
+      "sha256-blpIsyVqhE69QX6R/xm2WCqxenWPsKTGzhAKHYS0K9E=";
+    # aarch64_cortex-a53/sha256sums
+    "sha256-XQlZwVdJOEA32yygfBhJtLNiXvXYPW/uSLJf6KtouAs=" =
+      "sha256-Jtf/cZmIYbn1aDlxzTXWfK7mqBGBD7t3zURGmHoIJL8=";
+  };
+
+  cachePath = pkgs.runCommand "openwrt-${release}-cache-fresh" { } (
+    ''
+      cp -r ${openwrt-imagebuilder}/cache/${release} $out
+      chmod -R u+w $out
+    ''
+    + lib.concatStrings (
+      lib.mapAttrsToList (stale: fresh: ''
+        find $out -name '*.nix' -exec sed -i 's|${stale}|${fresh}|g' {} +
+      '') freshHashes
+    )
+  );
+
+  profiles = openwrt-imagebuilder.lib.profiles { inherit pkgs release cachePath; };
 
   # Secret Wi-Fi values, decrypted at build time by `sops exec-env` (Makefile
   # `gs-openwrt-one` target). builtins.getEnv needs `--impure`; when absent
