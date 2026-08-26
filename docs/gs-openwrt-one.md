@@ -142,6 +142,42 @@ for a routine upgrade.
 `-n` wipes settings so the baked `uci-defaults` re-run cleanly (the declarative
 path). Drop `-n` only to preserve live changes.
 
+## Troubleshooting: nothing gets a DHCP address
+
+Symptom: the router is up and reachable (Tailscale, SSH, its own uplink works),
+wired clients link but never get an address, and `/tmp/dhcp.leases` is empty.
+
+Work down the chain. The first check that fails is the cause.
+
+```bash
+ssh root@gs-openwrt-one
+ip -4 addr show br-lan                  # 1. must be /24, not /32
+grep dhcp-range /var/etc/dnsmasq.conf.* # 2. must print a range line
+netstat -lnup | grep :67                # 3. dnsmasq must own port 67
+cat /tmp/dhcp.leases                    # 4. leases appear here
+```
+
+dnsmasq serves DNS and DHCP from one process, so "DNS works, DHCP does not"
+does **not** mean dnsmasq is down. `/etc/init.d/dnsmasq` builds the
+`dhcp-range` line by running `ipcalc.sh <lan-addr>/<prefix> <start> <limit>`.
+If that call fails, the init script logs `unable to set dhcp-range`, writes no
+range, and dnsmasq starts as a DNS-only resolver that never binds port 67.
+Reproduce the decision by hand:
+
+```bash
+ipcalc.sh 192.168.10.1/32 100 150   # exit 1, "network too small"  -> no DHCP
+ipcalc.sh 192.168.10.1/24 100 150   # exit 0, prints START/END     -> DHCP
+```
+
+A missing `network.lan.netmask` is what makes br-lan a /32. Fix live, then fix
+`files/uci-defaults/10-wisp` so a reflash keeps the fix:
+
+```bash
+uci set network.lan.netmask='255.255.255.0'
+uci commit network
+ifup lan && /etc/init.d/dnsmasq restart
+```
+
 ## TODO: finalize live (after first SSH in)
 
 - Confirm which `radioN` is 2.4 vs 5GHz (`iw phy | grep -e Wiphy -e MHz`, or

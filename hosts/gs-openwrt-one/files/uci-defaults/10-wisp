@@ -15,6 +15,9 @@ set system.@system[0].hostname='gs-openwrt-one'
 # (WISP) and shares a tailnet with other 192.168.1.0/24 sites, so the default
 # 192.168.1.0/24 would clash. The DHCP pool follows the interface automatically.
 set network.lan.ipaddr='192.168.10.1'
+# netmask set explicitly: 25.12 keeps the prefix inside a CIDR `list ipaddr`, so
+# setting ipaddr alone leaves br-lan a /32 and dnsmasq emits no dhcp-range.
+set network.lan.netmask='255.255.255.0'
 
 # The internet uplink is the Wi-Fi STA (wwan), so the wired 2.5G WAN port (eth0)
 # is unused as WAN. Repurpose it as a LAN port feeding the downstream switch:
