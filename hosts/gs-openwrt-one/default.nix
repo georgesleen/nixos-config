@@ -11,10 +11,17 @@
 let
   inherit (pkgs) lib;
 
-  # Pinned for stability. 25.12 switched to the apk package manager; no reason
-  # to ride that on a router. Both 24.10.8 and 25.12.5 carry the openwrt_one
-  # profile (mediatek/filogic).
-  release = "24.10.8";
+  # 25.12 switched the package manager from opkg to apk, so `opkg update` and
+  # `opkg install` are gone on the router; use `apk update` / `apk add`. That
+  # change is why this sat on 24.10.8 until 2026-08-25. Both releases carry the
+  # openwrt_one profile (mediatek/filogic).
+  #
+  # Everything this image configures lives in files/uci-defaults, which run once
+  # on the first boot of a CLEAN flash and then delete themselves. A sysupgrade
+  # that keeps settings will NOT re-run them, so the box would come up on the
+  # new release still carrying the old generation's uci state. Flash without
+  # keeping settings to get what this file actually describes.
+  release = "25.12.5";
 
   profiles = openwrt-imagebuilder.lib.profiles { inherit pkgs release; };
 
