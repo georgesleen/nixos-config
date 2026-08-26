@@ -115,22 +115,22 @@
     enable = true;
     settings.PasswordAuthentication = false;
   };
-  # Tailscale subnet router for the home LAN. The win11 Moonlight/Sunshine host
-  # has no Tailscale of its own (#4320 keeps it off the tailnet), so advertising
-  # the LAN here is what lets a roaming client reach it, and the other
-  # non-tailnet gear (router, 3D printer), over the tailnet.
-  # useRoutingFeatures = "server" turns on the IP forwarding sysctls; the route
-  # still needs one-time approval in the admin console. extraUpFlags merges with
-  # common.nix's ["--ssh"].
+  # No subnet router here. This host used to declare
+  #   extraUpFlags = [ "--advertise-routes=192.168.1.0/24" ];
+  # which was doubly wrong and is worth recording so it is not re-added:
   #
-  # 192.168.10.0/24, not the 192.168.1.0/24 this advertised until 2026-08-25:
-  # the LAN moved when gs-openwrt-one took over routing, so the advertised
-  # prefix covered nothing that exists and every roaming client silently failed
-  # to reach anything on the LAN. The Pi itself is 192.168.10.219.
-  services.tailscale = {
-    extraUpFlags = [ "--advertise-routes=192.168.10.0/24" ];
-    useRoutingFeatures = "server";
-  };
+  #  1. The option is INERT on this host. The nixpkgs tailscale module only
+  #     feeds extraUpFlags to `tailscale up` from tailscaled-autoconnect, and
+  #     that unit exists only when authKeyFile is set. It is not, so the unit
+  #     was never generated and the flag never reached tailscaled. Confirmed by
+  #     `tailscale debug prefs`: AdvertiseRoutes was null the whole time.
+  #  2. The prefix was stale anyway; the LAN moved to 192.168.10.0/24 when
+  #     gs-openwrt-one took over routing.
+  #
+  # Advertising the LAN is also not wanted (decided 2026-08-25). To bring it
+  # back, set it at runtime with `tailscale set --advertise-routes=...`, or add
+  # an authKeyFile so the autoconnect unit exists; either way it still needs
+  # one-time approval in the admin console.
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   system.stateVersion = "25.11";
   # The two subvolumes above and the quota on "media" were created by hand when
