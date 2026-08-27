@@ -217,6 +217,7 @@ in
       commit = "";
       pr = "";
     };
+    cleanupPeriodDays = 36500;
     editorMode = "vim";
     enabledPlugins = {
       # LSPs
@@ -293,7 +294,6 @@ in
       # chromium-sandbox helper; --headless to avoid Wayland display coupling.
       playwright = {
         args = [
-          "--headless"
           "--no-sandbox"
         ];
         command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
