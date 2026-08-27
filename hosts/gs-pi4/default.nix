@@ -25,8 +25,13 @@
   # Top-level of the same filesystem (unfiltered by subvol=), so the T480s can
   # btrfs-send /home snapshots to it over ssh now that the SSD lives on gs-pi4
   # instead of being locally attached to the laptop.
+  #
+  # Migrated 2026-08-27 from the old 460G "BACKUP" USB SSD to an 8TB LUKS2
+  # drive (see cryptsetup-backup below): all four subvolumes moved over via
+  # btrfs send/receive, so the device changed but every path here stayed the
+  # same and nothing downstream (nixflix, the backup skill) needed to change.
   fileSystems."/mnt/backup" = {
-    device = "/dev/disk/by-label/BACKUP";
+    device = "/dev/mapper/backup";
     fsType = "btrfs";
     options = [
       "noatime"
@@ -35,24 +40,19 @@
       "x-systemd.device-timeout=30s"
     ];
   };
-  # Original "media"-labeled USB drive failed (stopped enumerating on the USB3
-  # bus, 2026-08-18). Storage moved to the "BACKUP" SSD instead, which now does
-  # double duty: its pre-existing top-level "snapshot" subvolume keeps taking
-  # T480s /home backups (see fileSystems."/mnt/backup" below), and a sibling
   # "media" subvolume (btrfs quota-capped, see btrfs-media-layout below, so
-  # downloads/library growth can never eat into backup headroom) replaces the
-  # dead drive here.
+  # downloads/library growth can never eat into backup headroom).
   fileSystems."/srv/media" = {
-    device = "/dev/disk/by-label/BACKUP";
+    device = "/dev/mapper/backup";
     fsType = "btrfs";
     options = [
       "subvol=media"
       "noatime"
       "compress=zstd:1"
       "nofail"
-      # by-label .device can lose the boot readiness race and fail the hard
-      # mount, dropping the media stack. automount defers the mount to first
-      # access; device-timeout bounds the wait.
+      # a not-yet-unlocked mapper device can lose the boot readiness race and
+      # fail the hard mount, dropping the media stack. automount defers the
+      # mount to first access; device-timeout bounds the wait.
       "x-systemd.automount"
       "x-systemd.device-timeout=30s"
     ];
@@ -65,7 +65,7 @@
   # the arrs' hardlink-based import), so it now lives in its own unquota'd
   # sibling subvolume, immune to library growth.
   fileSystems."/srv/media/.state" = {
-    device = "/dev/disk/by-label/BACKUP";
+    device = "/dev/mapper/backup";
     fsType = "btrfs";
     options = [
       "subvol=state"
@@ -78,12 +78,9 @@
   };
   # Immich's photo/video library. Own sibling subvolume (not "media"): photos
   # are originals, not re-downloadable like the arr library, so their growth
-  # shouldn't compete with it for the same quota. Own quota (see
-  # btrfs-media-layout below) rather than left uncapped like "state": unlike
-  # app databases, a photo import can be large and unpredictable, and the
-  # drive only has 144G free shared with the arr library and T480s backups.
+  # shouldn't compete with it for the same quota.
   fileSystems."/srv/media/immich" = {
-    device = "/dev/disk/by-label/BACKUP";
+    device = "/dev/mapper/backup";
     fsType = "btrfs";
     options = [
       "subvol=immich"
@@ -138,28 +135,43 @@
   # generated, so the old --advertise-routes never took effect. To restore,
   # use `tailscale set --advertise-routes=...` and approve in the console.
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
+  # The new 8TB backup/media drive (2026-08-27) is LUKS2-encrypted, whole disk
+  # (no partition table, single-purpose). Auto-unlocked at boot via this
+  # sops-delivered passphrase rather than a TPM (the RPi4 has none): this
+  # protects the drive alone if lost/stolen/RMA'd separately from the Pi, not
+  # the whole unit taken together, since the key travels with the SD card
+  # either way.
+  sops.secrets."backup_drive/luks_passphrase" = { };
   system.stateVersion = "25.11";
-  # The two subvolumes above and the quota on "media" were created by hand when
-  # storage moved to this drive, so a rebuild onto a fresh disk would mount
-  # nothing. This asserts both: it creates either subvolume if absent and sets
-  # the cap every boot, which also repairs a cap cleared by a manual
-  # `btrfs quota disable`. Runs before the mounts, since creating a subvolume
-  # needs the top level (subvolid=5), not the already-mounted child.
+  # The subvolumes above and their quotas were created by hand when storage
+  # moved to this drive, so a rebuild onto a fresh disk would mount nothing.
+  # This asserts both: it creates any subvolume if absent and sets caps every
+  # boot, which also repairs a cap cleared by a manual `btrfs quota disable`.
+  # Runs before the mounts, since creating a subvolume needs the top level
+  # (subvolid=5), not the already-mounted child.
   #
-  # The cap bounds the media and immich subvolumes; "state" is deliberately
-  # left unlimited so app databases can never be starved by library growth,
-  # and "snapshot" (T480s /home backups) keeps the rest of the 460G drive.
-  # immich's cap is much smaller than media's: it's a stopgap ahead of a
-  # 12TiB drive replacing this 460G one, not a sized-for-real-use limit.
+  # Quotas sized 2026-08-27 for the 8TB drive: media 3TiB, immich 2TiB,
+  # snapshot (T480s /home backups) 1TiB, leaving ~1.28TiB headroom shared by
+  # "state" (deliberately uncapped so app databases can never be starved) and
+  # free space. Capping snapshot is a change from the old uncapped-by-design
+  # policy (see git history on the old 460G drive), traded for a hard ceiling
+  # George chose given the 9x headroom over current backup usage (~113GiB).
   systemd.services.btrfs-media-layout =
     let
-      quotaGiB = 256;
-      immichQuotaGiB = 64;
+      mediaQuotaGiB = 3072;
+      immichQuotaGiB = 2048;
+      snapshotQuotaGiB = 1024;
     in
     {
-      after = [ "local-fs-pre.target" ];
-      before = [ "srv-media.mount" ];
-      description = "Ensure the media/state/immich subvolumes and quotas exist";
+      after = [
+        "local-fs-pre.target"
+        "cryptsetup-backup.service"
+      ];
+      before = [
+        "mnt-backup.mount"
+        "srv-media.mount"
+      ];
+      description = "Ensure the media/state/immich/snapshot subvolumes and quotas exist";
       path = with pkgs; [
         btrfs-progs
         util-linux
@@ -168,16 +180,26 @@
         set -euo pipefail
         top=$(mktemp -d)
         trap 'umount "$top" 2>/dev/null || true; rmdir "$top" 2>/dev/null || true' EXIT
-        mount -o subvolid=5 /dev/disk/by-label/BACKUP "$top"
-        for sub in media state immich; do
+        mount -o subvolid=5 /dev/mapper/backup "$top"
+        for sub in media state immich snapshot; do
           if [ ! -e "$top/$sub" ]; then
             btrfs subvolume create "$top/$sub"
           fi
         done
         # Quotas must be on before a limit will stick; enabling twice is a no-op.
         btrfs quota enable "$top" 2>/dev/null || true
-        btrfs qgroup limit ${toString quotaGiB}G "$top/media"
+        btrfs qgroup limit ${toString mediaQuotaGiB}G "$top/media"
         btrfs qgroup limit ${toString immichQuotaGiB}G "$top/immich"
+        btrfs qgroup limit ${toString snapshotQuotaGiB}G "$top/snapshot"
+        # services.immich's own tmpfiles rule can't fix this: systemd-tmpfiles
+        # skips paths under an automount rather than triggering it, so it never
+        # touches the real subvolume, which stays root-owned from `btrfs
+        # subvolume create` above. Immich then fails every write with
+        # "Failed to create <UPLOAD_LOCATION>/..." (hit on first deploy,
+        # 2026-08-27) since it runs as its own dedicated "immich" user, not
+        # root. Idempotent: harmless to re-chown an already-correct directory.
+        chown immich:immich "$top/immich"
+        chmod 0700 "$top/immich"
       '';
       serviceConfig = {
         RemainAfterExit = true;
@@ -185,6 +207,28 @@
       };
       wantedBy = [ "multi-user.target" ];
     };
+  systemd.services.cryptsetup-backup = {
+    after = [ "local-fs-pre.target" ];
+    before = [
+      "btrfs-media-layout.service"
+      "mnt-backup.mount"
+      "srv-media.mount"
+    ];
+    description = "Unlock the encrypted backup/media drive";
+    path = [ pkgs.cryptsetup ];
+    script = ''
+      if [ ! -e /dev/mapper/backup ]; then
+        cryptsetup luksOpen \
+          --key-file ${config.sops.secrets."backup_drive/luks_passphrase".path} \
+          /dev/disk/by-uuid/d72ccd70-0f2f-4055-a3ab-e199bed8d661 backup
+      fi
+    '';
+    serviceConfig = {
+      RemainAfterExit = true;
+      Type = "oneshot";
+    };
+    wantedBy = [ "multi-user.target" ];
+  };
   # State dirs live under /srv; systemd-tmpfiles refuses to create root-owned
   # subdirs beneath a non-root-owned parent ("unsafe path transition"). /srv had
   # drifted to george-sleen ownership; pin it root-owned so activation is
