@@ -187,5 +187,6 @@ The stack accepted requests and downloaded nothing for weeks. Every cause was si
 
 ### nixpkgs / packaging
 
-- `flake.nix` `pinnedOverlay` + `nixpkgs-lastgood` input: pins `jetbrains-mono` and `moonlight-qt` to the 2026-06-26 nixpkgs because the 2026-08-13 unstable bump broke both (jetbrains-mono's nanoemoji source fetch hit a GitHub tarball hash drift; moonlight-qt 6.1.0 fails against ffmpeg 8's removed `AVCodec.pix_fmts`). Remove the two `inherit` entries and the input once upstream fixes land.
+- `flake.nix` `pinnedOverlay` + `nixpkgs-lastgood` input: pins `jetbrains-mono` to the 2026-06-26 nixpkgs because the 2026-08-13 unstable bump broke its nanoemoji source fetch (GitHub tarball hash drift). Remove the `inherit` entry and the input once upstream fixes it.
+- `flake.nix` `pinnedOverlay` `moonlight-qt`: built from current nixpkgs against `ffmpeg_7`, not taken whole from the last-good pin. moonlight-qt 6.1.0 still fails to compile against ffmpeg 8 (`AVCodec.pix_fmts` removed, no upstream release since v6.1.0), but the pinned closure links libva 2.23 while `intel-media-driver` 26.2.4 in `/run/opengl-driver` exports only `__vaDriverInit_1_24`; libva searches init symbols downward from its own minor, so it never found one and every hardware decoder was dead ("No functioning hardware accelerated video decoder was detected", 2026-08-28). Proven with a ctypes `vaInitialize` probe: libva 2.23 returns -1, libva 2.24.1 returns 0 against the same driver.
 

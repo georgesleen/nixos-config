@@ -38,8 +38,8 @@
     };
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     # Last-good nixpkgs pin for packages temporarily broken on unstable
-    # (jetbrains-mono source build, moonlight-qt vs ffmpeg 8). See pinnedOverlay;
-    # drop it once upstream catches up.
+    # (jetbrains-mono source build). See pinnedOverlay; drop it once upstream
+    # catches up.
     nixpkgs-lastgood.url = "github:nixos/nixpkgs/e73de5be04e0eff4190a1432b946d469c794e7b4";
     # Declarative OpenWrt images via the upstream ImageBuilder (gs-openwrt-one).
     openwrt-imagebuilder = {
@@ -83,13 +83,17 @@
         helixCargoHash = "sha256-iFuGPTsEDH4PbRrdxjhFWS+j+MMldGvT9eltXuZPzho=";
       };
 
-      # Packages broken on current unstable, pinned to the last-good nixpkgs.
-      # Remove entries as upstream catches up, then drop the input.
-      pinnedOverlay = final: _prev: {
+      # Packages broken on current unstable. Remove entries as upstream catches
+      # up, then drop the nixpkgs-lastgood input.
+      pinnedOverlay = final: prev: {
         inherit (inputs.nixpkgs-lastgood.legacyPackages.${final.stdenv.hostPlatform.system})
           jetbrains-mono
-          moonlight-qt
           ;
+        # moonlight-qt 6.1.0 does not compile against ffmpeg 8 (AVCodec.pix_fmts
+        # removed). Built against ffmpeg 7 from current nixpkgs, not taken whole
+        # from the last-good pin: that pin links libva 2.23, which cannot open
+        # this system's intel-media-driver, so hardware decode was dead.
+        moonlight-qt = prev.moonlight-qt.override { ffmpeg = final.ffmpeg_7; };
       };
 
       systems = [
