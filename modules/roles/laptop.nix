@@ -21,6 +21,7 @@
     ../features/steam.nix
     ../features/keychron.nix
     ../features/flipper-zero.nix
+    ../features/gpib.nix
     ../features/user-packages.nix
     ../features/virtualization.nix
   ];
