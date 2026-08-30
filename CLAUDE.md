@@ -94,7 +94,7 @@ check: `dock-ss-recover` (since removed) carried a guard that was always true, s
 the unit exited early on every plug and silently no-opped for its whole life.
 
 Current suites: `arr-season-plan`, `av-step`, `battery-level`, `display-plan`,
-`gpu-busy`, `jellyfin-bg-pause`, `lid-decision`, `media-free`, `media-health`,
+`epub-normalize`, `gpu-busy`, `jellyfin-bg-pause`, `lid-decision`, `media-free`, `media-health`,
 `secrets-guard-match`, `snapper-orphans`, `tb-state`, `waybar-fmt`,
 `win11-forward`, `workspace-plan`.
 

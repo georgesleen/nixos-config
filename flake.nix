@@ -152,6 +152,7 @@
             av-step = ./home/dotfiles/av-step;
             battery-level = ./home/dotfiles/battery-level;
             display-plan = ./home/dotfiles/display-plan;
+            epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
             gpu-busy = ./home/dotfiles/gpu-busy;
             jellyfin-bg-pause = inputs.nixos-pi4 + "/gs-pi4/jellyfin-bg-pause";
             lid-decision = ./modules/hardware/lid-decision;
