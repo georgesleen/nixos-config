@@ -47,9 +47,8 @@ let
       xkb_geometry { include "pc(pc104)" };
     };
   '';
-  swaylockPackage = pkgs.swaylock-effects;
-  swaylockConfig = "${config.xdg.configHome}/swaylock/config";
-  swaylockCmd = "${swaylockPackage}/bin/swaylock -f -C ${swaylockConfig}";
+  # Unit, not the binary: see the swaylock service in swayidle.nix.
+  lockCmd = "${pkgs.systemd}/bin/systemctl --user start swaylock.service";
 
   # Volume/brightness step, in percent. Presses snap to the next multiple of
   # this, so levels always land on multiples of 5 (45, 50, 55...) not 49, 54.
@@ -178,7 +177,6 @@ in
             "${mod}+Shift+r" = "restart";
             "${mod}+Shift+s" = "move workspace to output down";
             "${mod}+Shift+space" = "floating toggle";
-            "${mod}+Shift+x" = "exec ${swaylockCmd}";
             "${mod}+a" = "focus parent";
             "${mod}+b" = "splith";
             "${mod}+d" = "exec ${pkgs.fuzzel}/bin/fuzzel";
@@ -194,6 +192,7 @@ in
             "${mod}+space" = "focus mode_toggle";
             "${mod}+v" = "splitv";
             "${mod}+w" = "layout tabbed";
+            "--locked ${mod}+Shift+x" = "exec ${lockCmd}";
             "--locked ${mod}+XF86AudioLowerVolume" = "exec ${volumeScript} down";
             "--locked ${mod}+XF86AudioMicMute" = "exec ${micMuteScript}";
             "--locked ${mod}+XF86AudioMute" = "exec ${volumeScript} mute";

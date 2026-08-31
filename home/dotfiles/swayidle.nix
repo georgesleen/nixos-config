@@ -2,8 +2,8 @@
 
 let
   swayBg = builtins.path {
-    path = ../../assets/wallpapers/background.png;
     name = "background.png";
+    path = ../../assets/wallpapers/background.png;
   };
   swaylockBg = pkgs.runCommand "swaylock-background" { } ''
     mkdir -p "$out"
@@ -14,6 +14,8 @@ let
   swaylockPackage = pkgs.swaylock-effects;
   swaylockConfig = "${config.xdg.configHome}/swaylock/config";
   swaylockCmd = "${swaylockPackage}/bin/swaylock -f -C ${swaylockConfig}";
+  # Every lock path starts the unit instead of running swaylock directly.
+  lockCmd = "${pkgs.systemd}/bin/systemctl --user start swaylock.service";
   dpmsOffCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms off\"";
   dpmsOnCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms on\"";
 in
@@ -21,21 +23,44 @@ in
   services.swayidle = {
     enable = true;
     events = {
-      before-sleep = swaylockCmd;
-      lock = swaylockCmd;
       after-resume = dpmsOnCmd;
+      before-sleep = lockCmd;
+      lock = lockCmd;
     };
     timeouts = [
       {
+        command = lockCmd;
         timeout = 1800;
-        command = swaylockCmd;
       }
       {
-        timeout = 1801;
         command = dpmsOffCmd;
         resumeCommand = dpmsOnCmd;
+        timeout = 1801;
       }
     ];
+  };
+
+  # swaylock as a unit, not a bare command: swayidle fires both `lock` and
+  # `before-sleep` for one sleep, and systemd keeps that to one instance. A
+  # lock client that dies leaves sway locked with no lock surface, which
+  # paints every output solid red and accepts no password; the restart
+  # re-attaches to that orphaned lock. Type=forking because `-f` daemonizes
+  # only after the lock is taken, so a returning `start` means locked, which
+  # is what before-sleep needs.
+  systemd.user.services.swaylock = {
+    Service = {
+      Environment = "WAYLAND_DISPLAY=wayland-1";
+      ExecStart = swaylockCmd;
+      Restart = "on-failure";
+      RestartSec = 1;
+      Type = "forking";
+    };
+    Unit = {
+      Description = "Screen lock";
+      PartOf = [ "sway-session.target" ];
+      StartLimitBurst = 10;
+      StartLimitIntervalSec = 60;
+    };
   };
 
   xdg.configFile."swaylock/config".text = ''
