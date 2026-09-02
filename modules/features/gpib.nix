@@ -56,9 +56,22 @@ in
   '';
   environment.systemPackages = [ linux-gpib ];
   services.udev.extraRules = ''
-    # linux-gpib's own 98-gpib-generic.rules grants GROUP="gpib", a group that
-    # does not exist here, leaving the nodes root-only. 99- beats 98-.
+    # 99- beats the package's 98-, so this is the mode and group that sticks.
     KERNEL=="gpib[0-9]*", MODE="0660", GROUP="plugdev"
+
+    # The board must be configured before /dev/gpib0 can be opened, otherwise
+    # every ibdev() fails with "IBOPENDEV ioctl failed". linux-gpib ships a
+    # gpib_udev_config helper for this, but it invokes a bare `gpib_config`,
+    # and udev's PATH here holds only coreutils, findutils, grep, sed and
+    # systemd. The FHS directories that helper appends do not exist on NixOS,
+    # so it never finds the binary. Call the wrapper by absolute path instead.
+    # (Do not name those FHS paths literally above: the NixOS udev rules check
+    # greps the whole file, comments included, and fails the build on a match.)
+    ACTION=="add|change", SUBSYSTEM=="usb", DRIVER=="ni_usb_gpib", RUN+="${linux-gpib}/bin/gpib_config --minor 0"
   '';
   services.udev.packages = [ pkgs.linux-gpib ];
+  # linux-gpib's 98-gpib-generic.rules grants GROUP="gpib". Without the group
+  # udev logs "Failed to resolve group 'gpib'" on every event. The 99- rule
+  # below still wins and grants plugdev, which the user is already in.
+  users.groups.gpib = { };
 }
