@@ -1,0 +1,34 @@
+#!/bin/sh
+# Network for a LAN CLIENT, not a router. This board plugs into someone else's
+# home network, so it takes an address by DHCP and must never serve one.
+# Runs once on first boot of a fresh flash, then self-deletes.
+
+uci -q batch <<'UCI'
+set system.@system[0].hostname='gs-pi1-parents'
+
+# eth0 (br-lan) becomes a plain DHCP client. The stock image ships a static
+# 192.168.1.1, which would collide with the upstream router on most home LANs.
+set network.lan.proto='dhcp'
+delete network.lan.ipaddr
+delete network.lan.netmask
+
+# Recovery alias on a subnet no home router uses. If Tailscale ever fails to
+# come up, this board has no reset button and no serial header attached, so
+# this is the only way back in: set a laptop to 192.168.99.2/24, plug into the
+# Pi, and ssh to 192.168.99.1.
+set network.rescue=interface
+set network.rescue.proto='static'
+set network.rescue.device='br-lan'
+set network.rescue.ipaddr='192.168.99.1'
+set network.rescue.netmask='255.255.255.0'
+
+# CRITICAL: never serve DHCP or router advertisements onto their LAN. A second
+# DHCP server would hand out addresses and break the whole house.
+set dhcp.lan.ignore='1'
+set dhcp.lan.dhcpv4='disabled'
+set dhcp.lan.dhcpv6='disabled'
+set dhcp.lan.ra='disabled'
+UCI
+
+uci commit
+exit 0

@@ -1,8 +1,8 @@
-# Build targets for this flake: the shell unit tests and the OpenWrt One
-# router image.
+# Build targets for this flake: the shell unit tests, the OpenWrt One router
+# image, and the Raspberry Pi 1 Tailscale node image.
 SHELL := bash
 .ONESHELL:
-.PHONY: gs-openwrt-one gs-openwrt-one-flash test
+.PHONY: gs-openwrt-one gs-openwrt-one-flash gs-pi1-parents test
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 
@@ -23,6 +23,13 @@ test:
 gs-openwrt-one:
 	@sops exec-env secrets/secrets.yaml \
 	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-openwrt-one" --impure'
+
+# Build the Raspberry Pi 1 B+ Tailscale node image. Writes an SD-card image, not
+# a sysupgrade file: flash it once with dd, then manage the board over Tailscale
+# SSH. Needs `pi_parents_ts_authkey` in secrets/secrets.yaml.
+gs-pi1-parents:
+	@sops exec-env secrets/secrets.yaml \
+	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-pi1-parents" --impure'
 
 # Build then flash the router. Nix only builds the image; this is not a NixOS
 # host, so there is no `nixos-rebuild switch` equivalent.

@@ -220,5 +220,13 @@
         openwrt-imagebuilder = inputs.openwrt-imagebuilder;
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
       };
+
+      # Raspberry Pi 1 B+ as a Tailscale exit node + subnet router for a remote
+      # household. Falls back to a keyless image without sops; build via
+      # `make gs-pi1-parents` so the real auth key is injected.
+      packages.x86_64-linux.gs-pi1-parents = import ./hosts/gs-pi1-parents {
+        openwrt-imagebuilder = inputs.openwrt-imagebuilder;
+        pkgs = nixpkgs.legacyPackages.x86_64-linux;
+      };
     };
 }
