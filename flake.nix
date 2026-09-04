@@ -211,14 +211,6 @@
           ];
           specialArgs = { inherit inputs user; };
         };
-        # Throwaway x86_64 stand-in for gs-pi4 during the move. build-vm only.
-        gs-pi4-vm = nixpkgs.lib.nixosSystem {
-          modules = [
-            ./hosts/gs-pi4-vm
-            sops-nix.nixosModules.sops
-          ];
-          specialArgs = { inherit inputs user; };
-        };
         gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
       };
