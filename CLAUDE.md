@@ -20,9 +20,9 @@ For long builds (e.g. SD card images), `inhibit-sleep` / `resume-sleep` hold and
 
 ## Architecture
 
-Also builds two non-NixOS OpenWrt images: `gs-openwrt-one` (the router) and `gs-pi1-parents` (a Raspberry Pi 1 B+ Tailscale exit node and subnet router for a remote household; see `docs/gs-pi1-parents.md`).
-
 NixOS flake config for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-server` (Framework-class server, win11 VM via libvirt/vfio), `gs-pi4` (Raspberry Pi 4, built via QEMU binfmt emulation).
+
+It also builds two non-NixOS OpenWrt images: `gs-openwrt-one` (the router, `docs/gs-openwrt-one.md`) and `gs-pi1-parents` (a Raspberry Pi 1 B+ Tailscale exit node and subnet router for a remote household, `docs/gs-pi1-parents.md`).
 
 **Entry point:** `flake.nix`. The `mkHost hostPath hmHome` helper wires a host together with home-manager as a NixOS module (T480s: `home/user.nix`, server: `home/user-server.nix`); `gs-pi4` is wired directly via `nixosSystem` with `home/user-pi.nix`.
 
