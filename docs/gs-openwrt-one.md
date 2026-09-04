@@ -23,8 +23,10 @@ board's default `/etc/config` (we don't override port names we can't verify).
 ## Topology
 
 WISP: Wi-Fi client uplink (`wwan`, DHCP from the upstream AP) -> NAT -> local
-wired LAN (`192.168.10.1/24`, DHCP server) + a local AP on the other radio. STA
-and AP sit on separate radios (the unit has one 2.4GHz + one 5GHz).
+wired LAN (`192.168.10.1/24`, DHCP server) + a local AP on **both** radios under
+one SSID, so clients pick their own band. radio1 runs the uplink STA and a
+local AP together: the driver permits that as long as both share one channel,
+and hostapd adopts the supplicant's frequency to arrange it.
 
 Because the uplink is Wi-Fi, the wired **2.5G WAN port (eth0)** is not needed as
 WAN; `10-wisp` folds it into `br-lan` alongside the **1G port (eth1)**, so both
@@ -32,14 +34,60 @@ ethernet ports are LAN. This unit feeds a downstream switch off the 2.5G port.
 
 ## Performance
 
-- Uplink STA on **5GHz** (radio1, ch161): PHY negotiates ~700 Mbit/s vs ~130 on
-  the congested 2.4GHz band. Local AP on 2.4GHz (radio0).
+- Uplink STA on **5GHz** (radio1, ch157): PHY negotiates ~700 Mbit/s up and
+  ~866 down at -58 dBm.
+- Local APs on **both** bands, same SSID. The 5GHz AP shares the STA's channel,
+  so internet traffic crosses that radio twice and the uplink halves; at a
+  35 Mbit plan against a 700+ Mbit link that costs nothing, and traffic to a
+  wired LAN host is not repeated at all.
+- 2.4GHz AP is **pinned to ch11**, not `auto`. ACS picked ch8, which overlaps
+  the ch6 and ch11 groups without being able to decode either, so CSMA never
+  defers and frames collide. Clients ran 12-17% tx failure at -50 dBm. 83 APs
+  are audible here: 38 on ch1 (9 above -80 dBm), 28 on ch6, and 13 on ch11 that
+  all sit at -94 dBm or below.
+- **Set `country`.** Both radios carry `country='CA'`. See Troubleshooting.
 - **Flow offloading** (software + hardware) enabled in `10-wisp`.
 - Measured throughput is **~35 Mbit down / ~6 Mbit up, ~10ms** (2026-08). That's
   the upstream PCVirus/VMedia plan, not the router or Wi-Fi: the 5GHz flip did
   not change it (35 Mbit fits inside 2.4GHz too), but 5GHz stays for cleaner
   airtime and headroom. Test servers vary wildly (a browser run at
   speed.cloudflare.com gives the real plan number).
+
+## Troubleshooting: the 5GHz AP never starts
+
+Symptom: `phy1-ap0` exists but stays `DOWN` with no SSID and no channel, the
+uplink STA is healthy, and `logread | grep hostapd` shows:
+
+```
+hostapd: Failed to bring up phy phy1 ifname=phy1-ap0 with supplicant provided frequency
+hostapd: Could not set channel for kernel driver
+hostapd: phy1-ap0: Unable to setup interface.
+```
+
+Cause is the **regulatory domain**, not the AP config. With `country` unset the
+radios run in world domain `00`, which flags the 5GHz UNII-3 subchannels `no IR`
+(may listen, may not transmit):
+
+```sh
+iw reg get                              # 'country 00' means unset
+iw phy phy1 info | grep -E '57[0-9]{2}' # look for '(no IR)' per channel
+```
+
+A STA still associates, so the uplink looks fine and hides the problem. But an
+80MHz AP centred at 5775 spans ch149/153/157/161 and **every** subchannel must
+permit beaconing. The kernel lifts `no IR` only on channels where it actually
+heard a beacon (a "beacon hint"), so ch157 clears once the STA associates while
+ch153 stays blocked, and hostapd is refused. Setting the country code lifts the
+restriction properly and also raises the 2.4GHz EIRP cap from 20 to 36 dBm.
+
+```sh
+uci set wireless.radio0.country='CA'
+uci set wireless.radio1.country='CA'
+uci commit wireless && wifi reload
+```
+
+Leave `wireless.radio1.channel='auto'`: once the domain is correct the AP
+follows the STA's channel on its own, so it keeps working if PCVirus moves.
 
 ## DNS / adblock
 

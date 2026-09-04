@@ -4,11 +4,11 @@
 # Makefile `gs-openwrt-one`). Runs once on first boot of a fresh flash, then
 # self-deletes.
 #
-# Confirmed live on this unit: radio0 = 2.4GHz, radio1 = 5GHz. Uplink runs on
-# 5GHz (radio1): PCVirus broadcasts on both bands, but 5GHz (ch161) is far less
-# congested here (30+ APs crowd 2.4GHz) and leaves more headroom. Local AP is on
-# 2.4GHz (radio0); downstream devices are wired via the switch, so its band
-# matters little. STA and AP must be on separate radios.
+# Confirmed live on this unit: radio0 = 2.4GHz, radio1 = 5GHz. The uplink STA
+# runs on 5GHz (radio1). Local APs run on BOTH radios under the same SSID, so
+# clients choose their own band. radio1 carries the STA and an AP at once: the
+# driver allows it (#{AP} <= 16, #{managed} <= 19) provided both sit on one
+# channel, which hostapd arranges by adopting the supplicant's frequency.
 # Encryption 'psk2' = WPA2-PSK; use 'sae' (WPA3) or 'sae-mixed' if upstream changes.
 
 uci -q batch <<'EOF'
@@ -18,8 +18,17 @@ set wireless.radio1.disabled='0'
 delete wireless.default_radio0
 delete wireless.default_radio1
 
+# Regulatory domain. Unset, the radios fall back to world domain '00', which
+# marks the 5GHz UNII-3 subchannels 'no IR' (listen, never transmit). A STA
+# still associates, so the uplink looks healthy, but hostapd cannot start an
+# 80MHz AP whose block spans ch153 and dies with "Could not set channel for
+# kernel driver". It also caps 2.4GHz EIRP at 20 dBm instead of 36.
+set wireless.radio0.country='CA'
+set wireless.radio1.country='CA'
+
 # Uplink STA on radio1 = 5GHz. 'auto' lets it follow the upstream's channel
-# (a fixed channel would block association when PCVirus lands elsewhere).
+# (a fixed channel would block association when PCVirus lands elsewhere); the
+# radio1 AP below follows the STA onto that same channel.
 set wireless.radio1.channel='auto'
 delete wireless.wwan_sta
 set wireless.wwan_sta=wifi-iface
@@ -28,21 +37,39 @@ set wireless.wwan_sta.mode='sta'
 set wireless.wwan_sta.network='wwan'
 set wireless.wwan_sta.encryption='psk2'
 
-# Local AP on radio0 = 2.4GHz. 'auto' picks the clearest channel.
-set wireless.radio0.channel='auto'
+# Local AP on radio0 = 2.4GHz, pinned to ch11. 'auto' (ACS) picked ch8, which
+# overlaps the ch6 and ch11 groups without being able to decode either, so CSMA
+# never defers and frames collide: clients ran 12-17% tx failure at -50 dBm. Of
+# 83 APs heard here ch1 holds 38 (9 above -80 dBm) and ch6 holds 28, while every
+# one of ch11's 13 sits at -94 dBm or below.
+set wireless.radio0.channel='11'
 delete wireless.local_ap
 set wireless.local_ap=wifi-iface
 set wireless.local_ap.device='radio0'
 set wireless.local_ap.mode='ap'
 set wireless.local_ap.network='lan'
 set wireless.local_ap.encryption='psk2'
+
+# Local AP on radio1 = 5GHz, sharing the uplink's channel. Internet traffic
+# crosses this radio twice (client to AP, AP to upstream), halving uplink
+# throughput; the plan gives 35 Mbit against a 700+ Mbit link, so it costs
+# nothing. Traffic to a wired LAN host is not repeated and runs at full rate.
+delete wireless.local_ap5
+set wireless.local_ap5=wifi-iface
+set wireless.local_ap5.device='radio1'
+set wireless.local_ap5.mode='ap'
+set wireless.local_ap5.network='lan'
+set wireless.local_ap5.encryption='psk2'
 EOF
 
-# Secret values applied outside the heredoc.
+# Secret values applied outside the heredoc. Both APs share one SSID so clients
+# band-steer themselves.
 uci set wireless.wwan_sta.ssid='@WWAN_SSID@'
 uci set wireless.wwan_sta.key='@WWAN_KEY@'
 uci set wireless.local_ap.ssid='@AP_SSID@'
 uci set wireless.local_ap.key='@AP_KEY@'
+uci set wireless.local_ap5.ssid='@AP_SSID@'
+uci set wireless.local_ap5.key='@AP_KEY@'
 
 uci commit wireless
 exit 0
