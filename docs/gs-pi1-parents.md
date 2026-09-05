@@ -53,14 +53,37 @@ Both the exit node and the routes stay **pending until approved in the admin
 console**. Nothing works until then. Also disable key expiry on the node, or an
 unattended board in another house silently drops off the tailnet in six months.
 
+## Node identity across a reflash
+
+Every `sysupgrade -n` wipes `/etc/tailscale/tailscaled.state` and registers a
+new node, leaving the old one offline in the admin console. See
+`docs/tailscale-node-identity.md` for how to carry the file across, and why the
+card route is the only race-free one.
+
 ## Throughput
 
-Expect **low-to-mid teens of Mbit/s**, not the 100Mbit the link suggests. The
-limit is CPU, not the wire: Tailscale runs `wireguard-go` in **userspace**
-(needed for magicsock's NAT traversal and DERP fallback, which is exactly what
-makes this board reachable with no port forwarding), ARM1176 predates NEON so
+Measured 2026-09-04 on this board, 20 MB per run, three runs each:
+
+| Path | Time | Rate |
+|---|---|---|
+| LAN, SSH only | 6.4 s | **~26 Mbit/s** |
+| Tailnet, SSH over WireGuard | 33.5 s | **~5 Mbit/s** |
+
+The limit is CPU, not the wire. Tailscale runs `wireguard-go` in **userspace**
+(needed for magicsock's NAT traversal and DERP fallback, which is what makes
+this board reachable with no port forwarding), ARM1176 predates NEON so
 ChaCha20 runs scalar, and the NIC hangs off USB 2.0 on the same single core.
-Fine for remote debugging; poor for streaming.
+Even the LAN figure is well under the 100Mbit link because SSH's own crypto
+already saturates the CPU.
+
+**Caveat: the 5 Mbit/s figure includes SSH crypto on top of WireGuard**, so it
+is the realistic number for an interactive session, not for exit-node traffic.
+Pure exit-node throughput sits somewhere between 5 and 26 Mbit/s and has not
+been isolated; measuring it needs a non-SSH transfer, and the T480s does not
+trust `tailscale0` in its firewall, so there is nowhere to run a listener.
+Re-measure once the exit node is approved and can carry real traffic.
+
+Either way: fine for remote debugging, poor for streaming.
 
 ## Build and flash
 
