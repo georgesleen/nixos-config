@@ -53,10 +53,12 @@
     setuid = true;
     source = "${pkgs.fuse3}/bin/fusermount3";
   };
-  # Tailscale daemon
+  # Tailscale daemon. extraSetFlags (not extraUpFlags: that only fires from
+  # tailscaled-autoconnect, which is gated on authKeyFile, which we don't set)
+  # runs `tailscale set --ssh` as a plain oneshot, no auth key needed.
   services.tailscale = {
     enable = true;
-    extraUpFlags = [ "--ssh" ];
+    extraSetFlags = [ "--ssh" ];
   };
   # Power device info for battery notifications
   services.upower.enable = true;

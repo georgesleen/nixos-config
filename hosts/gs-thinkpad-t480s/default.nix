@@ -97,14 +97,10 @@ in
   # Services
   services.printing.enable = true;
   services.qemuGuest.enable = true;
-  # Accept the home LAN subnet advertised by the gs-pi4 subnet router, so this
-  # laptop can reach the Moonlight/Sunshine VM (192.168.1.248) and other LAN gear
-  # when roaming. useRoutingFeatures = "client" fixes reverse-path filtering so
-  # accepted routes work. extraUpFlags merges with common.nix's ["--ssh"].
-  services.tailscale = {
-    extraUpFlags = [ "--accept-routes" ];
-    useRoutingFeatures = "client";
-  };
+  # useRoutingFeatures = "client" fixes reverse-path filtering, needed if
+  # subnet routes from the gs-pi4 router are ever accepted. Route acceptance
+  # itself stays manual (`tailscale set --accept-routes`), not declarative.
+  services.tailscale.useRoutingFeatures = "client";
   # Keyboard — remap caps to esc on all keyboards (internal + any external).
   services.xserver.xkb = {
     layout = "us";
