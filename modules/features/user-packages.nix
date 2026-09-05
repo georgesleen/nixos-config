@@ -48,7 +48,7 @@ in
     moonfin # libmpv jellyfin client (Direct Play HEVC/eac3, no browser codec limits); replaced delfin
     python313Packages.grip # render GitHub flavoured markdown
     vlc # media player
-    guvcview # usb camera viewer with v4l2 controls
+    obs-studio # capture and streaming; also views the microscope loopback node
     v4l-utils # v4l2 device query and control from the shell
     moonlight-qt # game stream client for Sunshine on the win11 VM
     kdePackages.okular # pdf viewer
