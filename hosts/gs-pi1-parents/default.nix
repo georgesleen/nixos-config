@@ -77,6 +77,13 @@ let
     mkdir -p $out/etc/dropbear
     cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys
     chmod 600 $out/etc/dropbear/authorized_keys
+    # Re-derives the advertised subnet on every lan ifup, so the board adapts
+    # when it is moved to a different network instead of keeping a stale route.
+    mkdir -p $out/usr/bin $out/etc/hotplug.d/iface
+    cp ${./files/usr/bin/ts-advertise-routes} $out/usr/bin/ts-advertise-routes
+    cp ${./ts-route.sh} $out/usr/bin/ts-route.sh
+    cp ${./files/etc/hotplug.d/iface/99-tailscale-routes} $out/etc/hotplug.d/iface/99-tailscale-routes
+    chmod +x $out/usr/bin/ts-advertise-routes $out/usr/bin/ts-route.sh $out/etc/hotplug.d/iface/99-tailscale-routes
   '';
 in
 openwrt-imagebuilder.lib.build (

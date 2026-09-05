@@ -1,0 +1,36 @@
+#!/bin/sh
+# Advertises the CURRENT local subnet to Tailscale. Runs on every lan ifup, not
+# once at install, because this board is meant to move between networks: it is
+# tested on one LAN and then deployed to another. A route derived once at first
+# boot would stay wrong forever after the move.
+#
+# The action half only. Which subnet to advertise is decided by ts-route.sh,
+# which is dependency-free and covered by the `ts-route` suite.
+
+log() { logger -t ts-advertise-routes "$1"; }
+
+# Wait for tailscaled to answer; hotplug can fire before it is listening.
+i=0
+while [ $i -lt 30 ]; do
+    tailscale status >/dev/null 2>&1 && break
+    i=$((i + 1))
+    sleep 2
+done
+
+route=$(ip -4 -o addr show scope global 2>/dev/null | /usr/bin/ts-route.sh)
+if [ -z "$route" ]; then
+    log "no usable address yet; leaving routes unchanged"
+    exit 0
+fi
+
+current=$(tailscale debug prefs 2>/dev/null \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+' \
+    | head -n1)
+[ "$current" = "$route" ] && exit 0
+
+if tailscale set --advertise-routes="$route" --advertise-exit-node=true 2>/dev/null; then
+    log "advertising $route (was ${current:-none})"
+else
+    log "failed to advertise $route"
+fi
+exit 0

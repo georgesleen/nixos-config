@@ -1,0 +1,7 @@
+#!/bin/sh
+# Re-derive the advertised subnet whenever the LAN comes up. Covers boot, a DHCP
+# move to a different network, and a cable replug, without needing a reflash.
+[ "$ACTION" = "ifup" ] || exit 0
+[ "$INTERFACE" = "lan" ] || exit 0
+( /usr/bin/ts-advertise-routes ) >/dev/null 2>&1 &
+exit 0

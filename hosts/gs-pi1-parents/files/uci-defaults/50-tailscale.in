@@ -1,9 +1,12 @@
 #!/bin/sh
-# Join the tailnet on first boot as an exit node AND a subnet router for the
-# host network. @TS_AUTHKEY@ is substituted from sops at build time; it is used
-# once, then /etc/tailscale/tailscaled.state carries the node across reboots.
-# Disable key expiry for this node in the admin console, or an unattended board
-# in another house silently drops off the tailnet after six months.
+# Join the tailnet on first boot. @TS_AUTHKEY@ is substituted from sops at build
+# time; it is used once, then /etc/tailscale/tailscaled.state carries the node
+# across reboots. Disable key expiry for this node in the admin console, or an
+# unattended board in another house silently drops off the tailnet in six months.
+#
+# The advertised subnet is deliberately NOT set here. ts-advertise-routes runs on
+# every lan ifup, so the board re-derives its route when it moves to a different
+# network; a route baked in at first boot would stay wrong after the move.
 
 # tailscale0 joins the LAN firewall zone so the board is reachable over the
 # tailnet, and so traffic arriving on it may be forwarded to the local network.
@@ -21,27 +24,16 @@ fi
 /etc/init.d/tailscale enable
 /etc/init.d/tailscale start
 
-# Authenticate once DHCP has produced an address and the network is reachable.
-# Backgrounded so first boot is never blocked. The advertised subnet is derived
-# from the lease rather than hardcoded, because the host network is not known
-# at build time; ipcalc.sh is an OpenWrt builtin and handles any prefix length.
+# Authenticate once the network is reachable. Backgrounded so first boot is
+# never blocked. ts-advertise-routes then sets the subnet for wherever we are.
 (
     for i in $(seq 1 60); do
         ping -c1 -W2 1.1.1.1 >/dev/null 2>&1 && break
         sleep 5
     done
-
-    cidr=$(ip -4 -o addr show scope global | awk '{print $4}' \
-             | grep -v '^192\.168\.99\.' | head -n1)
-    routes=""
-    if [ -n "$cidr" ]; then
-        eval "$(ipcalc.sh "$cidr" 2>/dev/null)"
-        [ -n "$NETWORK" ] && [ -n "$PREFIX" ] && routes="--advertise-routes=$NETWORK/$PREFIX"
-    fi
-    echo "advertising: ${routes:-<none: could not derive subnet>}"
-
     tailscale up --authkey='@TS_AUTHKEY@' --hostname=gs-pi1-parents \
-        --advertise-exit-node $routes --ssh
+        --advertise-exit-node --ssh
+    /usr/bin/ts-advertise-routes
 ) >/tmp/tailscale-up.log 2>&1 &
 
 exit 0

@@ -162,6 +162,7 @@
             secrets-guard-match = ./home/dotfiles/secrets-guard-match;
             snapper-orphans = ./modules/features/snapper-orphans;
             tb-state = ./modules/hardware/tb-state;
+            ts-route = ./hosts/gs-pi1-parents/ts-route;
             waybar-fmt = ./home/dotfiles/waybar-fmt;
             win11-forward = ./hosts/gs-server/win11-forward;
             workspace-plan = ./home/dotfiles/workspace-plan;

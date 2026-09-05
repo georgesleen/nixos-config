@@ -33,9 +33,16 @@ Tailscale's; the board does no NAT of its own beyond the masquerade below.
 `50-tailscale` runs once on first boot:
 
 - `--advertise-exit-node --ssh`, plus `--advertise-routes` for the host LAN.
-- **The advertised subnet is derived from the DHCP lease, not hardcoded**, since
-  the host network is unknown at build time. It reads the lease and expands it
-  with `ipcalc.sh` (an OpenWrt builtin), so any prefix length works.
+- **The advertised subnet is re-derived on every `lan` ifup**, not once at
+  install. `uci-defaults` run only on the first boot of a clean flash, so a
+  board tested on one network and then moved would keep advertising the old
+  subnet silently. A hotplug script (`99-tailscale-routes`) runs
+  `ts-advertise-routes` instead, which covers boot, a DHCP move to a different
+  network, and a cable replug, with no reflash. **So you can test it on your own
+  switch and then just take it there.**
+- The decision half, `ts-route.sh`, is dependency-free (it does its own network
+  maths rather than calling OpenWrt's `ipcalc.sh`) so the `ts-route` check suite
+  can exercise it. It never picks tailscale0's own address or the rescue alias.
 - **Masquerade is mandatory, not a tuning choice.** Hosts on the far LAN have no
   route back to `100.64.0.0/10`, so without SNAT to this board's own address
   every reply is dropped. That applies to both roles.
