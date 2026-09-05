@@ -71,9 +71,10 @@ let
   apKey = envOr "openwrt_one_ap_key" "CHANGEME_ap_key";
   # Reusable Tailscale auth key (from sops); used once at the first-boot join.
   tsAuthkey = envOr "openwrt_one_ts_authkey" "";
-  # Static dropbear host key (from sops). Baked into the image so a reflash
-  # doesn't regenerate it: dropbear only generates a host key if one is
-  # missing, and this ships one already present, keeping the SSH fingerprint
+  # Static dropbear host key (from sops, base64-encoded: it's a binary
+  # dropbearkey-format file, not an OpenSSH PEM one, which dropbear's OpenWrt
+  # build rejects as invalid and silently replaces at boot). Baked into the
+  # image so a reflash doesn't regenerate it, keeping the SSH fingerprint
   # (and known_hosts) stable across sysupgrades.
   sshHostKey = envOr "openwrt_one_ssh_host_key" "";
 
@@ -102,7 +103,7 @@ let
     # Static dropbear host key (see sshHostKey above), keeping the SSH
     # fingerprint stable across reflashes instead of dropbear generating a
     # fresh one on every first boot.
-    printf '%s' ${lib.escapeShellArg sshHostKey} > $out/etc/dropbear/dropbear_ed25519_host_key
+    printf '%s' ${lib.escapeShellArg sshHostKey} | base64 -d > $out/etc/dropbear/dropbear_ed25519_host_key
     chmod 600 $out/etc/dropbear/dropbear_ed25519_host_key
   '';
 in
