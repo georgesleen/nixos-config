@@ -71,6 +71,11 @@ let
   apKey = envOr "openwrt_one_ap_key" "CHANGEME_ap_key";
   # Reusable Tailscale auth key (from sops); used once at the first-boot join.
   tsAuthkey = envOr "openwrt_one_ts_authkey" "";
+  # Static dropbear host key (from sops). Baked into the image so a reflash
+  # doesn't regenerate it: dropbear only generates a host key if one is
+  # missing, and this ships one already present, keeping the SSH fingerprint
+  # (and known_hosts) stable across sysupgrades.
+  sshHostKey = envOr "openwrt_one_ssh_host_key" "";
 
   # /etc/uci-defaults/* run once on first boot (of a fresh flash) and then
   # remove themselves: a reflash re-asserts this exact state. Non-secret
@@ -94,6 +99,11 @@ let
     mkdir -p $out/etc/dropbear
     cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys
     chmod 600 $out/etc/dropbear/authorized_keys
+    # Static dropbear host key (see sshHostKey above), keeping the SSH
+    # fingerprint stable across reflashes instead of dropbear generating a
+    # fresh one on every first boot.
+    printf '%s' ${lib.escapeShellArg sshHostKey} > $out/etc/dropbear/dropbear_ed25519_host_key
+    chmod 600 $out/etc/dropbear/dropbear_ed25519_host_key
   '';
 in
 openwrt-imagebuilder.lib.build (
