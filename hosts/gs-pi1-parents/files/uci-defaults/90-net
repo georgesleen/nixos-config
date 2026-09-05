@@ -2,6 +2,12 @@
 # Network for a LAN CLIENT, not a router. This board plugs into someone else's
 # home network, so it takes an address by DHCP and must never serve one.
 # Runs once on first boot of a fresh flash, then self-deletes.
+#
+# NUMBERED 90 ON PURPOSE. uci-defaults run in lexical order and the stock image
+# ships its own, up to 50-*. At 10 this ran before stock `15_odhcpd`, which
+# rewrites dhcpv4/dhcpv6/ra back to 'server' and left this board serving DHCPv6
+# and RAs on the host LAN. `ignore` survived because 15_odhcpd does not set it,
+# which made the breakage easy to miss. Keep every script here above 50.
 
 uci -q batch <<'UCI'
 set system.@system[0].hostname='gs-pi1-parents'

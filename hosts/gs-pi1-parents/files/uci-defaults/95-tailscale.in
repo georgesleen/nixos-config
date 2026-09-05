@@ -33,7 +33,7 @@ fi
     done
     tailscale up --authkey='@TS_AUTHKEY@' --hostname=gs-pi1-parents \
         --advertise-exit-node --ssh
-    /usr/bin/ts-advertise-routes
+    sh /usr/bin/ts-advertise-routes
 ) >/tmp/tailscale-up.log 2>&1 &
 
 exit 0

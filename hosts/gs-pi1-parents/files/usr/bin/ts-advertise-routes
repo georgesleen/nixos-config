@@ -6,6 +6,11 @@
 #
 # The action half only. Which subnet to advertise is decided by ts-route.sh,
 # which is dependency-free and covered by the `ts-route` suite.
+#
+# Everything here is invoked as `sh <path>`, never executed directly: the
+# OpenWrt ImageBuilder does not preserve the executable bit from the files/
+# tree, so these arrive as 0644 however they are chmod'ed in the Nix store.
+# uci-defaults hid this because OpenWrt sources those rather than running them.
 
 log() { logger -t ts-advertise-routes "$1"; }
 
@@ -17,7 +22,7 @@ while [ $i -lt 30 ]; do
     sleep 2
 done
 
-route=$(ip -4 -o addr show scope global 2>/dev/null | /usr/bin/ts-route.sh)
+route=$(ip -4 -o addr show scope global 2>/dev/null | sh /usr/bin/ts-route.sh)
 if [ -z "$route" ]; then
     log "no usable address yet; leaving routes unchanged"
     exit 0

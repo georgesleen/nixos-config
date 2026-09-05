@@ -68,17 +68,19 @@ let
 
   files = pkgs.runCommand "gs-pi1-parents-files" { } ''
     mkdir -p $out/etc/uci-defaults
-    cp ${./files/uci-defaults/10-net} $out/etc/uci-defaults/10-net
-    cp ${./files/uci-defaults/30-ssh} $out/etc/uci-defaults/30-ssh
-    substitute ${./files/uci-defaults/50-tailscale.in} \
-      $out/etc/uci-defaults/50-tailscale \
+    cp ${./files/uci-defaults/90-net} $out/etc/uci-defaults/90-net
+    cp ${./files/uci-defaults/91-ssh} $out/etc/uci-defaults/91-ssh
+    substitute ${./files/uci-defaults/95-tailscale.in} \
+      $out/etc/uci-defaults/95-tailscale \
       --subst-var-by TS_AUTHKEY ${lib.escapeShellArg tsAuthkey}
-    chmod +x $out/etc/uci-defaults/10-net $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/50-tailscale
+    chmod +x $out/etc/uci-defaults/90-net $out/etc/uci-defaults/91-ssh $out/etc/uci-defaults/95-tailscale
     mkdir -p $out/etc/dropbear
     cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys
     chmod 600 $out/etc/dropbear/authorized_keys
     # Re-derives the advertised subnet on every lan ifup, so the board adapts
     # when it is moved to a different network instead of keeping a stale route.
+    # chmod +x here is cosmetic: ImageBuilder does not carry the mode into the
+    # image, so every caller invokes these as `sh <path>`.
     mkdir -p $out/usr/bin $out/etc/hotplug.d/iface
     cp ${./files/usr/bin/ts-advertise-routes} $out/usr/bin/ts-advertise-routes
     cp ${./ts-route.sh} $out/usr/bin/ts-route.sh

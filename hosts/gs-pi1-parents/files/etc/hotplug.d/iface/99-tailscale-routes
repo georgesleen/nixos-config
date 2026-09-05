@@ -3,5 +3,5 @@
 # move to a different network, and a cable replug, without needing a reflash.
 [ "$ACTION" = "ifup" ] || exit 0
 [ "$INTERFACE" = "lan" ] || exit 0
-( /usr/bin/ts-advertise-routes ) >/dev/null 2>&1 &
+( sh /usr/bin/ts-advertise-routes ) >/dev/null 2>&1 &
 exit 0
