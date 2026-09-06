@@ -245,19 +245,8 @@
   # collapses, so every read hits the slow USB media drive. Compressed RAM swap
   # gives headroom (lets idle service pages compress out to free real RAM for
   # cache) without SD wear. Not a hibernation target, but this host never sleeps.
-  #
-  # 50%, not 100%: zram holds its pages in RAM, so a full zram is a tax on the
-  # memory it is meant to free. At 100% the kernel sized swap at the whole
-  # 3.66 GiB of RAM and swapped until "full", but at the measured 2.5:1
-  # compression those pages cost 1.42 GiB of real RAM to store, so each swap-out
-  # returned less than it took and the pressure fed itself. That loop wedged the
-  # box on 2026-09-05: zram 97.7% full, 76 MB free, load 24, no OOM kill and no
-  # ffmpeg, just thrash, which took down sshd and dropped the node off the
-  # tailnet. Capping at 50% bounds zram's own footprint to ~730 MB. The stack can
-  # now genuinely run out of memory instead of thrashing; a single OOM-killed
-  # service that systemd restarts beats losing the whole host.
   zramSwap = {
     enable = true;
-    memoryPercent = 50;
+    memoryPercent = 100;
   };
 }
