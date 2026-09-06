@@ -255,6 +255,7 @@
       "btrfs-media-layout.service"
       "mnt-backup.mount"
       "srv-media.mount"
+      "swap.mount"
     ];
     description = "Unlock the encrypted backup/media drive";
     path = [ pkgs.cryptsetup ];
