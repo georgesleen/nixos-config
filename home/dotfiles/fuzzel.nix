@@ -26,7 +26,7 @@
         font = "monospace:size=12";
         horizontal-pad = 4;
         inner-pad = 4;
-        lines = 1;
+        lines = 12;
         terminal = "kitty";
         vertical-pad = 0;
         width = 100;
