@@ -91,6 +91,20 @@
       "x-systemd.device-timeout=30s"
     ];
   };
+  # Holds the second-tier swapfile (see swapDevices). Its own subvolume, and
+  # deliberately without compress=zstd: btrfs refuses a swapfile that is
+  # compressed or datacow. No automount either, unlike the mounts above: an
+  # automount unit resolves on first access, and the first access to a swapfile
+  # is swapon at boot, which is too early to want a lazy mount.
+  fileSystems."/swap" = {
+    device = "/dev/mapper/backup";
+    fsType = "btrfs";
+    options = [
+      "subvol=swap"
+      "noatime"
+      "nofail"
+    ];
+  };
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
   # adding Rockchip/sun4i/etc. modules (dw-hdmi, dw-mipi-dsi, ...) that don't exist in
   # the RPi kernel. makeModulesClosure hard-fails on any listed-but-absent module.
@@ -142,6 +156,25 @@
   # the whole unit taken together, since the key travels with the SD card
   # either way.
   sops.secrets."backup_drive/luks_passphrase" = { };
+  # Overflow tier below zram. zram alone wedged the host on 2026-09-05: it sat
+  # 97.7% full holding ~3.5 GiB of cold anonymous pages (jellyfin ~1.2 GiB,
+  # immich and its helpers ~1.5 GiB), and with nowhere left to put the next cold
+  # page the box thrashed until sshd stopped completing a handshake and the node
+  # dropped off the tailnet. Measured swap-in was ~1.6 MB per 20 s, so those
+  # pages really are cold and zram is doing useful work; the fault was that it
+  # had no overflow, not that it was too big. Shrinking zram would have made it
+  # worse, since every page it cannot hold stays resident instead.
+  #
+  # priority 0 against zram's 5, so the kernel fills compressed RAM first and
+  # only genuine overflow reaches the SSD. On the USB-attached drive, which is
+  # why this is the low tier: cold pages are read back rarely, and `nofail`
+  # above keeps a missing drive from blocking boot.
+  swapDevices = [
+    {
+      device = "/swap/swapfile";
+      priority = 0;
+    }
+  ];
   system.stateVersion = "25.11";
   # The subvolumes above and their quotas were created by hand when storage
   # moved to this drive, so a rebuild onto a fresh disk would mount nothing.
@@ -161,6 +194,7 @@
       mediaQuotaGiB = 3072;
       immichQuotaGiB = 2048;
       snapshotQuotaGiB = 1024;
+      swapFileGiB = 8;
     in
     {
       after = [
@@ -170,8 +204,9 @@
       before = [
         "mnt-backup.mount"
         "srv-media.mount"
+        "swap.mount"
       ];
-      description = "Ensure the media/state/immich/snapshot subvolumes and quotas exist";
+      description = "Ensure the media/state/immich/snapshot/swap subvolumes and quotas exist";
       path = with pkgs; [
         btrfs-progs
         util-linux
@@ -181,11 +216,18 @@
         top=$(mktemp -d)
         trap 'umount "$top" 2>/dev/null || true; rmdir "$top" 2>/dev/null || true' EXIT
         mount -o subvolid=5 /dev/mapper/backup "$top"
-        for sub in media state immich snapshot; do
+        for sub in media state immich snapshot swap; do
           if [ ! -e "$top/$sub" ]; then
             btrfs subvolume create "$top/$sub"
           fi
         done
+        # btrfs rejects a swapfile that is compressed, datacow or has holes.
+        # mkswapfile sets nocow, preallocates and runs mkswap in one step, and
+        # takes the page size from the running kernel, which is why the file is
+        # built here on the Pi rather than baked by the (x86_64) builder.
+        if [ ! -e "$top/swap/swapfile" ]; then
+          btrfs filesystem mkswapfile -s ${toString swapFileGiB}g "$top/swap/swapfile"
+        fi
         # Quotas must be on before a limit will stick; enabling twice is a no-op.
         btrfs quota enable "$top" 2>/dev/null || true
         btrfs qgroup limit ${toString mediaQuotaGiB}G "$top/media"
