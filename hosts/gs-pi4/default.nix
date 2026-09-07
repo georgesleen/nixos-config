@@ -7,6 +7,13 @@
   user,
   ...
 }:
+let
+  backupUuid = "d72ccd70-0f2f-4055-a3ab-e199bed8d661";
+  # systemd escapes "-" as "\x2d" in device unit names.
+  backupDeviceUnit = "dev-disk-by\\x2duuid-${
+    lib.replaceStrings [ "-" ] [ "\\x2d" ] backupUuid
+  }.device";
+in
 {
   # tun for tailscale; wireguard for the confined VPN namespace.
   boot.kernelModules = [
@@ -181,10 +188,8 @@
         "local-fs-pre.target"
         "cryptsetup-backup.service"
       ];
-      before = [
-        "mnt-backup.mount"
-        "srv-media.mount"
-      ];
+      # No `before` on the mounts, for the same cycle reason as
+      # cryptsetup-backup above.
       description = "Ensure the media/state/immich/snapshot/swap subvolumes and quotas exist";
       path = with pkgs; [
         btrfs-progs
@@ -226,20 +231,22 @@
       };
       wantedBy = [ "multi-user.target" ];
     };
+  # No `before` on the mounts: this is an ordinary service, so it implicitly
+  # follows basic.target, and ordering it ahead of a local-fs mount closes a loop
+  # through sysinit.target. The automounts already tolerate a late unlock.
+  # Requires the device unit, or it runs before USB enumeration and fails with
+  # "Device ... does not exist".
   systemd.services.cryptsetup-backup = {
-    after = [ "local-fs-pre.target" ];
-    before = [
-      "btrfs-media-layout.service"
-      "mnt-backup.mount"
-      "srv-media.mount"
-    ];
+    after = [ backupDeviceUnit ];
+    before = [ "btrfs-media-layout.service" ];
     description = "Unlock the encrypted backup/media drive";
     path = [ pkgs.cryptsetup ];
+    requires = [ backupDeviceUnit ];
     script = ''
       if [ ! -e /dev/mapper/backup ]; then
         cryptsetup luksOpen \
           --key-file ${config.sops.secrets."backup_drive/luks_passphrase".path} \
-          /dev/disk/by-uuid/d72ccd70-0f2f-4055-a3ab-e199bed8d661 backup
+          /dev/disk/by-uuid/${backupUuid} backup
       fi
     '';
     serviceConfig = {
