@@ -119,6 +119,7 @@ in
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ../../modules/roles/pi.nix
+    ../../modules/features/pi-api.nix
     # Host-specific service modules live in the private nixos-pi4 input.
     inputs.nixos-pi4.nixosModules.gs-pi4
   ];
@@ -240,14 +241,29 @@ in
     after = [ backupDeviceUnit ];
     before = [ "btrfs-media-layout.service" ];
     description = "Unlock the encrypted backup/media drive";
-    path = [ pkgs.cryptsetup ];
-    requires = [ backupDeviceUnit ];
+    path = [
+      pkgs.cryptsetup
+      pkgs.systemd
+    ];
+    # Waits rather than Requires= on the device unit: this USB drive can take
+    # tens of seconds to enumerate, and a Requires= fails the job the moment
+    # systemd finds the unit dead instead of waiting.
     script = ''
-      if [ ! -e /dev/mapper/backup ]; then
-        cryptsetup luksOpen \
-          --key-file ${config.sops.secrets."backup_drive/luks_passphrase".path} \
-          /dev/disk/by-uuid/${backupUuid} backup
+      if [ -e /dev/mapper/backup ]; then
+        exit 0
       fi
+      udevadm settle --timeout=30 || true
+      for _ in $(seq 1 60); do
+        [ -e /dev/disk/by-uuid/${backupUuid} ] && break
+        sleep 1
+      done
+      if [ ! -e /dev/disk/by-uuid/${backupUuid} ]; then
+        echo "backup drive ${backupUuid} never appeared; check the USB link" >&2
+        exit 1
+      fi
+      cryptsetup luksOpen \
+        --key-file ${config.sops.secrets."backup_drive/luks_passphrase".path} \
+        /dev/disk/by-uuid/${backupUuid} backup
     '';
     serviceConfig = {
       RemainAfterExit = true;

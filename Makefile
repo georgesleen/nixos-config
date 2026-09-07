@@ -2,7 +2,7 @@
 # image, and the Raspberry Pi 1 Tailscale node image.
 SHELL := bash
 .ONESHELL:
-.PHONY: gs-openwrt-one gs-openwrt-one-flash gs-pi1-parents test
+.PHONY: check-boot-order gs-openwrt-one gs-openwrt-one-flash gs-pi1-parents test
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
 
@@ -16,6 +16,17 @@ test:
 	done
 	if [ $$failed -ne 0 ]; then echo "SUITES FAILED"; exit 1; fi
 	echo "all suites passed"
+
+# Check a live host's systemd ordering graph for cycles. Run after a `switch`
+# or `test` (which load the new units) and BEFORE rebooting: systemd breaks a
+# cycle by deleting an arbitrary job, and on gs-pi4 it picked dbus-broker and
+# local-fs.target, so the host booted with no network and no drive.
+#   make check-boot-order HOST=george-sleen@192.168.10.219
+check-boot-order:
+	@test -n "$(HOST)" || { echo "usage: make check-boot-order HOST=<user@host>"; exit 2; }
+	ssh -o BatchMode=yes "$(HOST)" 'systemd-analyze dot --order 2>/dev/null' \
+	  | sh '$(ROOT)/modules/features/systemd-order-cycles.sh' \
+	  && echo "no ordering cycles on $(HOST)"
 
 # Build the OpenWrt One WISP image. sops exec-env decrypts the Wi-Fi secrets
 # into the environment; --impure lets the flake read them via builtins.getEnv.
