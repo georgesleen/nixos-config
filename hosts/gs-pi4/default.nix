@@ -91,10 +91,8 @@
       "x-systemd.device-timeout=30s"
     ];
   };
-  # Holds the second-tier swapfile (activated by swapfile-activate below, not by
-  # swapDevices). Its own subvolume, and deliberately without compress=zstd:
-  # btrfs refuses a swapfile that is compressed or datacow. Automounted like its
-  # siblings, since the device only appears once cryptsetup-backup has run.
+  # Swapfile subvolume. No compress=zstd: btrfs rejects a compressed or datacow
+  # swapfile.
   fileSystems."/swap" = {
     device = "/dev/mapper/backup";
     fsType = "btrfs";
@@ -202,10 +200,8 @@
             btrfs subvolume create "$top/$sub"
           fi
         done
-        # btrfs rejects a swapfile that is compressed, datacow or has holes.
-        # mkswapfile sets nocow, preallocates and runs mkswap in one step, and
-        # takes the page size from the running kernel, which is why the file is
-        # built here on the Pi rather than baked by the (x86_64) builder.
+        # mkswapfile sets nocow, preallocates and runs mkswap; page size comes
+        # from the running kernel, so it must be built here, not by the builder.
         if [ ! -e "$top/swap/swapfile" ]; then
           btrfs filesystem mkswapfile -s ${toString swapFileGiB}g "$top/swap/swapfile"
         fi
@@ -261,21 +257,9 @@
   # had no overflow, not that it was too big. Shrinking zram would have made it
   # worse, since every page it cannot hold stays resident instead.
   #
-  # priority 0 against zram's 5, so the kernel fills compressed RAM first and
-  # only genuine overflow reaches the SSD. On the USB-attached drive, which is
-  # why this is the low tier: cold pages are read back rarely.
-  #
-  # Deliberately NOT `swapDevices`. That generates an fstab swap unit, and swap
-  # units are early boot: swap.target is ordered before sysinit.target. This
-  # swapfile lives on the LUKS drive, which only exists after cryptsetup-backup,
-  # a multi-user service, and inside a subvolume btrfs-media-layout creates. Both
-  # run after basic.target, so making the swap unit wait on them closed a loop
-  # (swap.target to swap.mount to btrfs-media-layout to basic.target to
-  # sockets.target to sysinit.target to swap.target). systemd broke that loop by
-  # deleting jobs, and the ones it picked were cryptsetup-backup, srv-media.mount
-  # and sshd-unix-local.socket: the drive stayed locked and the whole media stack
-  # was down on the 2026-09-07 reboot. Activating late, from an ordinary
-  # multi-user oneshot, keeps swap out of early boot entirely.
+  # Overflow swap below zram (priority 0 vs 5). Not `swapDevices`: that unit is
+  # early boot, and this file needs cryptsetup-backup and btrfs-media-layout,
+  # which are multi-user. That ordering is a cycle; see CLAUDE.md Workarounds.
   systemd.services.swapfile-activate = {
     after = [
       "btrfs-media-layout.service"
@@ -308,10 +292,8 @@
       "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDS8y5OdyR6OIy91fTAzt2GHg+aqm9H5F2l+G9/aWFJF george-sleen@GS-ThinkPad-T480s"
     ];
   };
-  # 3.75 GB RAM, no disk swap: the media stack exhausts RAM and the page cache
-  # collapses, so every read hits the slow USB media drive. Compressed RAM swap
-  # gives headroom (lets idle service pages compress out to free real RAM for
-  # cache) without SD wear. Not a hibernation target, but this host never sleeps.
+  # Compressed RAM swap; the page cache collapses without it and every read
+  # hits the USB drive. No SD wear. Not a hibernation target.
   zramSwap = {
     enable = true;
     memoryPercent = 100;
