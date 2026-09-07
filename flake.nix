@@ -161,6 +161,7 @@
             media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
             secrets-guard-match = ./home/dotfiles/secrets-guard-match;
             snapper-orphans = ./modules/features/snapper-orphans;
+            systemd-order-cycles = ./modules/features/systemd-order-cycles;
             tb-state = ./modules/hardware/tb-state;
             ts-route = ./hosts/gs-pi1-parents/ts-route;
             waybar-fmt = ./home/dotfiles/waybar-fmt;
