@@ -91,11 +91,10 @@
       "x-systemd.device-timeout=30s"
     ];
   };
-  # Holds the second-tier swapfile (see swapDevices). Its own subvolume, and
-  # deliberately without compress=zstd: btrfs refuses a swapfile that is
-  # compressed or datacow. No automount either, unlike the mounts above: an
-  # automount unit resolves on first access, and the first access to a swapfile
-  # is swapon at boot, which is too early to want a lazy mount.
+  # Holds the second-tier swapfile (activated by swapfile-activate below, not by
+  # swapDevices). Its own subvolume, and deliberately without compress=zstd:
+  # btrfs refuses a swapfile that is compressed or datacow. Automounted like its
+  # siblings, since the device only appears once cryptsetup-backup has run.
   fileSystems."/swap" = {
     device = "/dev/mapper/backup";
     fsType = "btrfs";
@@ -103,6 +102,8 @@
       "subvol=swap"
       "noatime"
       "nofail"
+      "x-systemd.automount"
+      "x-systemd.device-timeout=30s"
     ];
   };
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
@@ -156,25 +157,6 @@
   # the whole unit taken together, since the key travels with the SD card
   # either way.
   sops.secrets."backup_drive/luks_passphrase" = { };
-  # Overflow tier below zram. zram alone wedged the host on 2026-09-05: it sat
-  # 97.7% full holding ~3.5 GiB of cold anonymous pages (jellyfin ~1.2 GiB,
-  # immich and its helpers ~1.5 GiB), and with nowhere left to put the next cold
-  # page the box thrashed until sshd stopped completing a handshake and the node
-  # dropped off the tailnet. Measured swap-in was ~1.6 MB per 20 s, so those
-  # pages really are cold and zram is doing useful work; the fault was that it
-  # had no overflow, not that it was too big. Shrinking zram would have made it
-  # worse, since every page it cannot hold stays resident instead.
-  #
-  # priority 0 against zram's 5, so the kernel fills compressed RAM first and
-  # only genuine overflow reaches the SSD. On the USB-attached drive, which is
-  # why this is the low tier: cold pages are read back rarely, and `nofail`
-  # above keeps a missing drive from blocking boot.
-  swapDevices = [
-    {
-      device = "/swap/swapfile";
-      priority = 0;
-    }
-  ];
   system.stateVersion = "25.11";
   # The subvolumes above and their quotas were created by hand when storage
   # moved to this drive, so a rebuild onto a fresh disk would mount nothing.
@@ -204,7 +186,6 @@
       before = [
         "mnt-backup.mount"
         "srv-media.mount"
-        "swap.mount"
       ];
       description = "Ensure the media/state/immich/snapshot/swap subvolumes and quotas exist";
       path = with pkgs; [
@@ -255,7 +236,6 @@
       "btrfs-media-layout.service"
       "mnt-backup.mount"
       "srv-media.mount"
-      "swap.mount"
     ];
     description = "Unlock the encrypted backup/media drive";
     path = [ pkgs.cryptsetup ];
@@ -270,6 +250,50 @@
       RemainAfterExit = true;
       Type = "oneshot";
     };
+    wantedBy = [ "multi-user.target" ];
+  };
+  # Overflow tier below zram. zram alone wedged the host on 2026-09-05: it sat
+  # 97.7% full holding ~3.5 GiB of cold anonymous pages (jellyfin ~1.2 GiB,
+  # immich and its helpers ~1.5 GiB), and with nowhere left to put the next cold
+  # page the box thrashed until sshd stopped completing a handshake and the node
+  # dropped off the tailnet. Measured swap-in was ~1.6 MB per 20 s, so those
+  # pages really are cold and zram is doing useful work; the fault was that it
+  # had no overflow, not that it was too big. Shrinking zram would have made it
+  # worse, since every page it cannot hold stays resident instead.
+  #
+  # priority 0 against zram's 5, so the kernel fills compressed RAM first and
+  # only genuine overflow reaches the SSD. On the USB-attached drive, which is
+  # why this is the low tier: cold pages are read back rarely.
+  #
+  # Deliberately NOT `swapDevices`. That generates an fstab swap unit, and swap
+  # units are early boot: swap.target is ordered before sysinit.target. This
+  # swapfile lives on the LUKS drive, which only exists after cryptsetup-backup,
+  # a multi-user service, and inside a subvolume btrfs-media-layout creates. Both
+  # run after basic.target, so making the swap unit wait on them closed a loop
+  # (swap.target to swap.mount to btrfs-media-layout to basic.target to
+  # sockets.target to sysinit.target to swap.target). systemd broke that loop by
+  # deleting jobs, and the ones it picked were cryptsetup-backup, srv-media.mount
+  # and sshd-unix-local.socket: the drive stayed locked and the whole media stack
+  # was down on the 2026-09-07 reboot. Activating late, from an ordinary
+  # multi-user oneshot, keeps swap out of early boot entirely.
+  systemd.services.swapfile-activate = {
+    after = [
+      "btrfs-media-layout.service"
+      "swap.mount"
+    ];
+    description = "Enable the SSD swapfile below zram";
+    path = [ pkgs.util-linux ];
+    # Idempotent: swapon exits 255 with EBUSY if the file is already enabled.
+    script = ''
+      if ! swapon --show=NAME --noheadings | grep -qx /swap/swapfile; then
+        swapon --priority 0 /swap/swapfile
+      fi
+    '';
+    serviceConfig = {
+      RemainAfterExit = true;
+      Type = "oneshot";
+    };
+    unitConfig.RequiresMountsFor = "/swap";
     wantedBy = [ "multi-user.target" ];
   };
   # State dirs live under /srv; systemd-tmpfiles refuses to create root-owned
