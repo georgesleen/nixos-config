@@ -27,7 +27,7 @@ let
       sonarr|8989|/run/secrets/sonarr/api_key|X-Api-Key|/api/v3
       radarr|7878|/run/secrets/radarr/api_key|X-Api-Key|/api/v3
       prowlarr|9696|/run/secrets/prowlarr/api_key|X-Api-Key|/api/v1
-      seerr|5299|/run/secrets/seerr/api_key|X-Api-Key|/api/v1
+      seerr|5055|/run/secrets/seerr/api_key|X-Api-Key|/api/v1
       jellyfin|8096|/run/secrets/jellyfin/api_key|X-Emby-Token|
       '
 
