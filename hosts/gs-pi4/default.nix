@@ -151,6 +151,20 @@ in
     enable = true;
     settings.PasswordAuthentication = false;
   };
+  # Tailscale SSH off on this host only (common.nix turns it on everywhere).
+  # With it on, tailscaled owns port 22 on the tailnet address and answers
+  # under the tailnet SSH policy, which ships Tailscale's default
+  # `"action": "check"`: every connection gets a banner asking the user to
+  # re-authenticate in a browser. Interactive logins survive that, but a
+  # non-interactive ssh (every deploy and script here) blocks on it forever
+  # and looks exactly like a dead network path. Port 22 now falls through to
+  # sshd above, which authenticates by key. The cost is that a device with no
+  # key on this host can no longer reach it; the T480s and gs-server keep
+  # Tailscale SSH, so keyless access to those is unchanged.
+  #
+  # Must be an explicit `=false`, not a dropped flag: `tailscale set` persists
+  # prefs in tailscaled state, so an absent flag leaves the old value in place.
+  services.tailscale.extraSetFlags = lib.mkForce [ "--ssh=false" ];
   # No subnet router. `extraUpFlags` is inert without an authKeyFile: the
   # module only feeds it to tailscaled-autoconnect, which is then never
   # generated, so the old --advertise-routes never took effect. To restore,
