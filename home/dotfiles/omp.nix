@@ -1,6 +1,5 @@
 {
   config,
-  lib,
   pkgs,
   ...
 }:
@@ -10,8 +9,11 @@ let
   # written to `~/.omp/agent/config.yml`, because omp does a read-modify-write
   # of that file (saving the model chosen for new sessions, among others) by
   # writing a `.tmp` beside it and renaming. Pointed at the store by
-  # `home.file`, that open() fails EROFS and the model picker dies. The overlay
-  # also outranks global and project config, so a project cannot lower it.
+  # `home.file`, that open() fails EROFS and the model picker dies.
+  #
+  # The docs put CLI overlays above global config, but a global file with an
+  # `approvalMode` beats the overlay in practice, so do not rely on the overlay
+  # for that key; see the wrapper flags below.
   ompPolicy = (pkgs.formats.yaml { }).generate "omp-policy.yml" {
     extensions = [ "${pkgs.pi-automode}/extensions/auto-mode.ts" ];
     # omp's gate must be wide open, because pi-automode replaces the permission
@@ -33,24 +35,18 @@ let
     name = "omp-${pkgs.omp.version}";
     nativeBuildInputs = [ pkgs.makeWrapper ];
     paths = [ pkgs.omp ];
+    # `--approval-mode` is passed as well as being set in the overlay, because
+    # omp rewrites `~/.omp/agent/config.yml` whenever it saves a setting, and a
+    # stored `approvalMode` there outranks the overlay. The documented
+    # per-session override does not go through that file at all.
     postBuild = ''
-      wrapProgram $out/bin/omp --add-flags "--config ${ompPolicy}"
+      wrapProgram $out/bin/omp \
+        --add-flags "--config ${ompPolicy} --approval-mode yolo"
     '';
   };
 in
 
 {
-  # Seeded once, then omp owns it. omp's own default approvalMode is `yolo`,
-  # so a raw binary invoked outside the wrapper would run with no gate at all;
-  # this floor makes that case prompt instead. The wrapper's overlay outranks
-  # it, so it never applies to a normal `omp` run.
-  home.activation.ompConfigFloor = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    if [ ! -e "$HOME/.omp/agent/config.yml" ]; then
-      run mkdir -p "$HOME/.omp/agent"
-      run echo "tools:" > "$HOME/.omp/agent/config.yml"
-      run echo "  approvalMode: always-ask" >> "$HOME/.omp/agent/config.yml"
-    fi
-  '';
   # pi-automode reads `~/.pi`, never `~/.omp`, whichever host it runs under.
   # Its PI_AUTOMODE_SETTINGS_JSON source would avoid the stray directory, but
   # home-manager writes session variables as `export VAR="value"` with no
