@@ -277,32 +277,8 @@ in
         }
       ];
     };
-    mcpServers = {
-      nixos = {
-        args = [
-          "run"
-          "github:utensils/mcp-nixos"
-          "--"
-        ];
-        command = "nix";
-      };
-      # Browser automation via the pinned nix playwright-mcp, wired to the
-      # matching nix Chromium (playwright-driver.browsers). Deliberately NOT
-      # the playwright@claude-plugins-official plugin (disabled below): that
-      # runs `npx @playwright/mcp`, which pulls from npm and cannot locate a
-      # runnable browser on NixOS. --no-sandbox because NixOS ships no setuid
-      # chromium-sandbox helper; --headless to avoid Wayland display coupling.
-      playwright = {
-        args = [
-          "--no-sandbox"
-        ];
-        command = "${pkgs.playwright-mcp}/bin/playwright-mcp";
-        env = {
-          PLAYWRIGHT_BROWSERS_PATH = "${pkgs.playwright-driver.browsers}";
-          PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = "true";
-        };
-      };
-    };
+    # Shared with omp, which reads the same set from its own file.
+    mcpServers = import ./mcp-servers.nix { inherit pkgs; };
     model = "sonnet";
     permissions.deny = [
       # Second layer, covering the Read tool; the Bash side is the secretsHook.

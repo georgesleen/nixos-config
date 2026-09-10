@@ -47,6 +47,19 @@ let
 in
 
 {
+  # MCP servers, shared with Claude Code (see mcp-servers.nix). omp's own
+  # discovery covers `~/.claude.json` and `~/.claude/mcp.json`, but not the
+  # `mcpServers` block claude.nix writes into `~/.claude/settings.json`, so the
+  # set is restated in a file omp does read.
+  #
+  # The dotted `.mcp.json` is deliberate: omp reads it as a compatibility path
+  # but only ever writes the undotted `~/.omp/agent/mcp.json` (from `/mcp add`
+  # and friends), so this one is safe as a read-only store symlink. The undotted
+  # path would hit the same EROFS trap as config.yml.
+  home.file.".omp/agent/.mcp.json".text = builtins.toJSON {
+    mcpServers = import ./mcp-servers.nix { inherit pkgs; };
+  };
+
   # pi-automode reads `~/.pi`, never `~/.omp`, whichever host it runs under.
   # Its PI_AUTOMODE_SETTINGS_JSON source would avoid the stray directory, but
   # home-manager writes session variables as `export VAR="value"` with no
