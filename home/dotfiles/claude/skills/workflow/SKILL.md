@@ -1,6 +1,6 @@
 ---
 name: workflow
-description: Adopt George's preferred code workflow for the rest of the session, in one of three modes. Invoke as /workflow auto, /workflow user, or /workflow claude (bare /workflow keeps the default, claude). Modes set who writes the code and whether Claude stops for a go-ahead between chunks; the rest of the discipline (plan first, small chunks, tests before dependent layers, commit at boundaries) is identical in all three. Also invoke when the user asks to use "my workflow" / "the usual workflow" / "the preferred workflow".
+description: Adopt George's preferred code workflow for the rest of the session, in one of three modes. Invoke as /workflow auto, /workflow user, or /workflow claude (bare /workflow keeps the default, auto). Modes set who writes the code and whether Claude stops for a go-ahead between chunks; the rest of the discipline (plan first, small chunks, tests before dependent layers, commit at boundaries) is identical in all three. Also invoke when the user asks to use "my workflow" / "the usual workflow" / "the preferred workflow".
 ---
 
 # George's code workflow
@@ -19,8 +19,8 @@ the code**, and **whether Claude stops between chunks**. Everything under
 | Mode | Who writes | Stops between chunks |
 |---|---|---|
 | `user` | George | n/a (Claude never authors) |
-| `claude` | Claude | Yes, waits for go-ahead (default) |
-| `auto` | Claude | No, runs to completion |
+| `claude` | Claude | Yes, waits for go-ahead |
+| `auto` | Claude | No, runs to completion (default) |
 
 ### `/workflow user`
 
@@ -32,14 +32,14 @@ make a design point is fine; producing the implementation is not.
 
 This is the default for PLRS-IMU.
 
-### `/workflow claude` (default)
+### `/workflow claude`
 
 Claude writes the code, one small chunk at a time, and stops after each
 chunk for a go-ahead. This is the beat-by-beat mode: the point is that every
 cheap-to-reverse decision gets surfaced while it is still cheap. Do not run
 ahead. If a follow-up comes up while waiting, note it, do not start it.
 
-### `/workflow auto`
+### `/workflow auto` (default)
 
 Claude writes the code and carries the whole plan through without stopping
 between chunks. Everything else holds: still plan first and get the plan
