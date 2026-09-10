@@ -1,29 +1,61 @@
 {
   config,
+  lib,
   pkgs,
   ...
 }:
 
-{
-  # omp's own gate must be wide open. pi-automode replaces the permission
-  # prompt rather than answering it: it sees each `tool_call` event and either
-  # lets the tool run or blocks it. Below `yolo`, omp prompts first and the
-  # classifier never gets the chance. The extension is fail-closed once loaded
-  # (a failed model call, an auth error or an unparseable reply all block), but
-  # a session where it fails to LOAD has no gate at all, so check
-  # `/automode status` before trusting one.
-  #
-  # Loaded by absolute store path because omp's marketplace rejects npm plugin
-  # sources, which is the extension's own install path. See pkgs/pi-automode.nix.
-  home.file.".omp/agent/config.yml".source = (pkgs.formats.yaml { }).generate "omp-config.yml" {
+let
+  # Safety policy, immutable. Applied as a `--config` overlay rather than
+  # written to `~/.omp/agent/config.yml`, because omp does a read-modify-write
+  # of that file (saving the model chosen for new sessions, among others) by
+  # writing a `.tmp` beside it and renaming. Pointed at the store by
+  # `home.file`, that open() fails EROFS and the model picker dies. The overlay
+  # also outranks global and project config, so a project cannot lower it.
+  ompPolicy = (pkgs.formats.yaml { }).generate "omp-policy.yml" {
     extensions = [ "${pkgs.pi-automode}/extensions/auto-mode.ts" ];
+    # omp's gate must be wide open, because pi-automode replaces the permission
+    # prompt rather than answering it: it sees each `tool_call` event and either
+    # lets the tool run or blocks it. Below `yolo`, omp prompts first and the
+    # classifier never gets the chance. The extension is fail-closed once loaded
+    # (a failed model call, an auth error or an unparseable reply all block),
+    # but a session where it fails to LOAD has no gate at all, so check
+    # `/automode status` before trusting one.
     tools.approvalMode = "yolo";
   };
 
+  # The gate travels with the binary. Installed here rather than in
+  # modules/features/dev.nix so there is exactly one omp on PATH: a second,
+  # unwrapped copy would shadow this one depending on profile order and would
+  # silently run ungated.
+  omp = pkgs.symlinkJoin {
+    inherit (pkgs.omp) meta;
+    name = "omp-${pkgs.omp.version}";
+    nativeBuildInputs = [ pkgs.makeWrapper ];
+    paths = [ pkgs.omp ];
+    postBuild = ''
+      wrapProgram $out/bin/omp --add-flags "--config ${ompPolicy}"
+    '';
+  };
+in
+
+{
+  # Seeded once, then omp owns it. omp's own default approvalMode is `yolo`,
+  # so a raw binary invoked outside the wrapper would run with no gate at all;
+  # this floor makes that case prompt instead. The wrapper's overlay outranks
+  # it, so it never applies to a normal `omp` run.
+  home.activation.ompConfigFloor = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    if [ ! -e "$HOME/.omp/agent/config.yml" ]; then
+      run mkdir -p "$HOME/.omp/agent"
+      run echo "tools:" > "$HOME/.omp/agent/config.yml"
+      run echo "  approvalMode: always-ask" >> "$HOME/.omp/agent/config.yml"
+    fi
+  '';
   # pi-automode reads `~/.pi`, never `~/.omp`, whichever host it runs under.
   # Its PI_AUTOMODE_SETTINGS_JSON source would avoid the stray directory, but
   # home-manager writes session variables as `export VAR="value"` with no
-  # escaping, and this value is JSON.
+  # escaping, and this value is JSON. Safe as a store symlink: unlike omp's own
+  # config, the extension only ever reads it.
   #
   # Tuned for long unattended runs. `allow` and `environment` are prose the
   # classifier reads; they are exceptions to `soft_deny` only and can never
@@ -72,4 +104,5 @@
       };
     };
   };
+  home.packages = [ omp ];
 }
