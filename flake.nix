@@ -41,6 +41,11 @@
     # (jetbrains-mono source build). See pinnedOverlay; drop it once upstream
     # catches up.
     nixpkgs-lastgood.url = "github:nixos/nixpkgs/e73de5be04e0eff4190a1432b946d469c794e7b4";
+    # omp (oh-my-pi): coding agent with LSP, DAP and subagents wired in. Its
+    # inputs are deliberately left unfollowed. The flake pins a rust-overlay
+    # toolchain and a bun2nix lock that its source build is tested against, and
+    # following our nixpkgs rebuilds ~1700 derivations against an untested set.
+    oh-my-pi.url = "github:can1357/oh-my-pi";
     # Declarative OpenWrt images via the upstream ImageBuilder (gs-openwrt-one).
     openwrt-imagebuilder = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -96,6 +101,13 @@
         moonlight-qt = prev.moonlight-qt.override { ffmpeg = final.ffmpeg_7; };
       };
 
+      # omp from its own flake, plus the auto-mode guardrail extension it loads
+      # by absolute path (see home/dotfiles/omp.nix).
+      ompOverlay = final: _prev: {
+        omp = inputs.oh-my-pi.packages.${final.stdenv.hostPlatform.system}.omp;
+        pi-automode = final.callPackage ./pkgs/pi-automode.nix { };
+      };
+
       systems = [
         "x86_64-linux"
         "aarch64-linux"
@@ -122,6 +134,7 @@
             {
               nixpkgs.overlays = [
                 helixOverlay
+                ompOverlay
                 pinnedOverlay
               ];
             }
