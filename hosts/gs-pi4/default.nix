@@ -24,6 +24,19 @@ in
   # cached on Hydra for aarch64 — forces a local recompile on every update.
   # Mainline LTS is cache-hit. mkForce overrides nixos-hardware's priority-100 default.
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
+  # Force the 8TB media drive off UAS onto plain usb-storage (BOT). Its RSH
+  # 339STC enclosure is an ASMedia 174c:235c bridge, and UAS on an ASMedia
+  # bridge behind the Pi 4's VL805 controller escalates a stalled command into
+  # a controller-wide fault: 17 uas_eh_abort_handler aborts then
+  # "xhci_hcd 0000:01:00.0: WARNING: Host System Error" on 2026-09-11, after
+  # which the whole USB3 bus was dead. Replugging the drive cannot fix that,
+  # because the wedged half is the host controller, not the device, so the
+  # kernel logs nothing at all on a replug. systemd stayed half-alive (units
+  # ran, D-Bus queries timed out), so "systemctl reboot" hung too and recovery
+  # needed a sysrq reboot. BOT costs sequential throughput that a box streaming
+  # a few Mbit/s off an already I/O-bound USB drive never uses.
+  # Confirm with "UAS is blacklisted for this device" in dmesg.
+  boot.kernelParams = [ "usb-storage.quirks=174c:235c:u" ];
   # sd-image base profile enables zfs, but zfs-kernel lags linuxPackages_latest
   # and breaks the build; this Pi has no zfs pools. Force it off.
   boot.supportedFilesystems.zfs = lib.mkForce false;
@@ -120,6 +133,7 @@ in
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ../../modules/roles/pi.nix
     ../../modules/features/pi-api.nix
+    ./usb-wedge.nix
     # Host-specific service modules live in the private nixos-pi4 input.
     inputs.nixos-pi4.nixosModules.gs-pi4
   ];
