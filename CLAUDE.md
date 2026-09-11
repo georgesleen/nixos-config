@@ -95,10 +95,12 @@ covers and confirm the suite goes red. A check that cannot fail is worse than no
 check: `dock-ss-recover` (since removed) carried a guard that was always true, so
 the unit exited early on every plug and silently no-opped for its whole life.
 
-Current suites: `arr-season-plan`, `av-step`, `battery-level`, `display-plan`,
-`epub-normalize`, `gpu-busy`, `jellyfin-bg-pause`, `lazylibrarian-reap`, `lid-decision`, `media-free`, `media-health`,
-`secrets-guard-match`, `snapper-orphans`, `tb-state`, `ts-route`, `waybar-fmt`,
-`win11-forward`, `workspace-plan`.
+Current suites: `arr-season-plan`, `av-step`, `battery-level`,
+`claude-review-trigger`, `cwa-ingest-sweep`, `display-plan`, `epub-normalize`,
+`gpu-busy`, `jellyfin-bg-pause`, `lazylibrarian-reap`, `library-guard`,
+`lid-decision`, `media-free`, `media-health`, `secrets-guard-match`,
+`snapper-orphans`, `systemd-order-cycles`, `tb-state`, `ts-route`,
+`usb-wedge`, `waybar-fmt`, `win11-forward`, `workspace-plan`.
 
 ## Workarounds
 
@@ -138,7 +140,7 @@ or `hosts/gs-thinkpad-t480s/power.nix`.
 - `home/dotfiles/waybar.nix` gpuBlock: Intel utilization from RC6 residency delta, the only no-root sysfs metric available.
 - `modules/features/keychron.nix` udev: `TAG+="uaccess"` never grants hidraw under sway/Wayland (logind seat grant doesn't fire); needs `MODE="0660", GROUP="plugdev"`.
 - Steam Remote Play (T480s client): works fine under sway/XWayland (verified 2026-07-02); the old white-screen/~1FPS was guest-side (wedged tailscale + RX580 Code 43), not the client display chain. Do NOT set `LIBGL_DRI3_DISABLE=1`; it forces llvmpipe and breaks Steam launch entirely.
-- `home/dotfiles/claude.nix` `reviewHook` (PostToolUse/TodoWrite adversarial review): after `nixos-rebuild switch` the new hook does not fire in already-running Claude Code sessions; the settings watcher only tracks hooks present at session start. Reload with `/hooks` or restart; new sessions pick it up automatically.
+- `home/dotfiles/claude.nix` `reviewHook` (Stop, end-of-work review): after `nixos-rebuild switch` the new hook does not fire in already-running Claude Code sessions; the settings watcher only tracks hooks present at session start. Reload with `/hooks` or restart; new sessions pick it up automatically. Three design points, all learned the hard way. The trigger moved from PostToolUse/TodoWrite to `Stop` on 2026-09-11, because a completed todo list is a chunk boundary, not the end of the work, so a multi-chunk task paid one review per chunk. It does **not** block: it spawns a detached `claude -p` review and notifies when the report lands, so the answer arrives immediately and the findings follow; the child gets `CLAUDE_REVIEW_CHILD=1` or it fires this same hook and fans out without end. And the write gate greps the transcript for `Task`/`Agent` as well as `Edit`/`Write`, because edits made inside a delegated subagent never appear in the parent transcript, only the `Agent` call does, so gating on `Edit` alone silently skipped review of exactly the large delegated changes it exists for.
 - `home/dotfiles/swayidle.nix` `systemd.user.services.swaylock`: swaylock runs as a unit and every lock path (swayidle `lock`, `before-sleep`, the 1800 s timeout, and `Mod3+Shift+x`) starts that unit instead of the binary. Two reasons. First, swayidle fires `lock` and `before-sleep` for a single sleep, so bare `swaylock -f` piled up instances (`Failed to lock session -- is another lockscreen running?`); systemd holds it to one. Second, a lock client that dies leaves sway locked with no lock surface, and sway paints every output solid red and takes no password, so the only way out was a reboot. `Restart=on-failure` starts a new client, which re-attaches to that orphaned lock. Hit 2026-08-30 21:02:44: swaylock segfaulted in its screencopy handler after two sleeps in one minute (suspend-then-hibernate resume at 21:01:56, S3 at 21:02:42). Upstream bugs swaylock#395 and #282. `Type=forking` because `-f` daemonizes only after the lock is taken, so a returning `systemctl start` means the screen is really locked, which is what `before-sleep` depends on.
 - `home/dotfiles/mako.nix` `urgency=critical` / `urgency=normal` sections: mako applies `default-timeout` to **every** urgency, so the 5000 ms default also expired critical notifications, which the desktop-notification spec says must stay until dismissed. The battery notifier announces a hibernate 60 s out and its warning was off screen after 5 s; the low warning (urgency normal, fires exactly once per discharge) was one easily missed toast. Critical is now `0` (never expires), normal 20 s. Verified 2026-09-06 by sending a critical notification and confirming `makoctl list` still held it after 8 s.
 - `home/dotfiles/sway.nix` `--locked ${mod}+Shift+x`: the lock binding is `--locked` so the same key recovers an orphaned lock without a TTY; sway still routes `--locked` bindings while the session is locked.

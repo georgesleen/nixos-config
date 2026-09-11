@@ -118,50 +118,110 @@ let
     fi
   '';
 
-  # Adversarial review hook: PostToolUse on TodoWrite. When a todo list is
-  # fully completed (>=2 items, to skip trivial lists) and the repo has
-  # uncommitted changes not already reviewed, feed Claude a directive to run
-  # the pr-review-toolkit code-reviewer agent against the diff. Dedup is by
-  # diff hash so re-marking a list complete (or the read-only review agent
-  # itself) does not retrigger; findings land outside the repo tree.
-  reviewHook = pkgs.writeShellScript "claude-adversarial-review" ''
-    set -euo pipefail
+  # End-of-work review, in three pieces: a tested decision script, a detached
+  # runner that does the review, and a Stop hook that wires them together.
+  #
+  # It fires when a turn ends. That is the closest event to "the work is done",
+  # but it is not the same thing: Stop also fires at every chunk boundary of a
+  # long task, so two gates carry the difference. A todo list still holding
+  # pending items means the work is mid-flight, and a cooldown bounds a big
+  # change made without a list to one review per window. The old trigger was
+  # PostToolUse on TodoWrite, which fired once per completed list and so paid a
+  # review per chunk.
+  #
+  # It is also sized: a PR-grade review is worth minutes on a PR-sized change
+  # and worth nothing on a two-line fix, so the decision script wants either a
+  # finished todo list or a diff over its line/file floors.
+  #
+  # Nothing blocks. The hook returns at once and the review runs detached, so
+  # George reads the work immediately and the findings arrive after, as a
+  # desktop notification plus a report. `$statedir/pending` names the report
+  # that has not been acted on yet; the end-of-work rule in ~/.claude/CLAUDE.md
+  # is the half that reads it.
+  #
+  # The gates and the reason for each live at the top of
+  # claude-review-trigger.sh, with a fixture suite beside it; `make test` runs
+  # it. The decision half is where the bugs were: the first version missed
+  # edits made inside a subagent (the parent transcript holds an Agent call and
+  # no Edit), and read `git diff HEAD`, which cannot see a chunk already
+  # committed.
+  reviewTrigger = pkgs.writeShellScript "claude-review-trigger" ''
+    PATH="${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.gawk
+        pkgs.git
+        pkgs.gnugrep
+        pkgs.jq
+      ]
+    }:$PATH"
+    ${builtins.readFile ./claude-review-trigger.sh}
+  '';
+
+  # Runs detached, one argument per positional: repo, base ref, report path.
+  # CLAUDE_REVIEW_CHILD keeps this headless session from firing the same hook
+  # and fanning out. --allowedTools keeps the reviewer read-only, so it cannot
+  # "helpfully" apply its own findings behind George's back.
+  #
+  # The prompt goes in on stdin, not as a positional argument. `--allowedTools`
+  # is variadic, so it eats every following word, prompt included, and `claude`
+  # then dies with "Input must be provided either through stdin or as a prompt
+  # argument when using --print". Comma-separating the tool list does not help.
+  reviewRunner = pkgs.writeShellScript "claude-review-run" ''
+    set -u
+    export CLAUDE_REVIEW_CHILD=1
+    repo="$1"
+    base="$2"
+    report="$3"
+
+    cd "$repo" || exit 1
+
+    prompt="Review the local work in $repo as a pull request. The change is the output of: git diff $base . That covers the local commits and the working tree, so read it in full. Be adversarial: assume a bug or a convention violation exists and hunt for it, do not rubber-stamp. Judge it against this repo's CLAUDE.md, George's preferences in ~/.claude/CLAUDE.md, and the /project-conventions skill. Report findings as a list, each with file:line evidence, a severity of bug, convention or nit, and a concrete fix. End with one line naming the single most likely way this change misbehaves in real use. Say plainly if it is clean. Never use em dashes or en dashes."
+
+    printf '%s' "$prompt" |
+      ${pkgs.claude-code}/bin/claude -p \
+        --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(git show:*)" \
+        >"$report" 2>&1
+    status=$?
+
+    if [ "$status" -ne 0 ]; then
+      ${pkgs.libnotify}/bin/notify-send -a claude -u critical \
+        "End-of-work review failed" "exit $status, output in $report" || true
+      exit "$status"
+    fi
+
+    printf '%s' "$report" >"$(${pkgs.coreutils}/bin/dirname "$report")/pending"
+    ${pkgs.libnotify}/bin/notify-send -a claude -u normal \
+      "End-of-work review ready" "$(${pkgs.coreutils}/bin/basename "$repo"): $report" || true
+  '';
+
+  reviewHook = pkgs.writeShellScript "claude-end-of-work-review" ''
+    set -u
     input="$(${pkgs.coreutils}/bin/cat)"
 
-    cwd="$(echo "$input" | ${pkgs.jq}/bin/jq -r '.cwd // empty')"
+    cwd="$(printf '%s' "$input" | ${pkgs.jq}/bin/jq -r '.cwd // empty')"
     [ -n "$cwd" ] || cwd="$PWD"
-    cd "$cwd" 2>/dev/null || exit 0
+    repo="$(${pkgs.git}/bin/git -C "$cwd" rev-parse --show-toplevel 2>/dev/null)" || exit 0
 
-    # All todos completed? (>=2 to skip single-item lists)
-    todos="$(echo "$input" | ${pkgs.jq}/bin/jq -c '.tool_input.todos // []')"
-    total="$(echo "$todos" | ${pkgs.jq}/bin/jq 'length')"
-    [ "$total" -ge 2 ] || exit 0
-    remaining="$(echo "$todos" | ${pkgs.jq}/bin/jq '[.[] | select(.status != "completed")] | length')"
-    [ "$remaining" -eq 0 ] || exit 0
-
-    # Inside a git repo with reviewable uncommitted changes?
-    repo="$(${pkgs.git}/bin/git rev-parse --show-toplevel 2>/dev/null)" || exit 0
-    diff="$(${pkgs.git}/bin/git -C "$repo" diff HEAD 2>/dev/null || true)"
-    [ -n "$diff" ] || exit 0
-
-    # Dedup: skip if this exact diff already triggered a review.
-    slug="$(echo "$repo" | ${pkgs.coreutils}/bin/tr '/' '-' | ${pkgs.gnused}/bin/sed 's/^-//')"
+    slug="$(printf '%s' "$repo" | ${pkgs.coreutils}/bin/tr '/' '-' | ${pkgs.gnused}/bin/sed 's/^-//')"
     statedir="$HOME/.claude/reviews/$slug"
     ${pkgs.coreutils}/bin/mkdir -p "$statedir"
-    hash="$(printf '%s' "$diff" | ${pkgs.coreutils}/bin/sha1sum | ${pkgs.coreutils}/bin/cut -d' ' -f1)"
-    hashfile="$statedir/.last-hash"
-    if [ -f "$hashfile" ] && [ "$(${pkgs.coreutils}/bin/cat "$hashfile")" = "$hash" ]; then
-      exit 0
-    fi
-    printf '%s' "$hash" > "$hashfile"
 
-    ts="$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S)"
-    report="$statedir/$ts.md"
+    plan="$(printf '%s' "$input" | REVIEW_STATE_DIR="$statedir" ${reviewTrigger})" || exit 0
+    [ -n "$plan" ] || exit 0
+    base="''${plan%% *}"
+    hash="''${plan##* }"
 
-    reason="A todo list just completed and this repo ($repo) has uncommitted changes. Launch an adversarial code review NOW before moving on. Use the Agent tool with subagent_type \"pr-review-toolkit:code-reviewer\" on the current uncommitted diff (git diff HEAD). Instruct that agent to: (1) apply the /project-conventions conventions; (2) check the change against George's personal preferences in ~/.claude/CLAUDE.md, this repo's CLAUDE.md, and the project memory under ~/.claude/projects/; (3) be adversarial: assume a bug or a convention violation exists and hunt for it, do not rubber-stamp. Have the agent WRITE its full findings to $report, then you relay a short summary to the user with that path. If the change is genuinely clean, say so in one line. Never use em dashes or en dashes."
+    # Stamp before spawning: a review that dies still burns its slot, which is
+    # the right trade. Re-stamping on completion instead would let a crash loop
+    # re-spawn the same review on every turn.
+    printf '%s' "$hash" >"$statedir/.last-hash"
 
-    ${pkgs.jq}/bin/jq -n --arg r "$reason" --arg f "$report" \
-      '{decision:"block", reason:$r, systemMessage:("Adversarial review triggered -> " + $f), suppressOutput:true}'
+    report="$statedir/$(${pkgs.coreutils}/bin/date +%Y%m%d-%H%M%S).md"
+    ${pkgs.util-linux}/bin/setsid -f ${reviewRunner} "$repo" "$base" "$report" >/dev/null 2>&1
+
+    ${pkgs.jq}/bin/jq -n --arg f "$report" \
+      '{systemMessage:("End-of-work review running in the background -> " + $f)}'
   '';
 
   # Debug-skill nudge: PostToolUse on Bash. When a command's output carries a
@@ -252,15 +312,6 @@ in
         {
           hooks = [
             {
-              command = "${reviewHook}";
-              type = "command";
-            }
-          ];
-          matcher = "TodoWrite";
-        }
-        {
-          hooks = [
-            {
               command = "${debugHook}";
               type = "command";
             }
@@ -277,6 +328,17 @@ in
             }
           ];
           matcher = "Bash";
+        }
+      ];
+      # No matcher: Stop carries no tool name.
+      Stop = [
+        {
+          hooks = [
+            {
+              command = "${reviewHook}";
+              type = "command";
+            }
+          ];
         }
       ];
     };
