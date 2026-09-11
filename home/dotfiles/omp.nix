@@ -30,17 +30,12 @@ let
     };
     branchSummary.enabled = true;
     colorBlindMode = false;
-    # Idle compaction is on with a threshold under the context ceiling. It
-    # shipped off, and its stock `idleThresholdTokens` is 200000, which is the
-    # ceiling itself, so the feature could never fire at any setting. Measured
-    # over 2026-09-10 to 09-11: 230 of 370 Opus requests carried more than 180k
-    # of context and the mean was 199k, against 148k for Claude Code doing the
-    # same work on the same machine. Cache read is billed per request, so a
-    # context that never comes down is 64% of the Opus spend here.
+    # Idle compaction off: compaction is a manual call here. Re-enabling it
+    # also needs `idleThresholdTokens` moved off its 200000 default, which is
+    # the context ceiling, or it cannot fire.
     compaction = {
       experimentalContextManagement = true;
-      idleEnabled = true;
-      idleThresholdTokens = 120000;
+      idleEnabled = false;
     };
     composer.shape = "box";
     computer.enabled = false;
@@ -60,16 +55,8 @@ let
     interruptMode = "immediate";
     memory.backend = "local";
     plan.defaultOnStartup = false;
-    # 1h cache entries, not the `auto` default's 5m. This reverses an earlier
-    # call made on per-write price alone: a 1h write bills 2x base input
-    # against 1.25x for 5m, so 5m looked cheaper, and the keep-alive loop
-    # (a zero-output request at 4:45 after the last touch, up to
-    # ANTHROPIC_CACHE_REFRESH_LIMIT = 3 times) looked like enough idle cover.
-    # It is not. The 2026-09-10 to 09-11 sessions took 16 full re-ingests
-    # totalling 1.6M tokens, five of them inside one session after its only
-    # model switch, so plain TTL lapse and not switching. That is 12% of the
-    # bill to dodge a 0.75x premium paid once. Claude Code uses 1h for the
-    # same reason. `display.cacheMissMarker` still flags any lapse past an hour.
+    # 1h cache entries, not the `auto` default's 5m. The 2x write beats the
+    # repeated full re-ingests 5m caused.
     providers.cacheRetention = "long";
     readLineNumbers = true;
     # omp's Claude-compat skill source is split into two toggles:
@@ -272,14 +259,8 @@ in
       # blocked. The gate is a two-stage yes/no decision, not reasoning work
       # (stage one is a single token), so a small fast model is the right
       # tool; `low` is what Codex Auto Review uses for the same job.
-      #
-      # Haiku rather than Sonnet takes that one step further. The classifier
-      # ran 349 times over 2026-09-10 to 09-11 for $10, and it never reads its
-      # own cache back: 2.61M cache-write tokens against 104k cache reads,
-      # because every call carries a different tool payload. It pays the 1.25x
-      # write surcharge each time and takes no hit, so per-token price is the
-      # only lever left. Haiku 4.5 is half Sonnet 5's input rate for what is a
-      # two-stage yes/no decision.
+      # Haiku, not Sonnet: the gate never hits its own cache, so per-token
+      # price is the only lever.
       classifierModel = "anthropic/claude-haiku-4-5";
       classifierReasoningLevel = "low";
       # deniedPaths is checked before the classifier, so these never reach the
@@ -347,19 +328,14 @@ in
       # the 73 calls that opened with `cd` still reach the classifier no matter
       # what is listed here.
       #
-      # `sed` and `find` are deliberately absent although both were frequent.
-      # `sed -i` rewrites in place and `find` takes `-delete` and `-exec`, so
-      # neither is read-only enough for a prefix match to be safe.
+      # Metadata only, never file contents: `deniedPaths` does not cover bash,
+      # so `cat`/`strings`/`grep` here would make reading a sops secret a
+      # deterministic allow. `sed -i` and `find -delete` are out for the same
+      # reason.
       "bash(ls *)"
-      "bash(cat *)"
-      "bash(head *)"
-      "bash(tail *)"
       "bash(wc *)"
       "bash(file *)"
       "bash(stat *)"
-      "bash(strings *)"
-      "bash(grep *)"
-      "bash(rg *)"
       "bash(omp config get*)"
       "bash(omp models*)"
       # The homelab. These four are the broad ones: any payload sent to one of
