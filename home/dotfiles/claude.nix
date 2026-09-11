@@ -234,8 +234,11 @@ in
       "kotlin-lsp@claude-plugins-official" = true;
       "lua-lsp@claude-plugins-official" = true;
       "php-lsp@claude-plugins-official" = true;
-      # Disabled: the npx-based plugin cannot run a browser on NixOS; the
-      # nix playwright-mcp server (see mcpServers.playwright) replaces it.
+      # Disabled: the npx-based plugin cannot run a browser on NixOS. Browser
+      # work goes through the `returns` skill instead, which drives the
+      # playwright node library over CDP against a headed Chromium. The nix
+      # playwright-mcp server that used to stand in here was removed from
+      # mcp-servers.nix on 2026-09-11; see the note there.
       "playwright@claude-plugins-official" = false;
       "pr-review-toolkit@claude-plugins-official" = true;
       "pyright-lsp@claude-plugins-official" = true;
