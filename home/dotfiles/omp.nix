@@ -163,6 +163,9 @@ let
     # but a session where it fails to LOAD has no gate at all, so check
     # `/automode status` before trusting one.
     tools.approvalMode = "yolo";
+    # Terser xdev device docs in the system prompt. Same tool set, ~1.9k fewer
+    # tokens per request; devices stay reachable through `xd://`.
+    tools.xdevDocs = "catalog";
     treeFilterMode = "default";
     tui = {
       textSizing = true;
