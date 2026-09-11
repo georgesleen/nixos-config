@@ -1,5 +1,4 @@
 {
-  config,
   inputs,
   pkgs,
   ...
@@ -171,17 +170,17 @@
     ;; enqueue-thread-local-callback(-with-delay) live here.
     (require "helix/misc.scm")
 
-    (set-session-location! "${config.xdg.cacheHome}/helix")
-
     ;; Snapshot every minute so any quit path (or a crash) restores the same
-    ;; buffer set on the next bare launch. First run after 30s.
+    ;; buffer set on the next bare launch. First run after 30s. The cog puts
+    ;; the file in <workspace-root>/.helix/session.txt, so each project keeps
+    ;; its own session. Nothing to configure here.
     (define (session-autosave-loop)
       (session-save)
       (enqueue-thread-local-callback-with-delay 60000 session-autosave-loop))
     (enqueue-thread-local-callback-with-delay 30000 session-autosave-loop)
 
-    ;; Bare `hx`: reopen the last snapshot. Launches with file arguments are
-    ;; left alone.
+    ;; Bare `hx`: reopen the workspace's last snapshot. Launches with file
+    ;; arguments are left alone.
     (when (equal? (command-line) '("hx"))
       (enqueue-thread-local-callback session-restore))
   '';
