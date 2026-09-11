@@ -164,6 +164,7 @@
             arr-season-plan = inputs.nixos-pi4 + "/gs-pi4/arr-season-plan";
             av-step = ./home/dotfiles/av-step;
             battery-level = ./home/dotfiles/battery-level;
+            cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
             display-plan = ./home/dotfiles/display-plan;
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
             gpu-busy = ./home/dotfiles/gpu-busy;
@@ -178,6 +179,7 @@
             systemd-order-cycles = ./modules/features/systemd-order-cycles;
             tb-state = ./modules/hardware/tb-state;
             ts-route = ./hosts/gs-pi1-parents/ts-route;
+            usb-wedge = ./hosts/gs-pi4/usb-wedge;
             waybar-fmt = ./home/dotfiles/waybar-fmt;
             win11-forward = ./hosts/gs-server/win11-forward;
             workspace-plan = ./home/dotfiles/workspace-plan;
