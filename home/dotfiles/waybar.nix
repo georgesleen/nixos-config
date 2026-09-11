@@ -5,7 +5,8 @@
 # shows freq+temp, disk aggregates all real filesystems, brightness via
 # brightnessctl (waybar's native backlight module renders nothing here), clock
 # via glibc `date` (waybar's own is an hour behind, see clockBlock).
-# Palette: nightfox (matches the helix theme); #00c781 signature accent (tmux).
+# Palette: nightfox (matches the helix theme); #b49ae0 lavender accent, the same
+# one omp's dark-mix theme uses, so bar and agent share one accent hue.
 
 { pkgs, ... }:
 
@@ -312,7 +313,7 @@ in
         background: rgba(25, 35, 48, 0.92);
         color: #cdcecf;
       }
-      /* Workspaces: flat with a green (tmux) focus underline. */
+      /* Workspaces: flat with a lavender focus underline. */
       #workspaces { margin-left: 4px; }
       #workspaces button {
         padding: 0 8px;
@@ -322,7 +323,7 @@ in
       }
       #workspaces button.focused {
         color: #cdcecf;
-        border-bottom: 2px solid #00c781;
+        border-bottom: 2px solid #b49ae0;
       }
       #workspaces button.urgent {
         color: #c94f6d;

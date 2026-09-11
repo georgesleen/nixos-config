@@ -66,12 +66,14 @@ in
         "ctrl+space>}" = "move_window_forward";
       };
       settings = {
-        # tmux-style panes: splits layout with green single-line dividers, active
-        # pane brighter than inactive.
-        active_border_color = "#00c781";
+        # tmux-style panes: splits layout with lavender single-line dividers,
+        # active pane brighter than inactive. Accent is omp's lavender ladder
+        # (dark-mix.json `lavender` / `lavenderDeep`), so the terminal chrome
+        # and the agent running inside it share one hue.
+        active_border_color = "#b49ae0";
         active_tab_background = "#000000";
         active_tab_font_style = "bold";
-        active_tab_foreground = "#00c781";
+        active_tab_foreground = "#b49ae0";
         # Per-instance control socket; the sway Mod3+Shift+Return binding opens
         # a new window in the focused kitty's cwd through it.
         allow_remote_control = "socket-only";
@@ -82,15 +84,15 @@ in
         font_family = "JetBrains Mono";
         font_size = 12;
         hide_window_decorations = "yes";
-        inactive_border_color = "#005c3b";
+        inactive_border_color = "#8a6fb5";
         inactive_tab_background = "#000000";
         inactive_tab_font_style = "normal";
-        inactive_tab_foreground = "#005c3b";
+        inactive_tab_foreground = "#8a6fb5";
         listen_on = "unix:/tmp/kitty-{kitty_pid}";
         tab_bar_background = "none";
         # tmux-style status line: the tab bar at the bottom, one entry per tab
         # (kitty tab = tmux window). Mirrors the tmux "| #I:#W" window-status
-        # format; green pipe, active tab bold, transparent background. Custom
+        # format; lavender pipe, active tab bold, transparent background. Custom
         # style adds the right-aligned clock via tab_bar.py below.
         tab_bar_edge = "bottom";
         tab_bar_min_tabs = 1;
@@ -136,7 +138,7 @@ in
     '';
 
     # Custom tab bar (tab_bar_style custom): left side is kitty's stock tab list
-    # honoring tab_title_template; the last tab additionally draws a green
+    # honoring tab_title_template; the last tab additionally draws a lavender
     # right-aligned clock, mirroring tmux's default status-right. A 5s timer
     # keeps HH:MM current.
     xdg.configFile."kitty/tab_bar.py".text = ''
@@ -162,7 +164,7 @@ in
               return
           text = ' {}  {} '.format(host, datetime.now().strftime('%H:%M  %d-%b-%y'))
           screen.cursor.x = max(0, screen.columns - len(text))
-          screen.cursor.fg = as_rgb(0x00c781)
+          screen.cursor.fg = as_rgb(0xb49ae0)
           screen.draw(text)
 
 
