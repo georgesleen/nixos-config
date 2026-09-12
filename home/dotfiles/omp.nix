@@ -24,9 +24,16 @@ let
     # and an overlay entry outranks the file, so pinning it would make the
     # picker look broken: it would appear to accept a choice and silently
     # revert. Same class of failure as the EROFS trap above. Leave it local.
+    # Off with `memory.backend` below, and for the same reason: the pair is
+    # what puts the `learn`/`manage_skill` tools in every request, adds an
+    # Auto-Learn system-prompt section, and nudges a capture turn at every
+    # stop. Both tools and the section are gated on exactly this flag
+    # (`tools/learn.ts`, `tools/manage-skill.ts`, `sdk.ts`), so flipping it
+    # removes all three. The managed-skill directory is untouched and still
+    # discovered; only writing and nudging stop.
     autolearn = {
       autoContinue = false;
-      enabled = true;
+      enabled = false;
     };
     branchSummary.enabled = true;
     colorBlindMode = false;
@@ -53,7 +60,15 @@ let
     github.enabled = true;
     hideThinkingBlock = true;
     interruptMode = "immediate";
-    memory.backend = "local";
+    # Off, not `local`. The local pipeline injects `memory_summary.md` plus the
+    # accumulated lesson list into every request, budgeted by
+    # `memories.summaryInjectionTokenLimit` (default 5000), and carries a
+    # Memory Guidance block telling the agent to read it first. That is a
+    # standing per-request cost for state this repo already keeps in
+    # CLAUDE.md and `docs/`, where it is version-controlled and greppable.
+    # Nothing is deleted: the memory files stay under the agent dir and come
+    # back if this returns to "local".
+    memory.backend = "off";
     plan.defaultOnStartup = false;
     # 1h cache entries, not the `auto` default's 5m. The 2x write beats the
     # repeated full re-ingests 5m caused.
