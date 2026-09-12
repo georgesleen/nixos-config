@@ -78,6 +78,12 @@ let
       contextLine = "embedded";
       leftSegments = [
         "pi"
+        # The Vim-mode indicator (NORMAL/INSERT/VISUAL/V-LINE, plus the
+        # half-typed command and Visual selection height). Every built-in
+        # preset carries it right after `pi`, but `custom` inherits nothing,
+        # so it has to be listed here; it renders nothing at all while
+        # `tui.vimMode` is off.
+        "vim"
         "model"
         "mode"
         "path"
@@ -170,6 +176,13 @@ let
     tui = {
       textSizing = true;
       tight = false;
+      # Modal editing for the prompt (omp 18.1.17+): Escape leaves Insert;
+      # Normal has hjkl, 0/^/$, w/b/e, gg/G, count prefixes, x/D/C, dd/yy,
+      # p/P, u, and v/V for Visual. Helix motions do not exist upstream, and
+      # `Ctrl+G` still hands the draft to the real `hx` for anything longer.
+      # Toggling this in `/settings` now applies live, but will not persist:
+      # the overlay outranks config.yml, so flip it here.
+      vimMode = true;
     };
   };
 
