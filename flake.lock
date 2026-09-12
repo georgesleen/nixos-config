@@ -270,6 +270,26 @@
         "type": "github"
       }
     },
+    "kitty_grab_helix": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1789193231,
+        "narHash": "sha256-V+FPAOSHW1pH6UwTWKK+639ktgIZrW6fSCPDQhrB7mg=",
+        "owner": "georgesleen",
+        "repo": "kitty_grab_helix",
+        "rev": "ad4273c4a847f778cba459b4e26e57f7ba5c075e",
+        "type": "github"
+      },
+      "original": {
+        "owner": "georgesleen",
+        "repo": "kitty_grab_helix",
+        "type": "github"
+      }
+    },
     "mkdocs-catppuccin": {
       "flake": false,
       "locked": {
@@ -550,6 +570,7 @@
         "helix-session": "helix-session",
         "helix-steel": "helix-steel",
         "home-manager": "home-manager",
+        "kitty_grab_helix": "kitty_grab_helix",
         "nixos-hardware": "nixos-hardware",
         "nixos-pi4": "nixos-pi4",
         "nixpkgs": "nixpkgs_2",

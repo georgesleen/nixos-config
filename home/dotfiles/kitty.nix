@@ -1,20 +1,17 @@
 {
   config,
+  inputs,
   lib,
   pkgs,
   ...
 }:
 
 let
-  # Keyboard-driven copy mode with vim motions, bound to ctrl+shift+x. grab.py
-  # is run straight from the store; the kitten loader adds its directory to
-  # sys.path so the sibling modules resolve without cloning into the config dir.
-  kittyGrab = pkgs.fetchFromGitHub {
-    hash = "sha256-DamZpYkyVjxRKNtW5LTLX1OU47xgd/ayiimDorVSamE=";
-    owner = "yurikhan";
-    repo = "kitty_grab";
-    rev = "969e363295b48f62fdcbf29987c77ac222109c41";
-  };
+  # Keyboard-driven copy mode with helix motions and the helix selection
+  # model, bound to ctrl+shift+x. grab.py is run straight from the store; the
+  # kitten loader adds its directory to sys.path so the sibling modules
+  # resolve without cloning into the config dir.
+  kittyGrab = inputs.kitty_grab_helix.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 
 {
@@ -24,7 +21,7 @@ in
       enable = true;
       keybindings = {
         "ctrl+shift+enter" = "launch --cwd=current";
-        # Copy mode (kitty_grab); grab.conf below sets helix-style binds.
+        # Copy mode (kitty_grab_helix); grab.conf below sets its colours.
         "ctrl+shift+x" = "kitten ${kittyGrab}/grab.py";
         "ctrl+space>!" = "detach_window new-tab";
         "ctrl+space>&" = "close_tab";
@@ -107,34 +104,13 @@ in
       };
     };
 
-    # kitty_grab reads grab.conf from the kitty config dir. Helix selection
-    # model (move repositions, v extends, ; collapses, y copies); vim single-key
-    # nav (0 $ ^ g G) fills in for goto-mode chords the kitten can't express.
+    # kitty_grab_helix reads grab.conf from the kitty config dir. The keymap
+    # is helix out of the box, so only the colours are set here: the same
+    # lavender accent as the window borders and the tab bar.
     xdg.configFile."kitty/grab.conf".text = ''
-      map y      confirm
-      map q      quit
-      map Escape quit
-
-      map h move left
-      map j move down
-      map k move up
-      map l move right
-      map w move word right
-      map b move word left
-      map 0 move first
-      map ^ move first nonwhite
-      map $ move last nonwhite
-      map g move top
-      map G move bottom
-      map Ctrl+u move page up
-      map Ctrl+d move page down
-
-      map Ctrl+y scroll up
-      map Ctrl+e scroll down
-
-      map v      set_mode visual
-      map Ctrl+v set_mode block
-      map ;      set_mode normal
+      selection_background #b49ae0
+      selection_foreground #000000
+      cursor               #b49ae0
     '';
 
     # Custom tab bar (tab_bar_style custom): left side is kitty's stock tab list

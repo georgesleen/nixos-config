@@ -26,6 +26,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/home-manager";
     };
+    # Helix-style copy mode kitten for kitty, a fork of yurikhan/kitty_grab.
+    # Own repo so it is usable outside this config; see home/dotfiles/kitty.nix.
+    kitty_grab_helix = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:georgesleen/kitty_grab_helix";
+    };
     # For installing nixos on raspberry pi
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     # gs-pi4 host modules, kept in a private repo so its stack stays out of this
