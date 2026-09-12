@@ -38,7 +38,9 @@ in
         "ctrl+space>=" = "resize_window reset";
         # Searchable list of every shortcut, like tmux list-keys.
         "ctrl+space>?" = "command_palette";
+        # tmux copy mode: [ enters it, ] pastes what it yanked.
         "ctrl+space>[" = "kitten ${kittyGrab}/grab.py";
+        "ctrl+space>]" = "paste_from_clipboard";
         # tmux-style window (tab) and pane-resize binds.
         "ctrl+space>c" = "new_tab_with_cwd";
         "ctrl+space>h" = "neighboring_window left";
