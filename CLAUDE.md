@@ -64,6 +64,13 @@ Each host declares `sops.defaultSopsFile` + `sops.age.sshKeyPaths` + its `sops.s
 
 `hooks/pre-commit` is tracked in the repo; `.envrc` wires it via `core.hooksPath` when direnv loads. It formats staged `.nix` files with nixfmt and validates them with `nix-instantiate --parse`.
 
+## Commits
+
+**One line, no body.** A commit message here is a single subject line in the
+imperative, optionally `area: ` prefixed (`waybar: ...`), plus the
+`Co-Authored-By` trailer. Rationale belongs in a comment at the definition or
+in `docs/`, where it stays discoverable; nobody greps git log for it.
+
 ## Tests
 
 Shell logic embedded in this config is split into plain `.sh` files with
