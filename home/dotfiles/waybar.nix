@@ -5,15 +5,30 @@
 # shows freq+temp, disk aggregates all real filesystems, brightness via
 # brightnessctl (waybar's native backlight module renders nothing here), clock
 # via glibc `date` (waybar's own is an hour behind, see clockBlock).
-# Palette: nightfox (matches the helix theme); #b49ae0 lavender accent, the same
-# one omp's dark-mix theme uses, so bar and agent share one accent hue.
+# Palette: one named colourway from ./waybar-themes.nix, chosen by `theme`
+# below. Default nightfox, matching the helix theme; its accent is the same
+# lavender omp's dark-mix theme uses, so bar and agent share one accent hue.
 
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   thresh = import ./battery-thresholds.nix;
-  # nightfox accents
-  muted = "#71839b";
+
+  # The one knob: any attr name in ./waybar-themes.nix reskins the whole bar.
+  theme = "lavender-mono";
+  c = (import ./waybar-themes.nix).${theme};
+
+  # GTK CSS wants decimal rgba(); the palette stores hex, so a theme never has
+  # to write a colour twice in two notations.
+  hexToRgba =
+    hex: alpha:
+    let
+      h = lib.toLower (lib.removePrefix "#" hex);
+      nibble = ch: lib.stringLength (lib.head (lib.splitString ch "0123456789abcdef"));
+      byte =
+        i: toString (16 * nibble (lib.substring (2 * i) 1 h) + nibble (lib.substring (2 * i + 1) 1 h));
+    in
+    "rgba(${byte 0}, ${byte 1}, ${byte 2}, ${alpha})";
   # Pure formatting (GHz/MHz, GiB/TiB, hours to h/m) lives in waybar-fmt.sh
   # so the rounding and unit boundaries are testable; run by `make test`.
   waybarFmt = pkgs.writeShellScript "waybar-fmt" ''
@@ -30,28 +45,28 @@ let
     set -euo pipefail
     cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
     max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
-    echo "<span color='#dbc074'>󰃟 $((cur * 100 / max))%</span>"
+    echo "<span color='${c.brightness}'>󰃟 $((cur * 100 / max))%</span>"
   '';
   powerBlock = pkgs.writeShellScript "waybar-power" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "<span color='${muted}'>󱐋 n/a</span>"
+      echo "<span color='${c.muted}'>󱐋 n/a</span>"
       exit 0
     fi
     rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{printf "%.2f %s\n", $2, $3}')
     if [ -z "$rate" ]; then
       rate="0 W"
     fi
-    echo "<span color='#f4a261'>󱐋 $rate</span>"
+    echo "<span color='${c.power}'>󱐋 $rate</span>"
   '';
   batteryBlock = pkgs.writeShellScript "waybar-battery" ''
     set -euo pipefail
     upower_bin="${pkgs.upower}/bin/upower"
     bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
     if [ -z "$bat" ]; then
-      echo "<span color='${muted}'>󰂑 n/a</span>"
+      echo "<span color='${c.muted}'>󰂑 n/a</span>"
       exit 0
     fi
     info="$("$upower_bin" -i "$bat")"
@@ -76,29 +91,31 @@ let
     tte_fmt="$(fmt_time "$tte_hours")"
     ttf_fmt="$(fmt_time "$ttf_hours")"
     pct_num="$(echo "$pct" | tr -d '%')"
+    # Icon tracks charge level; colour tracks whether anything is wrong, which
+    # is a coarser split (charging, <20%, <10%), so the two do not line up.
     if [ "$state" = "charging" ]; then
       icon="󰂄"
-      color="#dbc074"
+      color="${c.batCharge}"
       label="$pct (chg) $ttf_fmt"
     elif [ "$state" = "fully-charged" ]; then
       icon="󰁹"
-      color="#dbc074"
+      color="${c.battery}"
       label="$pct (full)"
     elif [ "$pct_num" -le 15 ]; then
       icon="󰁺"
-      color="#c94f6d"
+      color=$([ "$pct_num" -lt 10 ] && echo "${c.batCrit}" || echo "${c.batLow}")
       label="$pct $tte_fmt"
     elif [ "$pct_num" -le 30 ]; then
       icon="󰁼"
-      color="#f4a261"
+      color=$([ "$pct_num" -lt 20 ] && echo "${c.batLow}" || echo "${c.battery}")
       label="$pct $tte_fmt"
     elif [ "$pct_num" -le 60 ]; then
       icon="󰁾"
-      color="#dbc074"
+      color="${c.battery}"
       label="$pct $tte_fmt"
     else
       icon="󰂁"
-      color="#dbc074"
+      color="${c.battery}"
       label="$pct $tte_fmt"
     fi
     echo "<span color='$color'>$icon $label</span>"
@@ -137,9 +154,9 @@ let
 
     # Normalise load to 0-100 for colour thresholds
     pct=$(awk -v l="$load" -v c="$cores" 'BEGIN{printf "%d", (l/c)*100}')
-    if [ "''${pct:-0}" -ge 80 ]; then color="#c94f6d"
-    elif [ "''${pct:-0}" -ge 50 ]; then color="#dbc074"
-    else color="#719cd6"
+    if [ "''${pct:-0}" -ge 80 ]; then color="${c.loadHigh}"
+    elif [ "''${pct:-0}" -ge 50 ]; then color="${c.load}"
+    else color="${c.cpu}"
     fi
 
     label="$load/''${cores}c"
@@ -187,13 +204,13 @@ let
     if ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms > /dev/null 2>&1; then
       busy=$(intel_busy); freq=$(intel_freq); temp=$(intel_temp)
     else
-      echo "<span color='${muted}'>󰾲 GPU n/a</span>"
+      echo "<span color='${c.muted}'>󰾲 GPU n/a</span>"
       exit 0
     fi
 
-    if [ "''${busy:-0}" -ge 80 ]; then color="#c94f6d"
-    elif [ "''${busy:-0}" -ge 50 ]; then color="#dbc074"
-    else color="#9d79d6"
+    if [ "''${busy:-0}" -ge 80 ]; then color="${c.loadHigh}"
+    elif [ "''${busy:-0}" -ge 50 ]; then color="${c.load}"
+    else color="${c.gpu}"
     fi
 
     label="''${busy}%"
@@ -222,7 +239,7 @@ let
     used_b="$(echo "$stats" | awk '{print $1}')"
     total_b="$(echo "$stats" | awk '{print $2}')"
     label="$(${fmtBytes} "$used_b" "$total_b")"
-    echo "<span color='#c3b5e8'>󰋊 $label</span>"
+    echo "<span color='${c.disk}'>󰋊 $label</span>"
   '';
 in
 {
@@ -310,23 +327,23 @@ in
         min-height: 0;
       }
       window#waybar {
-        background: rgba(25, 35, 48, 0.92);
-        color: #cdcecf;
+        background: ${hexToRgba c.bg c.bgAlpha};
+        color: ${c.fg};
       }
       /* Workspaces: flat with a lavender focus underline. */
       #workspaces { margin-left: 4px; }
       #workspaces button {
         padding: 0 8px;
-        color: #71839b;
+        color: ${c.muted};
         background: transparent;
         border-bottom: 2px solid transparent;
       }
       #workspaces button.focused {
-        color: #cdcecf;
-        border-bottom: 2px solid #b49ae0;
+        color: ${c.fg};
+        border-bottom: 2px solid ${c.accent};
       }
       #workspaces button.urgent {
-        color: #c94f6d;
+        color: ${c.urgent};
       }
       /* Each status block is a pill, so adjacent colours never blend. */
       #network,
@@ -341,15 +358,15 @@ in
       #custom-clock {
         margin: 4px 2px;
         padding: 0 10px;
-        background: rgba(57, 80, 109, 0.30);
+        background: ${hexToRgba c.pill c.pillAlpha};
         border-radius: 7px;
       }
       #tray { margin-right: 6px; }
-      /* Function-matched colours; custom modules colour themselves via pango. */
-      #network     { color: #63cdcf; } /* cyan  - connectivity */
-      #wireplumber { color: #81b29a; } /* green - audio */
-      #memory      { color: #d67ad2; } /* pink  - RAM */
-      #custom-clock { color: #cdcecf; } /* fg   - neutral */
+      /* Custom modules colour themselves via pango; these are waybar natives. */
+      #network     { color: ${c.network}; }
+      #wireplumber { color: ${c.audio}; }
+      #memory      { color: ${c.memory}; }
+      #custom-clock { color: ${c.fg}; }
     '';
     systemd.enable = true;
   };
