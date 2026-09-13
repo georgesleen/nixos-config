@@ -250,6 +250,12 @@ in
   # #00c781 tmux/prompt green, confined to four small glanceable tokens), and
   # keeps one accent hue. Syntax colours are nightfox, matching helix.nix so
   # code renders identically in `hx` and here.
+  #
+  # `statusLineVimNormal`/`statusLineVimInsert` swap the Vim-mode indicator
+  # (segment and composer border): green resting in Normal, lavender while
+  # typing. Both keys land with can1357/oh-my-pi#11915; until it merges omp
+  # ignores them silently (arktype drops undeclared theme keys) and the stock
+  # accent/success colours render, so the entries are safe to carry early.
   home.file.".omp/agent/themes/dark-mix.json".source = ./omp/dark-mix.json;
 
   # pi-automode reads `~/.pi`, never `~/.omp`, whichever host it runs under.

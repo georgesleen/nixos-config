@@ -85,7 +85,9 @@
     "statusLineUntracked": "grey",
     "statusLineOutput": "grey",
     "statusLineCost": "grey",
-    "statusLineSubagents": "grey"
+    "statusLineSubagents": "grey",
+    "statusLineVimNormal": "tmuxGreen",
+    "statusLineVimInsert": "lavender"
   },
   "export": {
     "pageBg": "#0d0a10",
