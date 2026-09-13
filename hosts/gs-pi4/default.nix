@@ -339,9 +339,7 @@ in
   users.users.${user} = {
     extraGroups = [ "wheel" ];
     isNormalUser = true;
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDS8y5OdyR6OIy91fTAzt2GHg+aqm9H5F2l+G9/aWFJF george-sleen@GS-ThinkPad-T480s"
-    ];
+    openssh.authorizedKeys.keys = import ../../keys/authorized.nix;
   };
   # Compressed RAM swap; the page cache collapses without it and every read
   # hits the USB drive. No SD wear. Not a hibernation target.

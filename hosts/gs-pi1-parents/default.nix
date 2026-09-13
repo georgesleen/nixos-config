@@ -66,6 +66,11 @@ let
     if v == "" then default else v;
   tsAuthkey = envOr "pi_parents_ts_authkey" "";
 
+  # Shared with every other host here, so a new device is added in one place.
+  authorizedKeys = pkgs.writeText "authorized_keys" (
+    lib.concatMapStrings (key: key + "\n") (import ../../keys/authorized.nix)
+  );
+
   files = pkgs.runCommand "gs-pi1-parents-files" { } ''
     mkdir -p $out/etc/uci-defaults
     cp ${./files/uci-defaults/90-net} $out/etc/uci-defaults/90-net
@@ -75,7 +80,7 @@ let
       --subst-var-by TS_AUTHKEY ${lib.escapeShellArg tsAuthkey}
     chmod +x $out/etc/uci-defaults/90-net $out/etc/uci-defaults/91-ssh $out/etc/uci-defaults/95-tailscale
     mkdir -p $out/etc/dropbear
-    cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys
+    cp ${authorizedKeys} $out/etc/dropbear/authorized_keys
     chmod 600 $out/etc/dropbear/authorized_keys
     # Re-derives the advertised subnet on every lan ifup, so the board adapts
     # when it is moved to a different network instead of keeping a stale route.

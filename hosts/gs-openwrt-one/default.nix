@@ -78,6 +78,13 @@ let
   # (and known_hosts) stable across sysupgrades.
   sshHostKey = envOr "openwrt_one_ssh_host_key" "";
 
+  # Shared with every other host here, so a new device is added in one place.
+  # uci-defaults do not re-run on a settings-keeping sysupgrade, but this file
+  # is copied by the ImageBuilder itself, so a reflash always re-asserts it.
+  authorizedKeys = pkgs.writeText "authorized_keys" (
+    lib.concatMapStrings (key: key + "\n") (import ../../keys/authorized.nix)
+  );
+
   # /etc/uci-defaults/* run once on first boot (of a fresh flash) and then
   # remove themselves: a reflash re-asserts this exact state. Non-secret
   # structure and the secret-bearing wireless script are kept separate.
@@ -96,9 +103,9 @@ let
       $out/etc/uci-defaults/50-tailscale \
       --subst-var-by TS_AUTHKEY ${lib.escapeShellArg tsAuthkey}
     chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns $out/etc/uci-defaults/50-tailscale
-    # Root's authorized SSH public key; 30-ssh then disables password auth.
+    # Root's authorized SSH public keys; 30-ssh then disables password auth.
     mkdir -p $out/etc/dropbear
-    cp ${./files/etc/dropbear/authorized_keys} $out/etc/dropbear/authorized_keys
+    cp ${authorizedKeys} $out/etc/dropbear/authorized_keys
     chmod 600 $out/etc/dropbear/authorized_keys
     # Static dropbear host key (see sshHostKey above), keeping the SSH
     # fingerprint stable across reflashes instead of dropbear generating a

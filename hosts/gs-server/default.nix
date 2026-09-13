@@ -6,9 +6,10 @@
 }:
 
 let
-  # The T480s deploys this host, so its key opens both accounts. Deploys go to
-  # root@ because an untrusted remote user cannot add unsigned store paths.
-  deployKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDS8y5OdyR6OIy91fTAzt2GHg+aqm9H5F2l+G9/aWFJF george-sleen@GS-ThinkPad-T480s";
+  # The T480s deploys this host, so George's keys open both accounts. Deploys
+  # go to root@ because an untrusted remote user cannot add unsigned store
+  # paths.
+  deployKeys = import ../../keys/authorized.nix;
 in
 {
   boot.initrd.kernelModules = [
@@ -53,12 +54,6 @@ in
   ];
   nixpkgs.config.allowUnfree = true;
   programs.dconf.enable = true;
-  # Passwordless power-off for remote/scripted use (wake-do-work-sleep flows).
-  # Both idioms are whitelisted since scripts reach for either; `systemctl` is
-  # pinned to the `poweroff` verb so this isn't a blanket systemctl grant.
-  # Headless box reached only over SSH with keys; unattended `nixos-rebuild
-  # switch --target-host` needs sudo not to prompt.
-  security.sudo.wheelNeedsPassword = false;
   security.sudo.extraRules = [
     {
       commands = [
@@ -74,6 +69,12 @@ in
       users = [ "george-sleen" ];
     }
   ];
+  # Passwordless power-off for remote/scripted use (wake-do-work-sleep flows).
+  # Both idioms are whitelisted since scripts reach for either; `systemctl` is
+  # pinned to the `poweroff` verb so this isn't a blanket systemctl grant.
+  # Headless box reached only over SSH with keys; unattended `nixos-rebuild
+  # switch --target-host` needs sudo not to prompt.
+  security.sudo.wheelNeedsPassword = false;
   # Services
   services.openssh = {
     enable = true;
@@ -103,7 +104,6 @@ in
   time.timeZone = "America/Vancouver";
   # USB permissions
   users.groups.plugdev = { };
-  users.users.root.openssh.authorizedKeys.keys = [ deployKey ];
   # User account
   users.users.${user} = {
     description = "George Sleen";
@@ -118,6 +118,7 @@ in
       "render"
     ];
     isNormalUser = true;
-    openssh.authorizedKeys.keys = [ deployKey ];
+    openssh.authorizedKeys.keys = deployKeys;
   };
+  users.users.root.openssh.authorizedKeys.keys = deployKeys;
 }
