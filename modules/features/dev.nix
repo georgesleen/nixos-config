@@ -21,6 +21,7 @@
     gcc
     clang
     cmake
+    gdb
 
     # python (uv is in core; python313 for nix-ld / system use)
     python313
