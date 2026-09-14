@@ -133,6 +133,8 @@
                 args = {
                   args = [
                     "{1}"
+                    "--exact"
+                    "--include-ignored"
                     "--test-threads=1"
                     "--nocapture"
                   ];
