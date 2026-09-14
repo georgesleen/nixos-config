@@ -82,6 +82,77 @@
           name = "cpp";
         }
         {
+          # Helix's built-in rust debugger block, restated because a user
+          # `debugger` key replaces it wholesale, plus a cargo-test template.
+          # Cargo test binaries take the filter as argv, and --test-threads=1
+          # keeps stepping sequential. Find the binary with
+          # `cargo test --no-run --message-format=json`.
+          debugger = {
+            # Wrapper from modules/features/rust.nix; loads rustc's LLDB
+            # type formatters.
+            command = "lldb-dap-rust";
+            name = "lldb-dap";
+            templates = [
+              {
+                args.program = "{0}";
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                ];
+                name = "binary";
+                request = "launch";
+              }
+              {
+                args = {
+                  args = [
+                    "{1}"
+                    "--test-threads=1"
+                    "--nocapture"
+                  ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "test binary";
+                  }
+                  { name = "test filter"; }
+                ];
+                name = "cargo test";
+                request = "launch";
+              }
+              {
+                # What helix-test-debug's :debug-test drives. The breakpoint
+                # goes through the adapter because the Steel API can only
+                # toggle one at the cursor, and it anchors on the first body
+                # line: the declaration line resolves into the harness
+                # closure wrapping the test.
+                args = {
+                  args = [
+                    "{1}"
+                    "--test-threads=1"
+                    "--nocapture"
+                  ];
+                  preRunCommands = [ "breakpoint set --file {2} --line {3}" ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "test binary";
+                  }
+                  { name = "test filter"; }
+                  { name = "source file"; }
+                  { name = "line"; }
+                ];
+                name = "cargo test at line";
+                request = "launch";
+              }
+            ];
+            transport = "stdio";
+          };
           language-servers = [
             "rust-analyzer"
             "harper"
@@ -140,18 +211,25 @@
       theme = "nightfox";
     };
   };
-  # Steel session cog plus its glue. Stock hx (gs-pi4) ignores these files.
-  # The cog lives in its own repo, pinned via the helix-session input; init
-  # and the typed-command module are machine glue, so they stay here.
+  # Steel cogs plus their glue. Stock hx (gs-pi4) ignores these files. Each
+  # cog lives in its own repo, pinned via a flake input; init and the
+  # typed-command module are machine glue, so they stay here.
   xdg.configFile."helix/cogs/session.scm".source = "${inputs.helix-session}/session.scm";
+  xdg.configFile."helix/cogs/test-debug-rust.scm".source =
+    "${inputs.helix-test-debug}/test-debug-rust.scm";
+  # test-debug.scm requires test-debug-rust.scm from its own directory, so
+  # both halves have to land in cogs/.
+  xdg.configFile."helix/cogs/test-debug.scm".source = "${inputs.helix-test-debug}/test-debug.scm";
   xdg.configFile."helix/helix.scm".text = ''
     (require (prefix-in helix. "helix/commands.scm"))
     (require (prefix-in helix.static. "helix/static.scm"))
     (require "cogs/session.scm")
+    (require "cogs/test-debug.scm")
 
     (provide
       session-save
       session-restore
+      debug-test
       open-helix-scm
       open-init-scm)
 
@@ -169,6 +247,7 @@
     (require "cogs/session.scm")
     ;; enqueue-thread-local-callback(-with-delay) live here.
     (require "helix/misc.scm")
+    (require "helix/keymaps.scm")
 
     ;; Snapshot every minute so any quit path (or a crash) restores the same
     ;; buffer set on the next bare launch. First run after 30s. The cog puts
@@ -183,6 +262,12 @@
     ;; arguments are left alone.
     (when (equal? (command-line) '("hx"))
       (enqueue-thread-local-callback session-restore))
+
+    ;; :debug-test on <space>G d, inside helix's own debug submenu where d is
+    ;; free. add-global-keybinding merges through helix's keymap merge, so the
+    ;; rest of the submenu survives.
+    (add-global-keybinding
+     (hash "normal" (hash "space" (hash "G" (hash "d" ":debug-test")))))
   '';
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80

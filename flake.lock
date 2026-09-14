@@ -250,6 +250,26 @@
         "type": "github"
       }
     },
+    "helix-test-debug": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1789378869,
+        "narHash": "sha256-G2Pa8f1Jwvcs0s0eNOun/oVqwLg7qOCCERsNolqApCI=",
+        "owner": "georgesleen",
+        "repo": "helix-test-debug",
+        "rev": "9450506d10cbcace29a758577b28306a82f5416f",
+        "type": "github"
+      },
+      "original": {
+        "owner": "georgesleen",
+        "repo": "helix-test-debug",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -569,6 +589,7 @@
         "helix": "helix",
         "helix-session": "helix-session",
         "helix-steel": "helix-steel",
+        "helix-test-debug": "helix-test-debug",
         "home-manager": "home-manager",
         "kitty_grab_helix": "kitty_grab_helix",
         "nixos-hardware": "nixos-hardware",
