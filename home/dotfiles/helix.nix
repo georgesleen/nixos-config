@@ -248,6 +248,8 @@
       session-save
       session-restore
       debug-test
+      debug-test-again
+      run-test
       open-helix-scm
       open-init-scm)
 
@@ -281,11 +283,16 @@
     (when (equal? (command-line) '("hx"))
       (enqueue-thread-local-callback session-restore))
 
-    ;; :debug-test on <space>G d, inside helix's own debug submenu where d is
-    ;; free. add-global-keybinding merges through helix's keymap merge, so the
-    ;; rest of the submenu survives.
+    ;; test-debug commands in helix's own debug submenu. d, R and a are free
+    ;; there; r is helix's dap_restart. add-global-keybinding merges through
+    ;; helix's keymap merge, so the rest of the submenu survives.
     (add-global-keybinding
-     (hash "normal" (hash "space" (hash "G" (hash "d" ":debug-test")))))
+     (hash "normal"
+           (hash "space"
+                 (hash "G"
+                       (hash "d" ":debug-test"
+                             "R" ":run-test"
+                             "a" ":debug-test-again")))))
   '';
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80
