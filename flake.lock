@@ -252,22 +252,20 @@
     },
     "helix-test-debug": {
       "inputs": {
-        "nixpkgs": [
-          "nixpkgs"
-        ]
+        "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1789378869,
-        "narHash": "sha256-G2Pa8f1Jwvcs0s0eNOun/oVqwLg7qOCCERsNolqApCI=",
-        "owner": "georgesleen",
-        "repo": "helix-test-debug",
-        "rev": "9450506d10cbcace29a758577b28306a82f5416f",
-        "type": "github"
+        "lastModified": 1789413012,
+        "narHash": "sha256-np6HPyzrOtlaNbw7LRyqLg7cIqngQu+fvnHstjnKg8E=",
+        "ref": "refs/heads/main",
+        "rev": "cd41f967798d2d212c6c932985e038d729b6842b",
+        "revCount": 3,
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/helix-test-debug"
       },
       "original": {
-        "owner": "georgesleen",
-        "repo": "helix-test-debug",
-        "type": "github"
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/helix-test-debug"
       }
     },
     "home-manager": {
@@ -373,7 +371,7 @@
     },
     "nixos-hardware": {
       "inputs": {
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs_2"
       },
       "locked": {
         "lastModified": 1786528975,
@@ -413,15 +411,18 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1767892417,
-        "narHash": "sha256-8bW3q88CEg2u4hSP66Vf4lpbLonHz7hqDNBMcCY7E9U=",
-        "rev": "3497aa5c9457a9d88d71fa93a4a8368816fbeeba",
-        "type": "tarball",
-        "url": "https://releases.nixos.org/nixos/unstable/nixos-26.05pre924538.3497aa5c9457/nixexprs.tar.xz"
+        "lastModified": 1789149629,
+        "narHash": "sha256-H6GwaZzZf+4npqv0tph94w9tZddSjFjmQrVsW0z78uk=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "eaad089433ca2bb662274377d33df3d0e51ef28b",
+        "type": "github"
       },
       "original": {
-        "type": "tarball",
-        "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz"
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
       }
     },
     "nixpkgs-darwin-x64": {
@@ -458,6 +459,19 @@
     },
     "nixpkgs_2": {
       "locked": {
+        "lastModified": 1767892417,
+        "narHash": "sha256-8bW3q88CEg2u4hSP66Vf4lpbLonHz7hqDNBMcCY7E9U=",
+        "rev": "3497aa5c9457a9d88d71fa93a4a8368816fbeeba",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/unstable/nixos-26.05pre924538.3497aa5c9457/nixexprs.tar.xz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://channels.nixos.org/nixos-unstable/nixexprs.tar.xz"
+      }
+    },
+    "nixpkgs_3": {
+      "locked": {
         "lastModified": 1786599213,
         "narHash": "sha256-yNJd40f11EzXBjSByCB7IPpeFFAdeoSKKM67dGkfFoU=",
         "owner": "nixos",
@@ -472,7 +486,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_3": {
+    "nixpkgs_4": {
       "locked": {
         "lastModified": 1786384358,
         "narHash": "sha256-RzPPiWeUtuvymnpuEWsdtzli5w4kjZs49FqEs3/1u+I=",
@@ -488,7 +502,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_4": {
+    "nixpkgs_5": {
       "locked": {
         "lastModified": 1784007870,
         "narHash": "sha256-djcLt/JJphyNt4eDY9XTly+/WbCK5lqWq9lSgCmJkkQ=",
@@ -504,7 +518,7 @@
         "type": "github"
       }
     },
-    "nixpkgs_5": {
+    "nixpkgs_6": {
       "locked": {
         "lastModified": 1786534138,
         "narHash": "sha256-Cwffw7dPM56d8spt4/queFQ1cKg69D9qrsp+wfwKvfo=",
@@ -522,7 +536,7 @@
         "bun2nix": "bun2nix",
         "bun2nix-darwin-x64": "bun2nix-darwin-x64",
         "nix-bun": "nix-bun",
-        "nixpkgs": "nixpkgs_3",
+        "nixpkgs": "nixpkgs_4",
         "nixpkgs-darwin-x64": "nixpkgs-darwin-x64",
         "rust-overlay": "rust-overlay_3"
       },
@@ -566,7 +580,7 @@
       "inputs": {
         "flake-parts": "flake-parts_4",
         "git-hooks-nix": "git-hooks-nix",
-        "nixpkgs": "nixpkgs_4",
+        "nixpkgs": "nixpkgs_5",
         "treefmt-nix": "treefmt-nix_4"
       },
       "locked": {
@@ -594,7 +608,7 @@
         "kitty_grab_helix": "kitty_grab_helix",
         "nixos-hardware": "nixos-hardware",
         "nixos-pi4": "nixos-pi4",
-        "nixpkgs": "nixpkgs_2",
+        "nixpkgs": "nixpkgs_3",
         "nixpkgs-lastgood": "nixpkgs-lastgood",
         "oh-my-pi": "oh-my-pi",
         "openwrt-imagebuilder": "openwrt-imagebuilder",
@@ -835,7 +849,7 @@
     },
     "waveforms": {
       "inputs": {
-        "nixpkgs": "nixpkgs_5"
+        "nixpkgs": "nixpkgs_6"
       },
       "locked": {
         "lastModified": 1764782980,

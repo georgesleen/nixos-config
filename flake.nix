@@ -22,12 +22,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:mattwparas/helix/steel-event-system";
     };
-    # Debug-the-test-under-the-cursor cog for steel helix. Own repo so it is
-    # usable outside this config; see home/dotfiles/helix.nix.
-    helix-test-debug = {
-      inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:georgesleen/helix-test-debug";
-    };
+    # Debug-the-test-under-the-cursor cog for steel helix, local clone while
+    # the fix commit is unpushed (github:georgesleen/helix-test-debug is the
+    # published repo). Consumed by home/dotfiles/helix.nix.
+    helix-test-debug.url = "git+file:///home/george-sleen/Documents/projects/helix-test-debug";
     home-manager = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/home-manager";
