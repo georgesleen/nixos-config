@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   pkgs,
   ...
@@ -169,6 +170,16 @@
           ];
           name = "bash";
         }
+        {
+          # Steel cogs. helix already defines scheme with scm in file-types,
+          # and user language config merges per field, so only the servers
+          # are set here.
+          language-servers = [
+            "steel-language-server"
+            "harper"
+          ];
+          name = "scheme";
+        }
       ];
 
       language-server = {
@@ -193,6 +204,13 @@
           config = {
             files.watcher = "server";
           };
+        };
+        steel-language-server = {
+          command = "steel-language-server";
+          # Its default lsp home is $STEEL_HOME/lsp, which the nixpkgs
+          # wrapper points at a read-only store path; the server panics
+          # creating it.
+          environment.STEEL_LSP_HOME = "${config.xdg.dataHome}/steel/lsp";
         };
         tinymist = {
           command = "tinymist";

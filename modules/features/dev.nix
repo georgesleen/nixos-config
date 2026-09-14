@@ -48,6 +48,9 @@
 
     # typst
     typst
+
+    # scheme (steel: helix's scripting dialect)
+    steel # provides steel-language-server
   ];
   services.udev.packages = [
     pkgs.stlink
