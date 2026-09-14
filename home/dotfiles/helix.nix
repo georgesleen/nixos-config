@@ -249,9 +249,17 @@
     (provide
       session-save
       session-restore
-      debug-test
-      debug-test-again
-      run-test
+      test-debug
+      test-run
+      test-again
+      test-doctor
+      test-debug-failure
+      test-cancel
+      debug-variables
+      debug-step-over
+      debug-step-in
+      debug-step-out
+      debug-continue
       open-helix-scm
       open-init-scm)
 
@@ -285,16 +293,23 @@
     (when (equal? (command-line) '("hx"))
       (enqueue-thread-local-callback session-restore))
 
-    ;; test-debug commands in helix's own debug submenu. d, R and a are free
+    ;; test- commands in helix's own debug submenu. d, R and a are free
     ;; there; r is helix's dap_restart. add-global-keybinding merges through
     ;; helix's keymap merge, so the rest of the submenu survives.
+    ;; v, n, i, o and c override helix's raw dap actions so stepping and
+    ;; continuing refresh the variables popup.
     (add-global-keybinding
      (hash "normal"
            (hash "space"
                  (hash "G"
-                       (hash "d" ":debug-test"
-                             "R" ":run-test"
-                             "a" ":debug-test-again")))))
+                       (hash "d" ":test-debug"
+                             "R" ":test-run"
+                             "a" ":test-again"
+                             "v" ":debug-variables"
+                             "n" ":debug-step-over"
+                             "i" ":debug-step-in"
+                             "o" ":debug-step-out"
+                             "c" ":debug-continue")))))
   '';
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80
