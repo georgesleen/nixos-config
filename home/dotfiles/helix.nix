@@ -69,6 +69,50 @@
           name = "typst";
         }
         {
+          # Helix's built-in cpp debugger block, restated because a user
+          # `debugger` key replaces it wholesale, plus the template
+          # :test-debug drives. ctest names the executable and the one
+          # argument that selects the test, so no filter flag belongs here.
+          debugger = {
+            command = "lldb-dap";
+            name = "lldb-dap";
+            templates = [
+              {
+                args = {
+                  console = "internalConsole";
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                ];
+                name = "binary";
+                request = "launch";
+              }
+              {
+                args = {
+                  args = [ "{1}" ];
+                  console = "internalConsole";
+                  preRunCommands = [ "breakpoint set --file {2} --line {3}" ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                  { name = "test argument"; }
+                  { name = "source file"; }
+                  { name = "line"; }
+                ];
+                name = "binary at line";
+                request = "launch";
+              }
+            ];
+            transport = "stdio";
+          };
           language-servers = [
             "clangd"
             "harper"
@@ -76,6 +120,46 @@
           name = "c";
         }
         {
+          debugger = {
+            command = "lldb-dap";
+            name = "lldb-dap";
+            templates = [
+              {
+                args = {
+                  console = "internalConsole";
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                ];
+                name = "binary";
+                request = "launch";
+              }
+              {
+                args = {
+                  args = [ "{1}" ];
+                  console = "internalConsole";
+                  preRunCommands = [ "breakpoint set --file {2} --line {3}" ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                  { name = "test argument"; }
+                  { name = "source file"; }
+                  { name = "line"; }
+                ];
+                name = "binary at line";
+                request = "launch";
+              }
+            ];
+            transport = "stdio";
+          };
           language-servers = [
             "clangd"
             "harper"
@@ -151,6 +235,26 @@
                   { name = "line"; }
                 ];
                 name = "cargo test at line";
+                request = "launch";
+              }
+              {
+                # What :test-debug drives when the cursor is not in a test:
+                # the crate's own binary, stopped at the cursor. A
+                # template's arguments are positional, so one that passes
+                # no test filter has to be its own template.
+                args = {
+                  preRunCommands = [ "breakpoint set --file {1} --line {2}" ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                  { name = "source file"; }
+                  { name = "line"; }
+                ];
+                name = "program at line";
                 request = "launch";
               }
             ];
@@ -243,6 +347,10 @@
   };
   xdg.configFile."helix/cogs/test-debug-rust.scm".source =
     "${inputs.helix-test-debug}/test-debug-rust.scm";
+  xdg.configFile."helix/cogs/test-debug-cpp.scm".source =
+    "${inputs.helix-test-debug}/test-debug-cpp.scm";
+  xdg.configFile."helix/cogs/test-debug-picker.scm".source =
+    "${inputs.helix-test-debug}/test-debug-picker.scm";
   xdg.configFile."helix/cogs/test-debug.scm".source = "${inputs.helix-test-debug}/test-debug.scm";
   xdg.configFile."helix/helix.scm".text = ''
     (require (prefix-in helix. "helix/commands.scm"))
@@ -255,10 +363,14 @@
       session-restore
       test-debug
       test-run
+      test-pick
       test-again
       test-doctor
       test-debug-failure
       test-cancel
+      debug-breakpoint
+      debug-breakpoints
+      debug-breakpoints-clear
       debug-variables
       debug-step-over
       debug-step-in
@@ -297,11 +409,12 @@
     (when (equal? (command-line) '("hx"))
       (enqueue-thread-local-callback session-restore))
 
-    ;; test- commands in helix's own debug submenu. d, R and a are free
-    ;; there; r is helix's dap_restart. add-global-keybinding merges through
-    ;; helix's keymap merge, so the rest of the submenu survives.
+    ;; test- commands in helix's own debug submenu. d, R, a, p and B are
+    ;; free there; r is helix's dap_restart. add-global-keybinding merges
+    ;; through helix's keymap merge, so the rest of the submenu survives.
     ;; v, n, i, o and c override helix's raw dap actions so stepping and
-    ;; continuing refresh the variables popup.
+    ;; continuing refresh the variables popup. b is helix's own
+    ;; dap_toggle_breakpoint, which this replaces with the remembering one.
     (add-global-keybinding
      (hash "normal"
            (hash "space"
@@ -309,6 +422,9 @@
                        (hash "d" ":test-debug"
                              "R" ":test-run"
                              "a" ":test-again"
+                             "p" ":test-pick"
+                             "b" ":debug-breakpoint"
+                             "B" ":debug-breakpoints"
                              "v" ":debug-variables"
                              "n" ":debug-step-over"
                              "i" ":debug-step-in"
