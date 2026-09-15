@@ -235,10 +235,14 @@
   # cog lives in its own repo, pinned via a flake input; init and the
   # typed-command module are machine glue, so they stay here.
   xdg.configFile."helix/cogs/session.scm".source = "${inputs.helix-session}/session.scm";
+  # Those two require the package's modules relative to themselves, so the
+  # tree has to land beside them in cogs/.
+  xdg.configFile."helix/cogs/test-debug" = {
+    recursive = true;
+    source = "${inputs.helix-test-debug}/test-debug";
+  };
   xdg.configFile."helix/cogs/test-debug-rust.scm".source =
     "${inputs.helix-test-debug}/test-debug-rust.scm";
-  # test-debug.scm requires test-debug-rust.scm from its own directory, so
-  # both halves have to land in cogs/.
   xdg.configFile."helix/cogs/test-debug.scm".source = "${inputs.helix-test-debug}/test-debug.scm";
   xdg.configFile."helix/helix.scm".text = ''
     (require (prefix-in helix. "helix/commands.scm"))

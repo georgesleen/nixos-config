@@ -257,11 +257,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789427926,
-        "narHash": "sha256-cKneyWno+38gUlK7qiZUZlAIwV2ywf1MnIflBODmjOU=",
+        "lastModified": 1789430856,
+        "narHash": "sha256-Zxc6ErTIHjyZEchOs6dT32ZM3u9iimWgVdBikujJnhs=",
         "owner": "georgesleen",
         "repo": "helix-test-debug",
-        "rev": "89e73a8db6a5aa3945823664145184befd715c9b",
+        "rev": "d51c63c1e3db456176ce610f9d29e2480c5ce0e2",
         "type": "github"
       },
       "original": {
