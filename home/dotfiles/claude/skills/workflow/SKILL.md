@@ -108,6 +108,47 @@ Drop second sentences explaining "what to do about" code behavior.
 Not paragraphs. The diff and the tool calls show what changed; the
 prose says what is next.
 
+## Spec-driven development
+
+For work whose contract is worth pinning down precisely (a parser, a
+protocol, a set of pure decision functions), split authorship: write the
+spec, hand the spec to an agent that writes the tests from it, and write
+the implementation yourself at the same time. Neither side sees the
+other's work. The first joint run is the interesting part.
+
+Use it when the behaviour is describable without describing the code, and
+when a latent disagreement would be expensive to find later. Skip it for
+editor glue, exploratory spikes, and anything whose shape is still moving.
+
+### The split
+
+1. **Write the spec only.** Exact names, signatures, argument order,
+   return shapes, and semantics including the edge cases: empty input,
+   absent values, malformed input, boundaries. State what each function
+   must reject and how. No implementation sketches, no hints about how to
+   compute it.
+2. **Hand the spec to a test-writing agent.** It writes tests from the
+   spec alone. It must not read the implementation, which may not exist
+   yet, and must not be shown it afterwards. Give it sole ownership of the
+   test file so the two authors never touch the same lines.
+3. **Implement against the spec, not the tests.** Do not read the tests
+   while implementing, and do not wait for them.
+4. **Run them together.** Every mismatch is one of three things, triaged
+   in this order: the spec was ambiguous, the test misread the spec, or
+   the implementation is wrong. Say which, for each failure.
+5. **Fix the cause, not the symptom.** An ambiguous spec gets amended and
+   both sides updated. Never edit a test to match the implementation
+   without first deciding which of the two was wrong; that throws away the
+   whole value of the split.
+
+### Why it earns its place
+
+Tests written from the same head as the implementation encode the same
+misunderstandings, so they pass and the bug ships. Tests written from a
+spec by someone who cannot see the code disagree exactly where the spec
+was vague, which is where the latent errors live. The disagreements are
+the deliverable, not the green run.
+
 ## Things to avoid
 
 - Spawning agents for work the user wants reviewed beat-by-beat —
