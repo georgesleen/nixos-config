@@ -74,6 +74,19 @@ let
     # repeated full re-ingests 5m caused.
     providers.cacheRetention = "long";
     readLineNumbers = true;
+    # Auto-resume through a spent plan quota instead of dying at the wall.
+    # `retry` already classifies usage limits as retryable, but the sleep is
+    # capped by `retry.maxDelayMs` (5 min), so a Codex "try again in ~281 min"
+    # failed the turn outright: 244 requests burned the Plus 5h bucket on
+    # 2026-09-16 00:04-00:23 and all three live sessions ended in
+    # `usage_limit_reached` with nothing queued to resume. `waitForUsageReset`
+    # is the only knob that lets a usage-limit wait outrun that ceiling (it
+    # needs a parsed reset time, which both Codex and Anthropic supply), and
+    # it is deliberately paired with the **default** `maxDelayMs`: ordinary
+    # 429/overload retries should still fail fast, only a quota-window reset
+    # earns an hours-long sleep. The wait is Esc-abortable but holds the whole
+    # session including subagents, so an unattended fan-out parks until reset.
+    retry.waitForUsageReset = true;
     # omp's Claude-compat skill source is split into two toggles:
     # `skills.enableClaudeProject` (`.claude/skills/*/SKILL.md`, default true)
     # and `skills.enableClaudeUser` (`~/.claude/skills/*/SKILL.md`, default
