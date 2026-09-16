@@ -24,16 +24,23 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   '';
   meta = {
     description = "Claude Code style auto mode guardrail for pi and oh-my-pi";
-    homepage = "https://github.com/czottmann/pi-automode";
+    homepage = "https://github.com/georgesleen/pi-automode";
     license = lib.licenses.mit;
     platforms = lib.platforms.all;
   };
   pname = "pi-automode";
+  # Fork, not upstream v1.16.0: upstream's `classifierModel` is one fixed spec,
+  # so a Codex session classified every tool call through the Anthropic account
+  # and one provider's rate limit fail-closed the whole session. The fork adds
+  # `autoMode.classifierModelByProvider`, which picks the classifier from the
+  # current session model's provider (see home/dotfiles/omp.nix). Proposed
+  # upstream as czottmann/pi-automode#44, PR #45; drop the fork for the
+  # upstream tag once that merges.
   src = fetchFromGitHub {
-    hash = "sha256-AZf+wH83JBjgwvkLFEewEdkCtT2sD8CTChwblMAY5aM=";
-    owner = "czottmann";
+    hash = "sha256-beARkSykc6LqIQZxtQMY9XzySiZV1bN/7VgxSPIQxRY=";
+    owner = "georgesleen";
     repo = "pi-automode";
-    tag = "v${finalAttrs.version}";
+    rev = "3fc54f91ad42928d1b46b90dee8ec351e4acc528";
   };
   # Sole runtime dependency. bun resolves node_modules by walking up from the
   # importing file, so one at the package root covers extensions/auto-mode.ts.

@@ -311,14 +311,35 @@ in
       # tool; `low` is what Codex Auto Review uses for the same job.
       # Haiku, not Sonnet: the gate never hits its own cache, so per-token
       # price is the only lever.
+      #
+      # Deliberately not routed per provider, although the pinned fork
+      # supports `classifierModelByProvider`. Classifying a session through
+      # its own provider adds a gate request per tool call to the quota the
+      # gate exists to protect, and a spent quota fails closed. Pinning the
+      # classifier to a provider the session model does not use keeps the two
+      # budgets independent; route per provider only if the classifier's own
+      # provider becomes the binding constraint.
       classifierModel = "anthropic/claude-haiku-4-5";
       classifierReasoningLevel = "low";
+      classifierTimeoutMs = 30000;
       # deniedPaths is checked before the classifier, so these never reach the
       # model. Entries accumulate across config sources instead of replacing.
+      #
+      # The `/*` entries are load-bearing. `matchesDeniedPath` glob-matches
+      # the whole resolved path with no implied descendants, so a bare
+      # `/run/secrets` blocks that directory while a secret file under it
+      # falls through to the classifier: a judgement call instead of a hard
+      # block. `/run/secrets` is a symlink into `/run/secrets.d/<gen>` and the
+      # matcher also tries each pattern's canonicalized scope, so the `.d`
+      # entry only matters while that symlink is mid-rotation.
       deniedPaths = [
         "${config.home.homeDirectory}/.ssh"
+        "${config.home.homeDirectory}/.ssh/*"
         "/etc/nixos/secrets"
+        "/etc/nixos/secrets/*"
         "/run/secrets"
+        "/run/secrets/*"
+        "/run/secrets.d/*"
       ];
       # Context, not permission. These entries stop the classifier reading a
       # personal host as production or shared infrastructure, which is what the
