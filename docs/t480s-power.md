@@ -54,13 +54,46 @@ Consequences and handling:
 
 ## Hibernate caveats
 
-- Resume never works. The firmware places the low ACPI-data e820 reservation
-  at a different address on every POST, so the kernel e820 checksum test in
-  `arch_hibernation_header_restore` rejects the image
-  (`Image mismatch: architecture specific data`). No bypass exists. All 4
-  resumes in the retained journal failed, docked and undocked alike; the
-  earlier "same dock state" rule was wrong. Hibernate still does its job of
-  saving the pack, but the session is lost each time.
+- Resume works again as of 2026-09-12 23:52, the first success in the
+  retained journal after 32 failures: hibernated 22:28:10, powered on 84
+  minutes later, `PM: hibernation: hibernation exit` under the same boot ID
+  with the session intact. One `nixos-rebuild switch` (generation 491) ran
+  during that boot and did not break it, but it wrote no EFI variable and
+  skipped the loader binary, so "a rebuild" is too coarse a rule; what
+  matters is whether the firmware-visible state changes. Resume fails
+  whenever the map moves, and a `nixos-rebuild` landing between the hibernate
+  and the resume is what usually moves it.
+- The 32 failures before that all had a rebuild straddling them. Over the
+  same 43 boots, all 10 consecutive pairs with no rebuild in between produced
+  a byte-identical `BIOS-e820`, which is what the image needs (0 rebuilds: 10
+  identical, 0 changed; one or more rebuilds: 30 changed, 3 identical). It
+  used to work; 111 generations since 2026-07-13 is what broke it.
+- The block that moves is the UEFI TCG event log: 44 KiB of ACPI data whose
+  base is exactly the `TPMEventLog=` address in the kernel's `efi:` line
+  (2026-09-12: `0x6349b000` hibernating, `0x63489000` resuming). It shifts
+  the two adjacent System RAM boundaries with it, so the firmware e820 table
+  no longer matches the one the hibernating kernel hashed and
+  `arch_hibernation_header_restore` rejects the image (`Hibernate
+  inconsistent memory map detected!`, `Image mismatch: architecture specific
+  data`). The test is `compute_e820_crc32(e820_table_firmware)` in
+  `arch/x86/power/hibernate.c`: unconditional, no kernel parameter, no config
+  option. Docked and undocked alike; the earlier "same dock state" rule was
+  wrong.
+- Only the `BIOS-e820` lines are hashed. The later `e820: update [mem ...]
+  System RAM ==> device reserved` line moves every boot too, but that one is
+  the kernel's own EFI reservation against `e820_table`, not the firmware
+  table, so it is not part of the checksum.
+- `canTouchEfiVariables` is not the mechanism, measured 2026-09-12. Hashing
+  all 167 variables under `/sys/firmware/efi/efivars` either side of a
+  bootloader install with variables *enabled* gives a byte-identical store:
+  `bootctl update` skips the binary when the version already matches and
+  writes no variable when the `Boot####` entry is already correct, so the
+  setting has no observable effect on this machine either way. Whatever a
+  rebuild changes to move the map, it is not NVRAM.
+- Remaining lead: nothing here uses the TPM (no `systemd-cryptenroll`, no PCR
+  policy), so BIOS `Security Chip -> Disabled` should remove the moving block
+  outright. The empirical test needs no mechanism at all: reboot, record the
+  map, rebuild, reboot, `diff` the two. Do that before trusting a hibernate.
 - Confirm a rejection with
   `journalctl -b -1 -k | grep -E 'Image mismatch|hibernation entry'` and
   compare the maps with
@@ -94,5 +127,5 @@ Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-
 - `modules/hardware/thinkpad.nix` `tb-recover`: boot/resume oneshot; if the TB bridges are on PCI without the NHI (or the NHI is present with an empty domain), removes the stale controller functions, power-cycles via the intel-wmi-thunderbolt `force_power` knob (10s off dwell; 2s was not enough for a hung ICM), and rescans PCI. Stale-function removal matters: rescan alone re-reads the dead bridges and finds the NHI bus empty. A plugged dock can hold the chip powered through the cycle; if recovery fails, unplug the dock, rerun, replug.
 - `hosts/gs-thinkpad-t480s/power.nix` resumeCommands: re-arms pcieport wakeup, then on a lid-closed wake re-runs `lidSleepAction` (backstop for self-wakes; can't loop, lid open falls through), else refreshes DNS/network and pokes `tb-recover`.
 - `modules/hardware/thinkpad.nix` `HibernateDelaySec=30min`: set explicitly so suspend-then-hibernate uses a fixed delay instead of systemd's battery-estimate mode; the pack's fuel gauge (01AV478, LCC aftermarket cells) over-reports roughly 2x while discharging, so any gauge-based estimate hibernates far too late. The "5% at every hibernate resume" complaint was this gauge re-anchoring at power-on, not S4 drain (voltage flat across hibernates 2026-07-11 and 2026-07-13).
-- Hibernate resume always rejects the image (`Image mismatch: architecture specific data`). The firmware puts the low ACPI-data e820 reservation at a different address on every POST (0x63489000, 0x63486000, 0x634b3000, 0x634b1000, 0x634af000 across boots 2026-08-15 to 2026-08-18), and `arch_hibernation_header_restore` compares an e820 checksum with no bypass. Every resume in the retained journal failed, 4 of 4, docked and undocked alike, so the earlier "resume in the same dock state" rule was wrong. The ACPI table set and its addresses are identical across those boots; only the low reservation moves. Suspend-then-hibernate therefore protects the pack but never restores the session. Distinct from the kernel-version mismatch a rebuild-then-resume causes.
+- Hibernate resume rejects the image (`Image mismatch: architecture specific data`) whenever the firmware e820 map changes between the hibernate and the resume, which a `nixos-rebuild` in between usually causes. The moving piece is the UEFI TCG event log, a 44 KiB ACPI-data reservation whose base equals the `TPMEventLog=` address in the kernel's `efi:` line (0x634b3000, 0x634af000, 0x6349b000, 0x63489000 across boots 2026-08-18 to 2026-09-12), which shifts the adjacent System RAM boundaries in the firmware e820 table. `arch_hibernation_header_restore` compares `compute_e820_crc32(e820_table_firmware)` unconditionally, so there is no bypass: no kernel parameter, no config option. Over 43 boots, every consecutive pair with no rebuild between them had an identical map (10 of 10) and 30 of 33 pairs with a rebuild had a changed one, and all 32 failed resumes in that window had a rebuild straddling them. A clean cycle was finally demonstrated 2026-09-12: hibernated 22:28, resumed 23:52 with the session intact. Docked and undocked alike; the earlier "resume in the same dock state" rule was wrong. A critical-battery hibernate after a build day is still in practice a clean shutdown. Distinct from the kernel-version mismatch a rebuild-then-resume also causes.
 

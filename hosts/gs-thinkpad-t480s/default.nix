@@ -21,7 +21,24 @@ in
     "net.ipv4.conf.default.arp_ignore" = 1;
   };
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  boot.loader.efi.canTouchEfiVariables = true;
+  # No EFI variable writes from a rebuild. Hibernate resume only survives if
+  # the firmware e820 map is identical across the two boots: the firmware
+  # moves the 44 KiB ACPI-data block holding the UEFI TCG event log, and
+  # `arch_hibernation_header_restore` CRCs that table with no bypass. Rebuilds
+  # correlate with the map moving, measured over 43 boots (no rebuild between
+  # two boots: 10 of 10 identical maps; a rebuild between: 30 of 33 changed),
+  # which is why hibernate used to resume and stopped once this config became
+  # a daily project. This setting is insurance, not a proven fix: a rebuild
+  # whose loader binary is already current writes no variable either way
+  # (hashed all 167 of them across one, byte-identical), so it only bites when
+  # a systemd upgrade makes `bootctl update` rewrite the loader. Kept because
+  # it costs nothing: the NVRAM entry already exists and the ESP still gets
+  # every update. If NVRAM is ever cleared (BIOS reset, dead CMOS cell,
+  # firmware update) nothing re-creates the entry: boot
+  # `\EFI\BOOT\BOOTX64.EFI` from the firmware's removable-media fallback, then
+  # `sudo NIXOS_INSTALL_BOOTLOADER=1 nixos-rebuild switch` once to rewrite it.
+  # See docs/t480s-power.md.
+  boot.loader.efi.canTouchEfiVariables = false;
   # Bootloader
   boot.loader.grub.enable = false;
   boot.loader.systemd-boot.enable = true;
