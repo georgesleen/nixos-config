@@ -70,10 +70,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:Mic92/sops-nix";
     };
-    # Steel formatter, local clone until the repository is published.
+    # Opinionated formatter for the Steel cogs edited in Helix.
     steelwool = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "git+file:///home/george-sleen/Documents/projects/steelwool";
+      url = "github:georgesleen/steelwool";
     };
     waveforms.url = "github:liff/waveforms-flake";
 

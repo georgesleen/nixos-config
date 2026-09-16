@@ -696,15 +696,15 @@
       "locked": {
         "lastModified": 1789573385,
         "narHash": "sha256-uzqf1o7sg5qIh0qv/2KWoqWUwA3gO1xv5xw3OIN18bQ=",
-        "ref": "refs/heads/main",
+        "owner": "georgesleen",
+        "repo": "steelwool",
         "rev": "63cc3b061bae2522e4b1b5559797afc296f4d043",
-        "revCount": 12,
-        "type": "git",
-        "url": "file:///home/george-sleen/Documents/projects/steelwool"
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/george-sleen/Documents/projects/steelwool"
+        "owner": "georgesleen",
+        "repo": "steelwool",
+        "type": "github"
       }
     },
     "systems": {
