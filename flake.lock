@@ -600,6 +600,7 @@
         "openwrt-imagebuilder": "openwrt-imagebuilder",
         "pedantix": "pedantix",
         "sops-nix": "sops-nix",
+        "steelwool": "steelwool",
         "waveforms": "waveforms"
       }
     },
@@ -684,6 +685,26 @@
         "owner": "Mic92",
         "repo": "sops-nix",
         "type": "github"
+      }
+    },
+    "steelwool": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1789573385,
+        "narHash": "sha256-uzqf1o7sg5qIh0qv/2KWoqWUwA3gO1xv5xw3OIN18bQ=",
+        "ref": "refs/heads/main",
+        "rev": "63cc3b061bae2522e4b1b5559797afc296f4d043",
+        "revCount": 12,
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/steelwool"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/steelwool"
       }
     },
     "systems": {

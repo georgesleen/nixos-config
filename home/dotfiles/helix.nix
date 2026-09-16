@@ -4,8 +4,11 @@
   pkgs,
   ...
 }:
-
+let
+  steelwool = inputs.steelwool.packages.${pkgs.stdenv.hostPlatform.system}.default;
+in
 {
+  home.packages = [ steelwool ];
   programs.helix = {
     enable = true;
     languages = {
@@ -277,9 +280,12 @@
           name = "bash";
         }
         {
-          # Steel cogs. helix already defines scheme with scm in file-types,
-          # and user language config merges per field, so only the servers
-          # are set here.
+          formatter = {
+            args = [ "-" ];
+            command = "${steelwool}/bin/steelwool";
+          };
+          # Helix's built-in scheme entry already owns scm file detection;
+          # user language config merges these fields into it.
           language-servers = [
             "steel-language-server"
             "harper"
@@ -345,12 +351,12 @@
     recursive = true;
     source = "${inputs.helix-test-debug}/test-debug";
   };
-  xdg.configFile."helix/cogs/test-debug-rust.scm".source =
-    "${inputs.helix-test-debug}/test-debug-rust.scm";
   xdg.configFile."helix/cogs/test-debug-cpp.scm".source =
     "${inputs.helix-test-debug}/test-debug-cpp.scm";
   xdg.configFile."helix/cogs/test-debug-picker.scm".source =
     "${inputs.helix-test-debug}/test-debug-picker.scm";
+  xdg.configFile."helix/cogs/test-debug-rust.scm".source =
+    "${inputs.helix-test-debug}/test-debug-rust.scm";
   xdg.configFile."helix/cogs/test-debug.scm".source = "${inputs.helix-test-debug}/test-debug.scm";
   xdg.configFile."helix/helix.scm".text = ''
     (require (prefix-in helix. "helix/commands.scm"))
