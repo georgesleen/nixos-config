@@ -302,24 +302,26 @@ in
       allowInsideWorkingDirectory = true;
       # The classifier runs on the session model unless pinned, so an Opus
       # session classified every tool call with Opus at the session's own
-      # reasoning level and blew the 20s `classifierTimeoutMs` repeatedly
-      # ("Fast classifier failed ... timed out"). Auto mode fails closed, so a
-      # timeout is a hard block: on 2026-09-10 it deadlocked a session badly
-      # enough that the tools needed to fix the setting were themselves
-      # blocked. The gate is a two-stage yes/no decision, not reasoning work
-      # (stage one is a single token), so a small fast model is the right
-      # tool; `low` is what Codex Auto Review uses for the same job.
-      # Haiku, not Sonnet: the gate never hits its own cache, so per-token
-      # price is the only lever.
+      # reasoning level and kept blowing `classifierTimeoutMs`. Auto mode
+      # fails closed, so a timeout is a hard block, and a gate that blocks the
+      # tools needed to fix its own setting deadlocks the session. The gate is
+      # a two-stage yes/no decision, not reasoning work (stage one is a single
+      # token), so a small fast model is the right tool; `low` is what Codex
+      # Auto Review uses for the same job, and Haiku over Sonnet because the
+      # gate never hits its own cache, leaving per-token price the only lever.
       #
-      # Deliberately not routed per provider, although the pinned fork
-      # supports `classifierModelByProvider`. Classifying a session through
-      # its own provider adds a gate request per tool call to the quota the
-      # gate exists to protect, and a spent quota fails closed. Pinning the
-      # classifier to a provider the session model does not use keeps the two
-      # budgets independent; route per provider only if the classifier's own
-      # provider becomes the binding constraint.
+      # `classifierModelByProvider` then keeps each session's gate on the
+      # credentials that session is already using, so an auth failure or a
+      # rate limit on the idle provider cannot fail-close the active one.
+      # Needs the forked extension (see pkgs/pi-automode.nix); the scalar
+      # remains the fallback for providers with no entry. The cost is that a
+      # gate request per tool call lands in the same plan quota as the session
+      # itself, so pick the cheapest usable model on each provider.
       classifierModel = "anthropic/claude-haiku-4-5";
+      classifierModelByProvider = {
+        anthropic = "anthropic/claude-haiku-4-5";
+        openai-codex = "openai-codex/gpt-5.6-luna";
+      };
       classifierReasoningLevel = "low";
       classifierTimeoutMs = 30000;
       # deniedPaths is checked before the classifier, so these never reach the
