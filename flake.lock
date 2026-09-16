@@ -694,15 +694,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1789573385,
-        "narHash": "sha256-uzqf1o7sg5qIh0qv/2KWoqWUwA3gO1xv5xw3OIN18bQ=",
+        "lastModified": 1789579407,
+        "narHash": "sha256-RwhMe4FMSxWKshDzj+np8f3j5oeY7hxxOGNEVONocVM=",
         "owner": "georgesleen",
         "repo": "steelwool",
-        "rev": "63cc3b061bae2522e4b1b5559797afc296f4d043",
+        "rev": "598b8194ab591ea16f8d33639a1db469c06a3da3",
         "type": "github"
       },
       "original": {
         "owner": "georgesleen",
+        "ref": "v0.2.0",
         "repo": "steelwool",
         "type": "github"
       }

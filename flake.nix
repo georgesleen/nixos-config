@@ -73,7 +73,7 @@
     # Opinionated formatter for the Steel cogs edited in Helix.
     steelwool = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:georgesleen/steelwool";
+      url = "github:georgesleen/steelwool/v0.2.0";
     };
     waveforms.url = "github:liff/waveforms-flake";
 
