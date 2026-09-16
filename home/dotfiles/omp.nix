@@ -391,24 +391,51 @@ in
       "bash(systemctl list-units*)"
       "bash(journalctl*)"
       "bash(sudo journalctl*)"
-      # Read-only inspection. 320 of the 441 automode decisions on 2026-09-10
-      # to 09-11 were stage-1 "no policy-relevant risk" on a bash call, at one
-      # API call each; file tools were already free under
-      # `allowInsideWorkingDirectory`, so bash is the whole classifier bill.
-      # Note the ceiling on this: bash coverage is all-or-nothing per call, so
-      # the 73 calls that opened with `cd` still reach the classifier no matter
-      # what is listed here.
+      # Read-only inspection, plus a `cd * &&` pair for each verb already
+      # trusted above. Bash coverage is all-or-nothing per call, so
+      # `git status*` does not cover `cd /etc/nixos && git status`, which is
+      # the shape agents emit; without the pairs almost every bash call
+      # reaches the classifier. czottmann/pi-automode#46 asks upstream to
+      # treat a literal `cd` as transparent dispatch, which would retire them.
       #
       # Metadata only, never file contents: `deniedPaths` does not cover bash,
       # so `cat`/`strings`/`grep` here would make reading a sops secret a
       # deterministic allow. `sed -i` and `find -delete` are out for the same
-      # reason.
+      # reason, and so is `nix develop`, which runs an arbitrary payload under
+      # `-c`.
       "bash(ls *)"
       "bash(wc *)"
       "bash(file *)"
       "bash(stat *)"
       "bash(omp config get*)"
       "bash(omp models*)"
+      "bash(cd * && git status*)"
+      "bash(cd * && git diff*)"
+      "bash(cd * && git log*)"
+      "bash(cd * && git show*)"
+      "bash(cd * && git add*)"
+      "bash(cd * && git commit*)"
+      "bash(cd * && nix build*)"
+      "bash(cd * && nix eval*)"
+      "bash(cd * && nix flake check*)"
+      "bash(cd * && nixos-rebuild build*)"
+      # No filesystem, exec, or network surface: `hub` is local peer messaging
+      # and job control, the rest are session bookkeeping. `glob` returns path
+      # names and never file contents, but unlike `read` it is not one of
+      # pi-automode's path-bearing tools, so `deniedPaths` does not apply and
+      # secret file *names* stay enumerable.
+      "hub"
+      "yield"
+      "todo"
+      "ask"
+      "glob"
+      # Out-of-tree reads: the immutable store, scratch space, and the other
+      # repos worked on from here. Deterministic is safe because `read` IS a
+      # path-bearing tool, so `deniedPaths` is checked first and still
+      # hard-blocks the secret paths above.
+      "read(/nix/store/*)"
+      "read(/tmp/*)"
+      "read(${config.home.homeDirectory}/Documents/projects/*)"
       # The homelab. These four are the broad ones: any payload sent to one of
       # the author's own hosts skips the classifier. That is the point -- the
       # arr/Jellyfin/CWA file surgery this repo's AGENTS.md is full of was the
