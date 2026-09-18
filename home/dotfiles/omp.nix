@@ -49,6 +49,12 @@ let
     contextPromotion.enabled = false;
     display = {
       cacheMissMarker = true;
+      # Show the tool calls and their results in the transcript. omp defaults
+      # this to `true` (hidden), which leaves a turn rendering as prose plus a
+      # bare timing row: every edit, diff, command and file read is invisible,
+      # so there is no way to follow or review what the agent actually did
+      # without asking it to paste the code back.
+      hideToolActivity = false;
       showTokenUsage = true;
       showTurnTime = true;
     };
@@ -69,7 +75,13 @@ let
     # Nothing is deleted: the memory files stay under the agent dir and come
     # back if this returns to "local".
     memory.backend = "off";
-    plan.defaultOnStartup = false;
+    # Save approved plans using omp's default directory; leave autosaveDir unset.
+    # omp has no age-based session pruning or retention setting. Only empty,
+    # history-free sessions are automatically removed.
+    plan = {
+      autosave = true;
+      defaultOnStartup = true;
+    };
     # 1h cache entries, not the `auto` default's 5m. The 2x write beats the
     # repeated full re-ingests 5m caused.
     providers.cacheRetention = "long";
@@ -185,7 +197,11 @@ let
     # they write config.yml, which loses. Change them in this file instead.
     symbolPreset = "nerd";
     task = {
-      eager = "preferred";
+      # `default`, not `preferred`: `preferred` puts "Delegation preferred" in
+      # the system prompt and pushes substantial work out to subagents, which
+      # hides the actual edits behind agent cards. `default` leaves delegation
+      # available but not encouraged. Enum is default|preferred|always.
+      eager = "default";
       showResolvedModelBadge = true;
     };
     theme.dark = "dark-mix";

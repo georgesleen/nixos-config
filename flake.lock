@@ -257,11 +257,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789461452,
-        "narHash": "sha256-3eNd3K7bx3mxc5ivW06+L8QjAxQT0hcFHI5vAsw+70w=",
+        "lastModified": 1789719133,
+        "narHash": "sha256-Hlxd4uLklKy7MYeRJoGZR//lAtsLMGi7QtXVBNfEvds=",
         "owner": "georgesleen",
         "repo": "helix-test-debug",
-        "rev": "533f371ca303daabe12e98466f398417e0cc5645",
+        "rev": "60b81ca4fcdc20566f9ad2c24a0830f7dd1f6bf4",
         "type": "github"
       },
       "original": {
@@ -398,11 +398,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789160431,
-        "narHash": "sha256-UQNGzpPg/nFtfMlG5AQlRDQ+wJ/7lw5tpCv4Y5m6URc=",
+        "lastModified": 1789720009,
+        "narHash": "sha256-PBVNmNPDcSXLgw7mJfaRjvFZjRvG6vZa1kL5KZ+kccI=",
         "ref": "refs/heads/main",
-        "rev": "43ea0dbbbea9c65f8f70a21954ad7f43b5f98b46",
-        "revCount": 141,
+        "rev": "ad1cb35906499d84f0761e57e9a643c280529ca2",
+        "revCount": 142,
         "type": "git",
         "url": "file:///home/george-sleen/Documents/projects/nixos-pi4"
       },

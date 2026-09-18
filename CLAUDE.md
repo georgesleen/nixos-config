@@ -105,9 +105,9 @@ the unit exited early on every plug and silently no-opped for its whole life.
 Current suites: `arr-season-plan`, `av-step`, `battery-level`,
 `claude-review-trigger`, `cwa-ingest-sweep`, `display-plan`, `epub-normalize`,
 `gpu-busy`, `jellyfin-bg-pause`, `lazylibrarian-reap`, `library-guard`,
-`lid-decision`, `media-free`, `media-health`, `secrets-guard-match`,
-`snapper-orphans`, `systemd-order-cycles`, `tb-state`, `ts-route`,
-`usb-wedge`, `waybar-fmt`, `win11-forward`, `workspace-plan`.
+`lid-decision`, `media-free`, `media-health`, `qbit-seed-reap`,
+`secrets-guard-match`, `snapper-orphans`, `systemd-order-cycles`, `tb-state`,
+`ts-route`, `usb-wedge`, `waybar-fmt`, `win11-forward`, `workspace-plan`.
 
 ## Workarounds
 
@@ -208,6 +208,7 @@ touching the arrs, Jellyfin, qBittorrent or the quality guards.
 
 ### omp (oh-my-pi) coding agent
 
+- `home/dotfiles/omp.nix` `display.hideToolActivity = false`: omp hides model-initiated tool calls and their results by default, so a turn renders as prose plus a timing row and every edit, diff, command and file read is invisible. `task.eager` is left at the stock `default` for the same reason: `preferred` puts "Delegation preferred" in the system prompt, and work done inside a subagent shows up as an agent card rather than as edits. Both ride the overlay, so they apply to **new** sessions after a switch, not the running one.
 - Measuring prompt cost: `omp -p x --model <a model the provider has dropped>` dumps the whole outgoing request, tool schemas and system prompt included, to `~/.omp/logs/http-400-requests/`. Nothing in the TUI or `omp config` exposes that breakdown.
 - Overlay settings are invisible to `omp config get`, which reads the global config only, so it reports defaults for everything `ompPolicy` sets (`extensions` as `[]`, `skills.enableClaudeUser` as `false`). Verify in the wrapper's `omp-policy.yml` (`readlink -f $(which omp)`), or with a startup probe: a bad extension path prints `Failed to load extension <path>` and silence means it loaded.
 - `permissions.allow` is the only gate on bash path access, since `deniedPaths` covers the file tools alone. Never allow a verb that prints file contents (`cat`, `strings`, `grep`) or one that runs an arbitrary payload (`nix develop -c`): either makes reading a sops secret a deterministic allow.
