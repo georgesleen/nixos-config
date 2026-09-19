@@ -74,7 +74,7 @@ in
         {
           # Helix's built-in cpp debugger block, restated because a user
           # `debugger` key replaces it wholesale, plus the template
-          # :test-debug drives. ctest names the executable and the one
+          # :debug-here drives. ctest names the executable and the one
           # argument that selects the test, so no filter flag belongs here.
           debugger = {
             command = "lldb-dap";
@@ -198,6 +198,7 @@ in
                     "{1}"
                     "--test-threads=1"
                     "--nocapture"
+                    "--color=always"
                   ];
                   program = "{0}";
                 };
@@ -211,55 +212,8 @@ in
                 name = "cargo test";
                 request = "launch";
               }
-              {
-                # What helix-test-debug's :debug-test drives. The breakpoint
-                # goes through the adapter because the Steel API can only
-                # toggle one at the cursor, and it anchors on the first body
-                # line: the declaration line resolves into the harness
-                # closure wrapping the test.
-                args = {
-                  args = [
-                    "{1}"
-                    "--exact"
-                    "--include-ignored"
-                    "--test-threads=1"
-                    "--nocapture"
-                  ];
-                  preRunCommands = [ "breakpoint set --file {2} --line {3}" ];
-                  program = "{0}";
-                };
-                completion = [
-                  {
-                    completion = "filename";
-                    name = "test binary";
-                  }
-                  { name = "test filter"; }
-                  { name = "source file"; }
-                  { name = "line"; }
-                ];
-                name = "cargo test at line";
-                request = "launch";
-              }
-              {
-                # What :test-debug drives when the cursor is not in a test:
-                # the crate's own binary, stopped at the cursor. A
-                # template's arguments are positional, so one that passes
-                # no test filter has to be its own template.
-                args = {
-                  preRunCommands = [ "breakpoint set --file {1} --line {2}" ];
-                  program = "{0}";
-                };
-                completion = [
-                  {
-                    completion = "filename";
-                    name = "binary";
-                  }
-                  { name = "source file"; }
-                  { name = "line"; }
-                ];
-                name = "program at line";
-                request = "launch";
-              }
+              inputs.helix-test-debug.lib.rustDebuggerTemplate
+              inputs.helix-test-debug.lib.programDebuggerTemplate
             ];
             transport = "stdio";
           };
@@ -367,13 +321,14 @@ in
     (provide
       session-save
       session-restore
-      test-debug
-      test-run
+      debug-here
+      run-here
       test-pick
-      test-again
-      test-doctor
-      test-debug-failure
-      test-cancel
+      debug-again
+      debug-doctor
+      debug-failure
+      debug-cancel
+      debug-output
       debug-breakpoint
       debug-breakpoints
       debug-breakpoints-clear
@@ -415,9 +370,10 @@ in
     (when (equal? (command-line) '("hx"))
       (enqueue-thread-local-callback session-restore))
 
-    ;; test- commands in helix's own debug submenu. d, R, a, p and B are
-    ;; free there; r is helix's dap_restart. add-global-keybinding merges
-    ;; through helix's keymap merge, so the rest of the submenu survives.
+    ;; The cog's commands in helix's own debug submenu. d, R, a, p, f and O
+    ;; are free there; r is helix's dap_restart. add-global-keybinding
+    ;; merges through helix's keymap merge, so the rest of the submenu
+    ;; survives.
     ;; v, n, i, o and c override helix's raw dap actions so stepping and
     ;; continuing refresh the variables popup. b is helix's own
     ;; dap_toggle_breakpoint, which this replaces with the remembering one.
@@ -425,12 +381,13 @@ in
      (hash "normal"
            (hash "space"
                  (hash "G"
-                       (hash "d" ":test-debug"
-                             "R" ":test-run"
-                             "a" ":test-again"
+                       (hash "d" ":debug-here"
+                             "R" ":run-here"
+                             "a" ":debug-again"
                              "p" ":test-pick"
                              "b" ":debug-breakpoint"
-                             "B" ":debug-breakpoints"
+                             "f" ":debug-failure"
+                             "O" ":debug-output"
                              "v" ":debug-variables"
                              "n" ":debug-step-over"
                              "i" ":debug-step-in"
