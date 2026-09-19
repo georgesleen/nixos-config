@@ -5,10 +5,14 @@
   ...
 }:
 let
+  helixDapVars = inputs.helix-test-debug.packages.${pkgs.stdenv.hostPlatform.system}.helix-dap-vars;
   steelwool = inputs.steelwool.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 {
-  home.packages = [ steelwool ];
+  home.packages = [
+    helixDapVars
+    steelwool
+  ];
   programs.helix = {
     enable = true;
     languages = {
@@ -77,7 +81,11 @@ in
           # :debug-here drives. ctest names the executable and the one
           # argument that selects the test, so no filter flag belongs here.
           debugger = {
-            command = "lldb-dap";
+            args = [
+              "--"
+              "lldb-dap"
+            ];
+            command = "helix-dap-vars";
             name = "lldb-dap";
             templates = [
               {
@@ -124,7 +132,11 @@ in
         }
         {
           debugger = {
-            command = "lldb-dap";
+            args = [
+              "--"
+              "lldb-dap"
+            ];
+            command = "helix-dap-vars";
             name = "lldb-dap";
             templates = [
               {
@@ -176,9 +188,13 @@ in
           # keeps stepping sequential. Find the binary with
           # `cargo test --no-run --message-format=json`.
           debugger = {
+            args = [
+              "--"
+              "lldb-dap-rust"
+            ];
             # Wrapper from modules/features/rust.nix; loads rustc's LLDB
             # type formatters.
-            command = "lldb-dap-rust";
+            command = "helix-dap-vars";
             name = "lldb-dap";
             templates = [
               {
@@ -295,6 +311,7 @@ in
       theme = "nightfox";
     };
   };
+  xdg.configFile."helix/cogs/dap-vars.scm".source = "${inputs.helix-test-debug}/dap-vars.scm";
   # Steel cogs plus their glue. Stock hx (gs-pi4) ignores these files. Each
   # cog lives in its own repo, pinned via a flake input; init and the
   # typed-command module are machine glue, so they stay here.
@@ -374,9 +391,10 @@ in
     ;; are free there; r is helix's dap_restart. add-global-keybinding
     ;; merges through helix's keymap merge, so the rest of the submenu
     ;; survives.
-    ;; v, n, i, o and c override helix's raw dap actions so stepping and
-    ;; continuing refresh the variables popup. b is helix's own
-    ;; dap_toggle_breakpoint, which this replaces with the remembering one.
+    ;; v toggles the live variables split; the DAP proxy refreshes it on
+    ;; every stop, so the step and continue commands need no timing logic.
+    ;; b is helix's own dap_toggle_breakpoint, which this replaces with the
+    ;; remembering one.
     (add-global-keybinding
      (hash "normal"
            (hash "space"

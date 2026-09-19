@@ -16,14 +16,14 @@
     # Session save/restore cog for steel helix, local clone (published
     # repo pending). Consumed by home/dotfiles/helix.nix.
     helix-session.url = "git+file:///home/george-sleen/Documents/projects/helix-session";
-    # Helix with the Steel plugin system (upstream PR #8675, not merged yet).
-    # Native hosts only, see helixOverlay. A branch, not a rev: updating it
-    # can require helix-test-debug's helix-output.patch to be rebased, which
-    # fails the build rather than the feature, since the patch reaches into
-    # helix-view's DAP handler and helix-term's renderer.
+    # Helix with the Steel plugin system (upstream PR #8675, not merged yet)
+    # plus the native coloured-output API used by helix-test-debug. Native
+    # hosts only, see helixOverlay. Kept as ordinary commits in our fork so
+    # updates are rebased and reviewed in Git instead of failing as a Nix
+    # package patch.
     helix-steel = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:mattwparas/helix/steel-event-system";
+      url = "github:georgesleen/helix/steel-event-system-output";
     };
     # Debug-the-test-under-the-cursor cog for steel helix. Own repo so it is
     # usable outside this config; see home/dotfiles/helix.nix.
@@ -96,12 +96,10 @@
     let
       user = "george-sleen";
 
-      # Git helix with the Steel plugin system, from the flake, for native
-      # x86_64 hosts. gs-pi4 keeps the cross build of upstream master.
+      # Our Steel Helix fork, including the native coloured-output API, for
+      # native x86_64 hosts. gs-pi4 keeps the cross build of upstream master.
       helixOverlay = final: _prev: {
-        helix = inputs.helix-test-debug.lib.patchHelix (
-          helix-steel.packages.${final.stdenv.hostPlatform.system}.default
-        );
+        helix = helix-steel.packages.${final.stdenv.hostPlatform.system}.default;
       };
 
       # Cross-compiled helix + pedantix for gs-pi4 (see overlays file).

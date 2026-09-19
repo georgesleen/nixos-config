@@ -236,16 +236,16 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1787460758,
-        "narHash": "sha256-7mUAINEKnPPCHqiXT+zU5bve4dqcggdjBuHRInhTGEY=",
-        "owner": "mattwparas",
+        "lastModified": 1789807935,
+        "narHash": "sha256-RjOJAtfSoXZ/tyqTHhpBND/gw96ppNHcCeHiHTiVCZk=",
+        "owner": "georgesleen",
         "repo": "helix",
-        "rev": "5a8635beda77414850a2b9604aa0643e4713db3b",
+        "rev": "0c7c2d26f7d32bf45e6572e394b3f6cac6c3926c",
         "type": "github"
       },
       "original": {
-        "owner": "mattwparas",
-        "ref": "steel-event-system",
+        "owner": "georgesleen",
+        "ref": "steel-event-system-output",
         "repo": "helix",
         "type": "github"
       }
@@ -257,11 +257,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789795518,
-        "narHash": "sha256-/AIPb6o7oDTJ+PTaxyTmAwH2uo+3LJI6Uf0SmRfJTYE=",
+        "lastModified": 1789808603,
+        "narHash": "sha256-cw3BxltAX3cKxBQVEkn2r9G7UKP6KJL20GVYLUesGn0=",
         "owner": "georgesleen",
         "repo": "helix-test-debug",
-        "rev": "eea575537b7ac8a8bb6b4057aafddcc91641efe2",
+        "rev": "cb1bb01ae58507461423e139787250393ec27543",
         "type": "github"
       },
       "original": {
