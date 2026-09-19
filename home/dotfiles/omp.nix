@@ -216,6 +216,30 @@ let
     # Terser xdev device docs in the system prompt. Same tool set, ~1.9k fewer
     # tokens per request; devices stay reachable through `xd://`.
     tools.xdevDocs = "catalog";
+    # omp's own watchdog on the extension `tool_call` handler, separate from
+    # `autoMode.classifierTimeoutMs` below (found via `omp config list`;
+    # undocumented in `/etc/nixos/CLAUDE.md` and not mentioned by pi-automode's
+    # own docs, since it lives in omp, not the extension). pi-automode's
+    # `classifyInStages` (extensions/auto-mode/classifier.ts) runs a fast gate
+    # and, when it does not resolve outright, a detailed review call
+    # *sequentially*, each budgeted the full `classifierTimeoutMs`. With both
+    # this key and `classifierTimeoutMs` at their 30000ms defaults, a
+    # two-stage classification (or even one slow single-stage call near the
+    # cap) hits omp's own handler deadline before the extension's internal
+    # per-call timeout or its graceful fail-closed catch block
+    # (`classifyWithRetry`) ever fires, so omp kills the whole handler with an
+    # opaque "Extension handler timed out after 30000ms" instead of a clean
+    # classifier decision. Evidence, `~/.omp/logs/omp.2026-09-18.*.log`,
+    # 2026-09-19: every failure pairs `"Extension handler timed out"` /
+    # `"handler timed out after 30000ms"` at the identical 30000ms value config
+    # list reports for this key, with no auth/rate-limit/model-not-found error
+    # anywhere nearby (classifier model `claude-haiku-4-5` is current and
+    # listed by `omp models`), which rules out a stale model id or credential
+    # failure and points at exactly this race. Set to comfortably exceed two
+    # full-length classifier stages (2 x 30000ms) plus scheduling overhead;
+    # `classifierTimeoutMs` stays at 30000ms so a genuinely stuck classifier
+    # still fails closed well inside this outer bound.
+    extensionHandlers.toolCallTimeoutMs = 70000;
     treeFilterMode = "default";
     tui = {
       textSizing = true;
