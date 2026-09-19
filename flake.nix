@@ -17,7 +17,10 @@
     # repo pending). Consumed by home/dotfiles/helix.nix.
     helix-session.url = "git+file:///home/george-sleen/Documents/projects/helix-session";
     # Helix with the Steel plugin system (upstream PR #8675, not merged yet).
-    # Native hosts only, see helixOverlay.
+    # Native hosts only, see helixOverlay. A branch, not a rev: updating it
+    # can require helix-test-debug's helix-output.patch to be rebased, which
+    # fails the build rather than the feature, since the patch reaches into
+    # helix-view's DAP handler and helix-term's renderer.
     helix-steel = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:mattwparas/helix/steel-event-system";
