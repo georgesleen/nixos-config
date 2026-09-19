@@ -367,6 +367,14 @@ in
       # deniedPaths is checked before the classifier, so these never reach the
       # model. Entries accumulate across config sources instead of replacing.
       #
+      # Only DECRYPTED secrets are listed. `/etc/nixos/secrets/secrets.yaml` is
+      # sops ciphertext at rest (`ENC[AES256_GCM,data:...]`), so blocking reads
+      # of it protected nothing and cost a classifier round trip plus a blocked
+      # tool call on every incidental read of the config tree. Decryption is
+      # still gated: `sops -d` is not in `permissions.allow`, so it goes to the
+      # classifier like any other command, and the decrypted values under
+      # `/run/secrets` stay hard-blocked below.
+      #
       # The `/*` entries are load-bearing. `matchesDeniedPath` glob-matches
       # the whole resolved path with no implied descendants, so a bare
       # `/run/secrets` blocks that directory while a secret file under it
@@ -377,8 +385,6 @@ in
       deniedPaths = [
         "${config.home.homeDirectory}/.ssh"
         "${config.home.homeDirectory}/.ssh/*"
-        "/etc/nixos/secrets"
-        "/etc/nixos/secrets/*"
         "/run/secrets"
         "/run/secrets/*"
         "/run/secrets.d/*"
@@ -474,10 +480,18 @@ in
       # Out-of-tree reads: the immutable store, scratch space, and the other
       # repos worked on from here. Deterministic is safe because `read` IS a
       # path-bearing tool, so `deniedPaths` is checked first and still
-      # hard-blocks the secret paths above.
+      # hard-blocks the decrypted secrets above.
       "read(/nix/store/*)"
       "read(/tmp/*)"
       "read(${config.home.homeDirectory}/Documents/projects/*)"
+      # sops ciphertext. Reading it yields `ENC[AES256_GCM,data:...]` and
+      # nothing else, so there is no judgement for the classifier to make and
+      # every such read was costing a round trip -- and occasionally a false
+      # block, since a classifier asked to approve "read the secrets file"
+      # answers in prose often enough to trip the strict decision-JSON parser.
+      # Decryption is unaffected: `sops -d` is not allowed here, so it still
+      # goes to the classifier, and `/run/secrets` stays in `deniedPaths`.
+      "read(/etc/nixos/secrets/*)"
       # The homelab. These four are the broad ones: any payload sent to one of
       # the author's own hosts skips the classifier. That is the point -- the
       # arr/Jellyfin/CWA file surgery this repo's AGENTS.md is full of was the
