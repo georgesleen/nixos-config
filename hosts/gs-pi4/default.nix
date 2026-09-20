@@ -15,8 +15,28 @@ let
   }.device";
 in
 {
-  # tun for tailscale; wireguard for the confined VPN namespace.
+  boot.kernel.sysctl = {
+    "vm.dirty_background_bytes" = 16777216;
+    # Bound writeback latency. The ratio defaults (20%/10% of 3.7 GiB) let
+    # ~750 MiB of dirty pages queue against a USB drive, which stalls every
+    # reader behind them. Bytes and ratios are mutually exclusive: setting
+    # these zeroes vm.dirty_ratio / vm.dirty_background_ratio.
+    "vm.dirty_bytes" = 67108864;
+    # zram readahead: the default page-cluster of 3 faults 8 pages per
+    # swap-in. On a box whose overflow tier is a USB-backed swapfile that
+    # multiplies every miss into 8 reads off the same spindle the library
+    # streams from. zram itself has no seek cost to amortise, so 0 is right
+    # for both tiers here.
+    "vm.page-cluster" = 0;
+    # Wake kswapd earlier so allocations reclaim in the background instead of
+    # stalling in direct reclaim, which is what the 2026-09-20 event was
+    # (memory pressure full avg10=75 for hours, load 25).
+    "vm.watermark_scale_factor" = 200;
+  };
+  # tun for tailscale; wireguard for the confined VPN namespace; bfq because
+  # ionice classes are inert under mq-deadline (see services.udev below).
   boot.kernelModules = [
+    "bfq"
     "tun"
     "wireguard"
   ];
@@ -183,6 +203,16 @@ in
   # module only feeds it to tailscaled-autoconnect, which is then never
   # generated, so the old --advertise-routes never took effect. To restore,
   # use `tailscale set --advertise-routes=...` and approve in the console.
+  # The media drive comes up on mq-deadline, which ignores I/O priority
+  # entirely, so the `IOSchedulingClass = "idle"` already set on pi-state-dump,
+  # ocw-courses and ytdl-sub-youtube did nothing at all. BFQ is what makes
+  # those real, and it keeps swap-in latency bounded while a download writes.
+  # sd[a-z] is only the one USB disk; the SD card is mmcblk0 and keeps its
+  # default. If a future kernel drops bfq.ko this rule silently leaves
+  # mq-deadline in place, so re-check the scheduler after a kernel bump.
+  services.udev.extraRules = ''
+    ACTION=="add|change", SUBSYSTEM=="block", KERNEL=="sd[a-z]", ATTR{queue/scheduler}="bfq"
+  '';
   sops.age.sshKeyPaths = [ "/etc/ssh/ssh_host_ed25519_key" ];
   # The new 8TB backup/media drive (2026-08-27) is LUKS2-encrypted, whole disk
   # (no partition table, single-purpose). Auto-unlocked at boot via this
@@ -192,6 +222,14 @@ in
   # either way.
   sops.secrets."backup_drive/luks_passphrase" = { };
   system.stateVersion = "25.11";
+  # oomd is enabled by default but monitors nothing unless a slice opts in:
+  # `oomctl` reported both its Swap and Memory Pressure cgroup lists empty
+  # while the box thrashed for hours. With this, sustained memory pressure on
+  # system.slice kills the heaviest eligible child instead of stalling
+  # everything; every media unit has Restart=on-failure, so the cost is one
+  # restart. qBittorrent opts out via ManagedOOMPreference = "avoid"
+  # (nixflix.nix) and the admin plane via "omit" below.
+  systemd.oomd.enableSystemSlice = true;
   # The subvolumes above and their quotas were created by hand when storage
   # moved to this drive, so a rebuild onto a fresh disk would mount nothing.
   # This asserts both: it creates any subvolume if absent and sets caps every
@@ -299,6 +337,16 @@ in
     };
     wantedBy = [ "multi-user.target" ];
   };
+  # Keep the admin plane alive under pressure. During the 2026-09-20 event
+  # sshd stopped completing a banner exchange, which is what turns a slow box
+  # into an unrecoverable one. A small MemoryLow floor plus opting out of both
+  # OOM killers costs nothing when idle and is the difference between fixing
+  # the box remotely and driving to it.
+  systemd.services.sshd.serviceConfig = {
+    ManagedOOMPreference = "omit";
+    MemoryLow = "48M";
+    OOMScoreAdjust = -900;
+  };
   # Overflow tier below zram. zram alone wedged the host on 2026-09-05: it sat
   # 97.7% full holding ~3.5 GiB of cold anonymous pages (jellyfin ~1.2 GiB,
   # immich and its helpers ~1.5 GiB), and with nowhere left to put the next cold
@@ -330,6 +378,11 @@ in
     };
     unitConfig.RequiresMountsFor = "/swap";
     wantedBy = [ "multi-user.target" ];
+  };
+  systemd.services.tailscaled.serviceConfig = {
+    ManagedOOMPreference = "omit";
+    MemoryLow = "48M";
+    OOMScoreAdjust = -900;
   };
   # State dirs live under /srv; systemd-tmpfiles refuses to create root-owned
   # subdirs beneath a non-root-owned parent ("unsafe path transition"). /srv had

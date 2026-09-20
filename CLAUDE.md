@@ -105,9 +105,10 @@ the unit exited early on every plug and silently no-opped for its whole life.
 Current suites: `arr-season-plan`, `av-step`, `battery-level`,
 `claude-review-trigger`, `cwa-ingest-sweep`, `display-plan`, `epub-normalize`,
 `gpu-busy`, `jellyfin-bg-pause`, `lazylibrarian-reap`, `library-guard`,
-`lid-decision`, `media-free`, `media-health`, `qbit-seed-reap`,
-`secrets-guard-match`, `snapper-orphans`, `systemd-order-cycles`, `tb-state`,
-`ts-route`, `usb-wedge`, `waybar-fmt`, `win11-forward`, `workspace-plan`.
+`lid-decision`, `media-free`, `media-health`, `pressure-guard`,
+`qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
+`systemd-order-cycles`, `tb-state`, `ts-route`, `usb-wedge`, `waybar-fmt`,
+`win11-forward`, `workspace-plan`.
 
 ## Workarounds
 
@@ -198,6 +199,23 @@ forward): `docs/gs-openwrt-one.md`, with the Pi 1 specifics in
 - `hooks/pre-commit`: nixfmt re-stages the *whole* .nix file, so committing one hunk of a multi-hunk file sweeps the other hunks in. For a partial commit, format first then `git commit --no-verify`.
 - `hosts/gs-pi4/default.nix` `btrfs-media-layout` chown/chmod on `$top/immich`: `services.immich`'s own tmpfiles rule can't set ownership on `mediaLocation` because systemd-tmpfiles skips paths under an automount rather than triggering it, so the real subvolume stayed root-owned from `btrfs subvolume create` and every write failed ("Failed to create <UPLOAD_LOCATION>/..."). Hit on first deploy, 2026-08-27. Explicit chown in the same oneshot that creates the subvolume, idempotent.
 - `nixos-pi4/gs-pi4/immich.nix` `services.immich.host = "127.0.0.1"`: the module default `"localhost"` resolved to the IPv6 loopback on this box, so the server bound `[::1]:2283` only and the nginx vhost (proxying `127.0.0.1`, like every other service here) couldn't reach it. Hit on first deploy, 2026-08-27.
+
+### gs-pi4 memory and I/O pressure
+
+The box ran ~6 GiB of anonymous pages on 3.75 GiB of RAM until 2026-09-20:
+zram permanently 100% full, 1.4 GiB spilled onto the USB-backed swapfile that
+shares its spindle with the library, load 25, `/proc/pressure/memory`
+`full avg10=75` for hours, sshd failing its banner exchange. The fix was to
+remove demand and bound what is left; these are the parts that are not obvious
+from the config.
+
+- `nixos-pi4/gs-pi4/immich.nix` `enable = false`: Immich is **paused**, not removed (~1.7 GiB of the stack, the second-largest tenant). Library at `/srv/media/immich`, its subvolume/quota/chown in `btrfs-media-layout`, and the Postgres cluster in `/var/lib/postgresql` all stay; `database.enable`/`redis.enable` live inside the module's `mkIf cfg.enable`, so those units simply stop being generated. The restore procedure is in that file's header. Re-enabling on this hardware recreates the failure.
+- `nixos-pi4/gs-pi4/nixflix.nix` memory block: .NET reads its **cgroup** limit and derives a GC heap hard limit of 75% of it, so with no `MemoryMax` there is nothing to derive and a 4-core Pi grew a 1.9 GiB Jellyfin (221 MiB resident, 1677 MiB of cold heap in swap). Caps are `MemoryHigh` + a `MemoryMax` ~33% higher, and `DOTNET_gcServer=0` stops one heap per core. Note `memory.current` counts page cache, so a full-speed read pins Jellyfin at its `MemoryHigh` and clocks thousands of `high` events with `anon` still ~155 MiB: judge the cap on `memory.stat` `anon` and on `max`/`oom_kill`, never on the `high` counter alone.
+- `hosts/gs-pi4/default.nix` `systemd.oomd.enableSystemSlice`: oomd is enabled by default and monitors **nothing** unless a slice opts in — `oomctl` listed both its Swap and Memory Pressure cgroup sets as empty while the box thrashed. sshd/tailscaled opt out (`ManagedOOMPreference = "omit"` + `OOMScoreAdjust`), qBittorrent opts out with `"avoid"` because a kill loses resume data for ~450 torrents and returns rechecking all of them against the same USB drive.
+- `hosts/gs-pi4/default.nix` `services.udev.extraRules` + `"bfq"` in `boot.kernelModules`: the media drive comes up `mq-deadline`, which **ignores I/O priority entirely**, so the `IOSchedulingClass = "idle"` on `pi-state-dump`, `ocw-courses` and `ytdl-sub-youtube` had never done anything. Two gotchas: a new udev rule does not reapply to an already-enumerated disk, so after the switch it takes `udevadm trigger --action=change --subsystem-match=block --sysname-match=sda` (or a reboot) before `cat /sys/block/sda/queue/scheduler` shows `[bfq]`; and if a kernel bump ever drops `bfq.ko` the rule fails silently and those ionice settings go inert again.
+- `nixos-pi4/gs-pi4/pressure-guard.nix` (suite `pressure-guard`): the load-shedding backstop nothing else covered — `usb-wedge` is a dead controller, `qbit-diskguard` is free space, `media-health` is the request pipeline. On PSI `full avg60` it stops the five book/scraper containers and stops all torrents, restores them on `avg300` recovery (separate window, so it cannot flap), and reboots only if shedding failed for 20 min, with the same uptime/cooldown guards as `usb-wedge`. Podman containers exit 143/137 on a clean `systemctl stop`, so the shed path must `reset-failed` them or `systemctl --failed` shows three bogus failures during an incident.
+- Deploy traps hit on 2026-09-20, both unrelated to the change and both looking like it: a `qbittorrent` restart took its full `TimeoutStopSec=30min` (SIGTERM logged "Exiting cleanly", main thread then parked on a futex until systemd SIGKILLed it), stalling the switch for half an hour; and `jellyfin-system-config`'s `wait-for-api` gives Jellyfin 4 minutes, which a restart amid activation churn misses, failing the whole `switch-to-configuration` one second before Jellyfin came up. Re-running the failed unit and the switch is the whole fix.
+- `nixos-pi4/gs-pi4/nixflix.nix` Intro Skipper `system.pluginRepositories` hash: the manifest URL is a moving `main`, so **every** gs-pi4 build fails with a fixed-output hash mismatch whenever upstream publishes a release (2026-09-20: 1.10.11.24). Paste the `got:` value; the plugin package pin next to it is independent.
 
 ### gs-pi4 media pipeline
 

@@ -195,6 +195,7 @@
             lid-decision = ./modules/hardware/lid-decision;
             media-free = inputs.nixos-pi4 + "/gs-pi4/media-free";
             media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
+            pressure-guard = inputs.nixos-pi4 + "/gs-pi4/pressure-guard";
             qbit-seed-reap = inputs.nixos-pi4 + "/gs-pi4/qbit-seed-reap";
             secrets-guard-match = ./home/dotfiles/secrets-guard-match;
             snapper-orphans = ./modules/features/snapper-orphans;
