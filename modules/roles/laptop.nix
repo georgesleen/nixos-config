@@ -20,6 +20,7 @@
     ../features/laptop-power.nix
     ../features/steam.nix
     ../features/keychron.nix
+    ../features/known-good-boot.nix
     ../features/numeric-keypad.nix
     ../features/flipper-zero.nix
     ../features/gpib.nix

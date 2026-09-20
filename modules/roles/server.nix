@@ -7,6 +7,7 @@
     ../core
     ../features/btrfs.nix
     ../features/dev.nix
+    ../features/known-good-boot.nix
     ../features/lsp.nix
     ../features/virtualization.nix
   ];

@@ -104,9 +104,9 @@ the unit exited early on every plug and silently no-opped for its whole life.
 
 Current suites: `arr-season-plan`, `av-step`, `battery-level`,
 `claude-review-trigger`, `cwa-ingest-sweep`, `display-plan`, `epub-normalize`,
-`gpu-busy`, `jellyfin-bg-pause`, `lazylibrarian-reap`, `library-guard`,
-`lid-decision`, `media-free`, `media-health`, `pressure-guard`,
-`qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
+`gpu-busy`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
+`library-guard`, `lid-decision`, `media-free`, `media-health`,
+`pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
 `systemd-order-cycles`, `tb-state`, `ts-route`, `usb-wedge`, `waybar-fmt`,
 `win11-forward`, `workspace-plan`.
 
@@ -119,6 +119,15 @@ One-liners: file, what, and why. Full detail lives in comments at the referenced
 - `modules/features/gpib.nix` linux-gpib: `gpib_config` bakes its sysconfdir in at build time, so it defaults to `$out/etc/gpib.conf` in the store, whose example `board_type` is `ni_pci`. It never reads `/etc/gpib.conf`, and the shipped udev helper calls it with no `-f`, so autoconfiguration failed with "failed to configure boardtype: ni_pci". The binaries do honour `IB_CONFIG`, so the package is wrapped with `--set-default IB_CONFIG /etc/gpib.conf`.
 - `modules/features/gpib.nix` extraRules: linux-gpib's own `98-gpib-generic.rules` grants `GROUP="gpib"`, a group that does not exist on this system, so `/dev/gpib*` stayed `root:root 0600`. The `99-` override re-grants to `plugdev`. Same pattern as `flipper-zero.nix`.
 - No `boot.extraModulePackages`: the GPIB drivers are in-tree from kernel 7.1 (`drivers/gpib/ni_usb`), so `linuxPackages.linux-gpib` is not needed.
+
+### Nix store growth / boot recoverability
+
+- `modules/core/common.nix` `nix.gc`: weekly `--delete-older-than 30d`, `lib.mkDefault` so gs-pi4 keeps its tighter 14d. It did not exist until 2026-09-20 and nothing had ever collected garbage on the T480s: 130 generations back to 2026-07-13, a 222 GiB store of which 104 GiB was unreachable, 470 GiB of a 914 GiB disk. One `nix-collect-garbage --delete-older-than 14d` freed 88.8 GiB of store (93 GiB on disk). Note `--delete-older-than` keeps the newest generation *older* than the cutoff (verified against a scratch profile: with gens at 90/60/45/0 days and a 30d window, the 45-day one survives), because that is the generation that was active at the cutoff.
+- `hosts/gs-thinkpad-t480s/default.nix` `keep-outputs = true` couples store size to generation retention: build outputs stay live while any live generation's `.drv` graph pins them, so a GC frees far less than the unreachable-path count suggests (104 GiB dead measured, 88.8 GiB actually freed). Deliberate, and bounded now that generations expire; it is why a store here is much larger than its system closures.
+- `modules/features/known-good-boot.nix`: `switch` proves a closure runs on the *running* kernel and says nothing about initrd, LUKS, mount ordering or unit cycles, which only execute at boot. A host that has not rebooted in over 30 days will have had the generation it is running deleted by the GC above, and `configurationLimit = 20` drops it from the boot menu within about two days at this repo's deploy rate. The store paths survive (`/nix/var/nix/gcroots/booted-system`) but with no profile generation the builder writes no menu entry, so they are unreachable without rescue media. Fix: a oneshot pins the booted system into `/nix/var/nix/profiles/system-profiles/known-good` once `systemctl is-system-running --wait` reports `running`. The builder enumerates `system-profiles/*` and applies `configurationLimit` per profile, and a profile's current generation is never collected, so the pin is immune to both horizons. It is idempotent on the already-pinned system, or it would cut a generation and re-run the bootloader installer every boot.
+- `boot.loader.systemd-boot.bootCounting.enable` (same module) demotes an entry that cannot reach `boot-complete.target` after 3 tries and falls back to an older generation unattended. The chain is fragile and silent: `boot-complete.target` has **no `[Install]` section**, `systemd-bless-boot.service` only reaches it via its own `Requires=`, and the service is pulled in only by `systemd-bless-boot-generator`, which runs only when the loader exported `LoaderBootCountPath`. Break any link and the counter is never cleared, every boot decrements it, and a good generation is silently demoted after three boots. The pin service therefore also calls `systemd-bless-boot good` directly (it lives in `lib/systemd`, not `bin`). Re-running the installer cannot undo a blessing: `from_entry` matches existing entries with the counter suffix optional and reuses that filename.
+- `configurationLimit` bounds the boot *menu*, not the ESP: entries are ~1 KB and kernels/initrds dedupe by content across generations (21 entries = 58 MB of a 2 GB ESP).
+- Cheap audits: `nix-store --gc --print-roots | grep -v /proc` for what is pinning the store (`.direnv/flake-inputs` roots across projects held 23.9 GiB here, and a stale `/etc/nixos/result-gs-pi4` uniquely pins a 9.2 GiB aarch64 closure that no GC can ever touch).
 
 ### T480s power, dock, Thunderbolt
 

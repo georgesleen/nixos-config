@@ -42,6 +42,14 @@ in
   # Bootloader
   boot.loader.grub.enable = false;
   boot.loader.systemd-boot.enable = true;
+  # Bounds the boot menu, not the ESP: entries are ~1 KB and kernels/initrds
+  # are shared by content across generations, so 21 entries cost 58 MB of the
+  # 2 GB here. The real cost of a limit is recoverability, since at this
+  # repo's deploy rate 20 entries is about two days of history and the
+  # generation you are actually running drops off the menu well before
+  # nix.gc's 30d window would remove it. known-good-boot.nix is what keeps a
+  # bootable escape hatch past both horizons.
+  boot.loader.systemd-boot.configurationLimit = 20;
   # Point sudo at the fuzzel askpass so ttyless invocations (Claude Code Bash)
   # prompt on-screen instead of failing "a terminal is required".
   environment.etc."sudo.conf".text = ''

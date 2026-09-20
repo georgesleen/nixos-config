@@ -31,6 +31,10 @@ in
   # Bootloader
   boot.loader.grub.enable = false;
   boot.loader.systemd-boot.enable = true;
+  # Bounds the boot menu rather than the ESP (entries are ~1 KB; kernels and
+  # initrds dedupe by content across generations). known-good-boot.nix pins
+  # the last system that actually booted outside this window.
+  boot.loader.systemd-boot.configurationLimit = 20;
   # ROCm / OpenCL on the host
   hardware.amdgpu.opencl.enable = true;
   i18n.defaultLocale = "en_CA.UTF-8";
