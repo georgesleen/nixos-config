@@ -60,6 +60,20 @@ let
     };
     edit.mode = "hashline";
     error.notify = "on";
+    # omp's schema default is `false` since v18.0.9 (upstream wontfix,
+    # can1357/oh-my-pi#10107): with it off, any model carrying a
+    # `cost.longContext.inputThreshold` is clamped down to that threshold.
+    # For `openai-codex/gpt-5.6-luna|sol|terra` that is 272000, the
+    # standard-pricing boundary, so the usable window is a quarter of the real
+    # 1M and compaction fires ~4x earlier. On accepts the premium input/output
+    # tier above 272K on those three SKUs. No anthropic or opencode-zen model
+    # in the catalog has a long-context tier, so they are unaffected either way.
+    # Overlay trap: `/extended-context on|off|toggle` and Settings > Context
+    # both call `settings.set`, which writes the global
+    # `~/.omp/agent/config.yml`; this overlay outranks that layer, so neither
+    # surface can durably turn it off. Flip it here. Same class as `theme.dark`
+    # and `tui.vimMode` noted at the bottom of this overlay.
+    extendedContext = true;
     extensions = [ "${pkgs.pi-automode}/extensions/auto-mode.ts" ];
     features.unexpectedStopDetection = "smart";
     followUpMode = "all";
