@@ -24,6 +24,7 @@
     ../features/numeric-keypad.nix
     ../features/flipper-zero.nix
     ../features/gpib.nix
+    ../features/taildrop.nix
     ../features/usb-microscope.nix
     ../features/user-packages.nix
     ../features/virtualization.nix

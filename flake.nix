@@ -128,6 +128,12 @@
         pi-automode = final.callPackage ./pkgs/pi-automode.nix { };
       };
 
+      # Scripts packaged in this repo that are not tied to another tool.
+      localOverlay = final: _prev: {
+        md-photo-import = final.callPackage ./pkgs/md-photo-import.nix { };
+        md-photo-pick = final.callPackage ./pkgs/md-photo-pick.nix { };
+      };
+
       systems = [
         "x86_64-linux"
         "aarch64-linux"
@@ -154,6 +160,7 @@
             {
               nixpkgs.overlays = [
                 helixOverlay
+                localOverlay
                 ompOverlay
                 pinnedOverlay
               ];

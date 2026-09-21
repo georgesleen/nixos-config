@@ -312,6 +312,10 @@ in
     };
   };
   xdg.configFile."helix/cogs/dap-vars.scm".source = "${inputs.helix-test-debug}/dap-vars.scm";
+  # Local cog rather than a flake input: it is glue between this machine's
+  # Taildrop inbox, md-photo-pick and md-photo-import, so it has no life
+  # outside this config.
+  xdg.configFile."helix/cogs/photo-insert.scm".source = ./cogs/photo-insert.scm;
   # Steel cogs plus their glue. Stock hx (gs-pi4) ignores these files. Each
   # cog lives in its own repo, pinned via a flake input; init and the
   # typed-command module are machine glue, so they stay here.
@@ -334,6 +338,7 @@ in
     (require (prefix-in helix.static. "helix/static.scm"))
     (require "cogs/session.scm")
     (require "cogs/test-debug.scm")
+    (require "cogs/photo-insert.scm")
 
     (provide
       session-save
@@ -354,6 +359,10 @@ in
       debug-step-in
       debug-step-out
       debug-continue
+      photo-insert
+      photo-insert-in
+      photo-insert-taildrop
+      photo-insert-next
       open-helix-scm
       open-init-scm)
 
@@ -411,6 +420,22 @@ in
                              "i" ":debug-step-in"
                              "o" ":debug-step-out"
                              "c" ":debug-continue")))))
+
+    ;; space i: the insert submenu. i browses from the directory used last,
+    ;; d asks for a directory, t starts in the Taildrop inbox, and l takes
+    ;; the next photo waiting there without browsing. i is free in helix's
+    ;; own space menu (f F e . b j s S d D g a ' G w y Y p P R / k r h c C
+    ;; A-c ?), and add-global-keybinding merges, so the rest survives.
+    ;; A nested hash is how the keymap layer spells a submenu: merge-values
+    ;; in helix/keymaps.scm replaces a string with a hash.
+    (add-global-keybinding
+     (hash "normal"
+           (hash "space"
+                 (hash "i"
+                       (hash "i" ":photo-insert"
+                             "d" ":photo-insert-in"
+                             "t" ":photo-insert-taildrop"
+                             "l" ":photo-insert-next")))))
   '';
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80
