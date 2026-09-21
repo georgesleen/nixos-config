@@ -213,6 +213,21 @@
         "type": "github"
       }
     },
+    "helix-photo-insert": {
+      "locked": {
+        "lastModified": 1789965128,
+        "narHash": "sha256-+hWdcWMl/uHjilpa0spdLgvuo2ZTN4tk/3QgC1G8kFc=",
+        "ref": "refs/heads/main",
+        "rev": "d42afd37e8d1b0993793da883781fa7364e76f0d",
+        "revCount": 1,
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/helix-photo-insert"
+      },
+      "original": {
+        "type": "git",
+        "url": "file:///home/george-sleen/Documents/projects/helix-photo-insert"
+      }
+    },
     "helix-session": {
       "locked": {
         "lastModified": 1788939922,
@@ -587,6 +602,7 @@
       "inputs": {
         "NixVirt": "NixVirt",
         "helix": "helix",
+        "helix-photo-insert": "helix-photo-insert",
         "helix-session": "helix-session",
         "helix-steel": "helix-steel",
         "helix-test-debug": "helix-test-debug",

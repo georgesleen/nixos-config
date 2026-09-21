@@ -312,10 +312,10 @@ in
     };
   };
   xdg.configFile."helix/cogs/dap-vars.scm".source = "${inputs.helix-test-debug}/dap-vars.scm";
-  # Local cog rather than a flake input: it is glue between this machine's
-  # Taildrop inbox, md-photo-pick and md-photo-import, so it has no life
-  # outside this config.
-  xdg.configFile."helix/cogs/photo-insert.scm".source = ./cogs/photo-insert.scm;
+  # Own repo so it is usable outside this config; the two programs it calls
+  # are packaged here, see modules/features/taildrop.nix.
+  xdg.configFile."helix/cogs/photo-insert.scm".source =
+    "${inputs.helix-photo-insert}/photo-insert.scm";
   # Steel cogs plus their glue. Stock hx (gs-pi4) ignores these files. Each
   # cog lives in its own repo, pinned via a flake input; init and the
   # typed-command module are machine glue, so they stay here.

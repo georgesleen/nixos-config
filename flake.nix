@@ -13,6 +13,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:helix-editor/helix";
     };
+    # Photo-into-markdown cog for steel helix, local clone (published repo
+    # pending). Needs md-photo-pick and md-photo-import on PATH; both are
+    # packaged here, see modules/features/taildrop.nix.
+    helix-photo-insert.url = "git+file:///home/george-sleen/Documents/projects/helix-photo-insert";
     # Session save/restore cog for steel helix, local clone (published
     # repo pending). Consumed by home/dotfiles/helix.nix.
     helix-session.url = "git+file:///home/george-sleen/Documents/projects/helix-session";
