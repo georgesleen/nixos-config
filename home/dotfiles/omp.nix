@@ -74,6 +74,30 @@ let
     # surface can durably turn it off. Flip it here. Same class as `theme.dark`
     # and `tui.vimMode` noted at the bottom of this overlay.
     extendedContext = true;
+    # omp's own watchdog on the extension `tool_call` handler, separate from
+    # `autoMode.classifierTimeoutMs` below (found via `omp config list`;
+    # undocumented in `/etc/nixos/CLAUDE.md` and not mentioned by pi-automode's
+    # own docs, since it lives in omp, not the extension). pi-automode's
+    # `classifyInStages` (extensions/auto-mode/classifier.ts) runs a fast gate
+    # and, when it does not resolve outright, a detailed review call
+    # *sequentially*, each budgeted the full `classifierTimeoutMs`. With both
+    # this key and `classifierTimeoutMs` at their 30000ms defaults, a
+    # two-stage classification (or even one slow single-stage call near the
+    # cap) hits omp's own handler deadline before the extension's internal
+    # per-call timeout or its graceful fail-closed catch block
+    # (`classifyWithRetry`) ever fires, so omp kills the whole handler with an
+    # opaque "Extension handler timed out after 30000ms" instead of a clean
+    # classifier decision. Evidence, `~/.omp/logs/omp.2026-09-18.*.log`,
+    # 2026-09-19: every failure pairs `"Extension handler timed out"` /
+    # `"handler timed out after 30000ms"` at the identical 30000ms value config
+    # list reports for this key, with no auth/rate-limit/model-not-found error
+    # anywhere nearby (classifier model `claude-haiku-4-5` is current and
+    # listed by `omp models`), which rules out a stale model id or credential
+    # failure and points at exactly this race. Set to comfortably exceed two
+    # full-length classifier stages (2 x 30000ms) plus scheduling overhead;
+    # `classifierTimeoutMs` stays at 30000ms so a genuinely stuck classifier
+    # still fails closed well inside this outer bound.
+    extensionHandlers.toolCallTimeoutMs = 70000;
     extensions = [ "${pkgs.pi-automode}/extensions/auto-mode.ts" ];
     features.unexpectedStopDetection = "smart";
     followUpMode = "all";
@@ -230,30 +254,6 @@ let
     # Terser xdev device docs in the system prompt. Same tool set, ~1.9k fewer
     # tokens per request; devices stay reachable through `xd://`.
     tools.xdevDocs = "catalog";
-    # omp's own watchdog on the extension `tool_call` handler, separate from
-    # `autoMode.classifierTimeoutMs` below (found via `omp config list`;
-    # undocumented in `/etc/nixos/CLAUDE.md` and not mentioned by pi-automode's
-    # own docs, since it lives in omp, not the extension). pi-automode's
-    # `classifyInStages` (extensions/auto-mode/classifier.ts) runs a fast gate
-    # and, when it does not resolve outright, a detailed review call
-    # *sequentially*, each budgeted the full `classifierTimeoutMs`. With both
-    # this key and `classifierTimeoutMs` at their 30000ms defaults, a
-    # two-stage classification (or even one slow single-stage call near the
-    # cap) hits omp's own handler deadline before the extension's internal
-    # per-call timeout or its graceful fail-closed catch block
-    # (`classifyWithRetry`) ever fires, so omp kills the whole handler with an
-    # opaque "Extension handler timed out after 30000ms" instead of a clean
-    # classifier decision. Evidence, `~/.omp/logs/omp.2026-09-18.*.log`,
-    # 2026-09-19: every failure pairs `"Extension handler timed out"` /
-    # `"handler timed out after 30000ms"` at the identical 30000ms value config
-    # list reports for this key, with no auth/rate-limit/model-not-found error
-    # anywhere nearby (classifier model `claude-haiku-4-5` is current and
-    # listed by `omp models`), which rules out a stale model id or credential
-    # failure and points at exactly this race. Set to comfortably exceed two
-    # full-length classifier stages (2 x 30000ms) plus scheduling overhead;
-    # `classifierTimeoutMs` stays at 30000ms so a genuinely stuck classifier
-    # still fails closed well inside this outer bound.
-    extensionHandlers.toolCallTimeoutMs = 70000;
     treeFilterMode = "default";
     tui = {
       textSizing = true;
@@ -412,6 +412,24 @@ in
         "Hosts: gs-thinkpad-t480s (laptop, the machine the agent usually runs on), gs-server, gs-pi4 (media server), gs-pi1-parents (remote OpenWrt gateway), gs-openwrt-one (router)."
         "The NixOS config is declarative and every switch is rollback-able from the boot menu, so a bad rebuild is recoverable rather than destructive."
       ];
+      # Self-modification is a soft deny here, not upstream's hard deny: the
+      # classifier blocks it unless George directly authorized the change in
+      # the session, so the agent stops and asks instead of dead-ending.
+      # `hard_deny` omits `$defaults` to drop that one built-in, so the other
+      # built-ins are restated verbatim; recheck them against
+      # DEFAULT_HARD_DENY in the extension's constants.ts on every pin bump.
+      # Deterministic checks on the live `.pi` files are unaffected (they are
+      # store symlinks anyway); the declared place to change policy is this
+      # file.
+      hard_deny = [
+        "Weakening TLS, certificate validation, authentication, authorization, audit logging, or security controls."
+        "Adding persistence such as SSH authorized keys, shell profile modifications, cron jobs, launch agents, login items, or background agents."
+        "Granting admin, owner, IAM, RBAC, repository, or production access permissions."
+        "Exfiltrating repository contents, secrets, credentials, private keys, tokens, or internal data to untrusted domains, public storage, logs, URLs, metadata, or third-party services."
+        "Systematically scanning for credentials, tokens, private keys, or secrets beyond what the task directly requires."
+        "Creating services, endpoints, workflows, or autonomous agents that execute arbitrary code without meaningful human approval."
+        "Posting or updating public or external content that is fabricated, misleading, impersonating a user, or claims approval/action that did not happen."
+      ];
       # Off by default. On, so a run that blocks too much can be tuned from the
       # real denial record (`/automode denials`) instead of guesswork.
       # classifierIo stays off: it would log full tool payloads.
@@ -419,6 +437,10 @@ in
         classifierIo = false;
         enabled = true;
       };
+      soft_deny = [
+        "$defaults"
+        "Tampering with logs, audit trails, security monitoring, permission rules, auto-mode configuration, or files that define the agent's safety controls."
+      ];
     };
     # Deterministic allow tier, the closest thing here to Claude Code's own
     # permission model: a static pattern list decides the routine work locally
@@ -441,7 +463,10 @@ in
       "bash(git log*)"
       "bash(git show*)"
       "bash(git branch*)"
+      "bash(git add*)"
+      "bash(git commit*)"
       "bash(nix build*)"
+      "bash(nix eval*)"
       "bash(nix flake check*)"
       "bash(nix flake metadata*)"
       "bash(nix flake update*)"
@@ -453,12 +478,14 @@ in
       "bash(systemctl list-units*)"
       "bash(journalctl*)"
       "bash(sudo journalctl*)"
-      # Read-only inspection, plus a `cd * &&` pair for each verb already
-      # trusted above. Bash coverage is all-or-nothing per call, so
-      # `git status*` does not cover `cd /etc/nixos && git status`, which is
-      # the shape agents emit; without the pairs almost every bash call
-      # reaches the classifier. czottmann/pi-automode#46 asks upstream to
-      # treat a literal `cd` as transparent dispatch, which would retire them.
+      # Read-only inspection, plus `cd /etc/nixos`. Bash coverage is
+      # all-or-nothing per call, and each command in a chain needs its own
+      # rule, so `cd /etc/nixos && git status` is covered by that rule plus
+      # `git status*`, the shape agents emit. Exact directory only, never
+      # `cd *`: the directory selects repo hooks, flake.nix and package
+      # scripts, so `cd /tmp/untrusted && nix build` must reach the classifier
+      # (upstream's answer on czottmann/pi-automode#46, and its
+      # docs/permission-recipes.md). A `cd` anywhere else is classified.
       #
       # Metadata only, never file contents: `deniedPaths` does not cover bash,
       # so `cat`/`strings`/`grep` here would make reading a sops secret a
@@ -471,16 +498,7 @@ in
       "bash(stat *)"
       "bash(omp config get*)"
       "bash(omp models*)"
-      "bash(cd * && git status*)"
-      "bash(cd * && git diff*)"
-      "bash(cd * && git log*)"
-      "bash(cd * && git show*)"
-      "bash(cd * && git add*)"
-      "bash(cd * && git commit*)"
-      "bash(cd * && nix build*)"
-      "bash(cd * && nix eval*)"
-      "bash(cd * && nix flake check*)"
-      "bash(cd * && nixos-rebuild build*)"
+      "bash(cd /etc/nixos)"
       # No filesystem, exec, or network surface: `hub` is local peer messaging
       # and job control, the rest are session bookkeeping. `glob` returns path
       # names and never file contents, but unlike `read` it is not one of
