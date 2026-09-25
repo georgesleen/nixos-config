@@ -3,7 +3,8 @@
 #
 #   none                    lid is not closed, or state is unreadable
 #   stay-awake              docked (authorized Thunderbolt, or external display)
-#   suspend                 on AC
+#   suspend                 on AC, or on battery after a rebuild since boot
+#                           (hibernate would not resume)
 #   suspend-then-hibernate  on battery
 #
 # Split out of lid-sleep-action so the branch is testable against fixture
@@ -12,11 +13,15 @@
 #   TB_DEVICES  thunderbolt devices   (default /sys/bus/thunderbolt/devices)
 #   DRM_DIR     drm class dir         (default /sys/class/drm)
 #   AC_ONLINE   AC online flag        (default /sys/class/power_supply/AC/online)
+#   BOOTED_SYSTEM   booted closure    (default /run/booted-system)
+#   CURRENT_SYSTEM  system profile    (default /nix/var/nix/profiles/system)
 
 lid_state="${LID_STATE:-/proc/acpi/button/lid/LID/state}"
 tb_devices="${TB_DEVICES:-/sys/bus/thunderbolt/devices}"
 drm_dir="${DRM_DIR:-/sys/class/drm}"
 ac_online="${AC_ONLINE:-/sys/class/power_supply/AC/online}"
+booted_system="${BOOTED_SYSTEM:-/run/booted-system}"
+current_system="${CURRENT_SYSTEM:-/nix/var/nix/profiles/system}"
 
 lid_closed() {
   [ -r "$lid_state" ] || return 1
@@ -60,11 +65,20 @@ on_ac() {
   [ "$v" = "1" ]
 }
 
+# A switch or boot since this boot moved the firmware e820 map in 30 of 33
+# measured cases, and resume then rejects the image, losing the session.
+# Unknown (either path missing) is not a rebuild. Builtins only: the acpid
+# context has no guaranteed coreutils.
+rebuilt_since_boot() {
+  [ -e "$booted_system" ] && [ -e "$current_system" ] || return 1
+  ! [ "$booted_system" -ef "$current_system" ]
+}
+
 if ! lid_closed; then
   echo none
 elif tb_docked || display_docked; then
   echo stay-awake
-elif on_ac; then
+elif on_ac || rebuilt_since_boot; then
   echo suspend
 else
   echo suspend-then-hibernate

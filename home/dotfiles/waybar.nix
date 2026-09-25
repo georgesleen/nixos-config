@@ -4,7 +4,9 @@
 # hibernate target not 0% (see battery-thresholds.nix), gpu reads Intel RC6, cpu
 # shows freq+temp, disk aggregates all real filesystems, brightness via
 # brightnessctl (waybar's native backlight module renders nothing here), clock
-# via glibc `date` (waybar's own is an hour behind, see clockBlock).
+# via glibc `date` (waybar's own is an hour behind, see clockBlock). Native
+# modules also cover the power profile (tlp-pd's power-profiles-daemon D-Bus
+# API); clicking the pill cycles profiles.
 # Palette: one named colourway from ./waybar-themes.nix, chosen by `theme`
 # below. Default nightfox, matching the helix theme; its accent is the same
 # lavender omp's dark-mix theme uses, so bar and agent share one accent hue.
@@ -296,6 +298,7 @@ in
         "custom/disk"
         "custom/battery"
         "custom/power"
+        "power-profiles-daemon"
         "custom/clock"
         "tray"
       ];
@@ -306,6 +309,16 @@ in
         tooltip-format = "{ifname}: {ipaddr}";
       };
       position = "top";
+      power-profiles-daemon = {
+        format = "{icon}";
+        format-icons = {
+          balanced = "󰗑";
+          default = "󰓅";
+          performance = "󰓅";
+          power-saver = "󰌪";
+        };
+        tooltip-format = "Power profile: {profile}\nDriver: {driver}";
+      };
       spacing = 4;
       "sway/mode".format = "<span style=\"italic\">{}</span>";
       "sway/workspaces".format = "{name}";
@@ -355,6 +368,7 @@ in
       #custom-disk,
       #custom-battery,
       #custom-power,
+      #power-profiles-daemon,
       #custom-clock {
         margin: 4px 2px;
         padding: 0 10px;
@@ -366,6 +380,8 @@ in
       #network     { color: ${c.network}; }
       #wireplumber { color: ${c.audio}; }
       #memory      { color: ${c.memory}; }
+      #power-profiles-daemon { color: ${c.power}; }
+      #power-profiles-daemon.performance { color: ${c.batLow}; }
       #custom-clock { color: ${c.fg}; }
     '';
     systemd.enable = true;

@@ -1,7 +1,8 @@
 # T480s power and sleep
 
-State as of 2026-07-13. Config lives in `modules/hardware/thinkpad.nix`
-(lid handler, wake policy, sleep.conf) and `hosts/gs-thinkpad-t480s/power.nix`
+State as of 2026-09-24. Config lives in `modules/hardware/thinkpad.nix`
+(lid handler, wake policy, sleep.conf), `modules/features/laptop-power.nix`
+(TLP, power profiles, charge thresholds) and `hosts/gs-thinkpad-t480s/power.nix`
 (resume hooks). One-liners for each workaround are in `CLAUDE.md`.
 
 ## Lid-close decision tree
@@ -14,11 +15,59 @@ disabled). In order:
 2. **On AC:** plain suspend (S3).
 3. **On battery:** `suspend-then-hibernate`; S3 for 30 minutes
    (`HibernateDelaySec=30min`), then an RTC wake fires and the machine
-   hibernates to swap (S4).
+   hibernates to swap (S4). Unless the system was switched since boot
+   (`/run/booted-system` ≠ `/nix/var/nix/profiles/system`): then plain S3,
+   because resume would reject the image (see Hibernate caveats).
 
 The delay is set explicitly on purpose: without it systemd estimates the
 hibernate point from the battery gauge, and this pack's gauge over-reports
 (below).
+
+## Power profiles
+
+TLP owns the knobs; `tlp-pd` (`services.tlp.pd.enable`) exposes them on the
+power-profiles-daemon D-Bus API. Each profile is one set of TLP parameters:
+
+| Profile | TLP parameters | EPP | Turbo |
+|---|---|---|---|
+| performance | `_AC` | `performance` | on |
+| balanced | `_BAT` | `balance_power` | on |
+| power-saver | `_SAV` (falls back to `_BAT`) | `power` | off |
+
+Balanced lets HWP decide: turbo stays available and the CPU ramps up under
+load by itself. Power-saver is the pre-2026-09 battery policy. ASPM, runtime
+PM and Wi-Fi have no `_SAV` values, so power-saver inherits the battery ones.
+
+`TLP_AUTO_SWITCH=1` selects performance on AC and balanced on battery at every
+plug/unplug, boot, resume and `tlp start`. Switch by hand with a click on the
+waybar pill (cycles profiles) or `tlpctl performance|balanced|power-saver`; a
+manual choice lasts until the next plug/unplug or resume. Hold a profile for
+one command with `tlpctl launch -p performance -- <cmd>`. No password needed:
+the polkit policy allows the active session.
+
+Check: `tlpctl get` and
+`cat /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference /sys/devices/system/cpu/intel_pstate/no_turbo`.
+
+## Charge thresholds
+
+TLP owns them: `START/STOP_CHARGE_THRESH_BAT0` = 80/85. Until 2026-09-24 sysfs
+actually read 75/80. upower 1.91's own charge-limit feature had been switched
+on (`/var/lib/upower/charging-threshold-status` held `1` since 2026-02-05),
+and while that file reads `1`, upower rewrites the thresholds to its 75/80
+defaults at startup. upower starts ~13 s after `tlp.service`, so it won every
+boot. A tmpfiles `f+` rule now forces the file to `0` at boot, and with `0`
+upower never writes sysfs.
+
+Check: `cat /sys/class/power_supply/BAT0/charge_control_{start,end}_threshold`
+should print `80` / `85`. If it does not while the state file reads `0`,
+some other D-Bus client is re-enabling upower's limit.
+
+## WWAN
+
+The XMM7360 modem (`0000:02:00.0`, driver `iosm`) is unused and soft-blocked
+at boot by TLP (`DEVICES_TO_DISABLE_ON_STARTUP = "wwan"`, via
+`tpacpi_wwan_sw`). BIOS Security → I/O Port Access → Wireless WAN → Disabled
+removes it entirely.
 
 ## Wake sources
 
@@ -54,20 +103,23 @@ Consequences and handling:
 
 ## Hibernate caveats
 
-- Resume works again as of 2026-09-12 23:52, the first success in the
-  retained journal after 32 failures: hibernated 22:28:10, powered on 84
-  minutes later, `PM: hibernation: hibernation exit` under the same boot ID
-  with the session intact. One `nixos-rebuild switch` (generation 491) ran
-  during that boot and did not break it, but it wrote no EFI variable and
-  skipped the loader binary, so "a rebuild" is too coarse a rule; what
-  matters is whether the firmware-visible state changes. Resume fails
-  whenever the map moves, and a `nixos-rebuild` landing between the hibernate
-  and the resume is what usually moves it.
-- The 32 failures before that all had a rebuild straddling them. Over the
-  same 43 boots, all 10 consecutive pairs with no rebuild in between produced
-  a byte-identical `BIOS-e820`, which is what the image needs (0 rebuilds: 10
-  identical, 0 changed; one or more rebuilds: 30 changed, 3 identical). It
-  used to work; 111 generations since 2026-07-13 is what broke it.
+- 2026-09-05..24: 15 resumes from hibernate, 9 resumed and 6 were rejected
+  with `Image mismatch: architecture specific data` (09-06, 09-09, 09-12,
+  09-15, 09-20, and 09-24 14:53, the battery notifier's critical hibernate at
+  8%). Every rejection followed a boot that had run two or more `switching to
+  system configuration` activations. Resume fails whenever the firmware map
+  moves, and a `nixos-rebuild` since boot is what usually moves it.
+- Earlier history: 32 failures before 2026-09-12 all had a rebuild
+  straddling them. Over 43 boots, all 10 consecutive pairs with no rebuild in
+  between produced a byte-identical `BIOS-e820`, which is what the image
+  needs (0 rebuilds: 10 identical, 0 changed; one or more rebuilds: 30
+  changed, 3 identical).
+- Guard: the lid decision picks plain S3 instead of `suspend-then-hibernate`
+  on battery when `/run/booted-system` and `/nix/var/nix/profiles/system`
+  differ (`rebuilt_since_boot` in `modules/hardware/lid-decision.sh`). The
+  critical-battery hibernate still runs, since a dead battery loses the
+  session anyway, but its notification then says resume will likely fail. A
+  reboot after a switch restores normal hibernation.
 - The block that moves is the UEFI TCG event log: 44 KiB of ACPI data whose
   base is exactly the `TPMEventLog=` address in the kernel's `efi:` line
   (2026-09-12: `0x6349b000` hibernating, `0x63489000` resuming). It shifts
@@ -90,10 +142,11 @@ Consequences and handling:
   writes no variable when the `Boot####` entry is already correct, so the
   setting has no observable effect on this machine either way. Whatever a
   rebuild changes to move the map, it is not NVRAM.
+- The initrd was byte-identical across boots whose `TPMEventLog=` address
+  still moved, so the moving block is not tied to initrd size.
 - Remaining lead: nothing here uses the TPM (no `systemd-cryptenroll`, no PCR
   policy), so BIOS `Security Chip -> Disabled` should remove the moving block
-  outright. The empirical test needs no mechanism at all: reboot, record the
-  map, rebuild, reboot, `diff` the two. Do that before trusting a hibernate.
+  outright. Protocol below.
 - Confirm a rejection with
   `journalctl -b -1 -k | grep -E 'Image mismatch|hibernation entry'` and
   compare the maps with
@@ -104,15 +157,24 @@ Consequences and handling:
   automatically; see `CLAUDE.md` for the manual sequence (unplug, rerun,
   replug).
 
-## Validation (suspend-then-hibernate, pending)
+## TPM-off test (George, manual)
 
-The pre-2026-07-13 config jumped straight to S4 on battery, citing unreliable
-firmware RTC wake; no evidence for that survives, so it is being retested
-under systemd 260. Once: close the lid on battery, wait 40+ minutes, confirm
-the machine is fully powered off, then check
-`journalctl -b -1 | grep "PM: hibernation"` shows the completed hibernate.
-If the RTC wake never fires the machine sits in S3 draining ~2%/hr; revert the
-battery branch of `lidSleepAction` to plain `systemctl hibernate`.
+1. BIOS → Security → Security Chip → Disabled.
+2. Boot. Confirm `ls /sys/class/tpm` is empty and
+   `journalctl -b -k | grep TPMEventLog` prints nothing.
+3. `journalctl -b -k | grep BIOS-e820 > /tmp/e820-a`.
+4. `sudo nixos-rebuild switch` with any real change, then reboot.
+5. `diff /tmp/e820-a <(journalctl -b -k | grep BIOS-e820)`.
+6. If identical, repeat once more, then do a real `systemctl hibernate` after
+   a switch and confirm `PM: hibernation: hibernation exit` in the same boot
+   ID.
+7. If the maps are stable across rebuilds, delete `rebuilt_since_boot` and its
+   tests.
+
+## suspend-then-hibernate
+
+Validated: the RTC wake fires at +30 min on battery (2026-09-21 11:07:25
+suspend → 11:37:28 hibernate).
 
 ## Workarounds: power, dock, Thunderbolt
 

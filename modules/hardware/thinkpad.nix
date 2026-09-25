@@ -13,8 +13,10 @@ let
   # the lid reopens soon, S4 when it doesn't. An older revision jumped straight
   # to S4 out of distrust of the firmware RTC wake on battery; unverified,
   # retested with systemd 260 as of 2026-07-13. --no-block so callers running
-  # inside the resume transition don't block sleep.target. Shared by the acpid
-  # lid handler (debounced) and the resume reconcile in the host's power.nix.
+  # inside the resume transition don't block sleep.target. After a rebuild
+  # since boot, battery also gets plain S3, because resume would reject the
+  # hibernation image (docs/t480s-power.md). Shared by the acpid lid handler
+  # (debounced) and the resume reconcile in the host's power.nix.
   lidSleepAction = pkgs.writeShellScript "lid-sleep-action" ''
     case "$(${lidDecision})" in
       suspend)

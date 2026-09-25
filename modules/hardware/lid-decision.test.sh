@@ -8,12 +8,19 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 # mktree <name> <lid:open|closed|missing> <ac:0|1|missing>
+# Every tree pins booted and current system to the same closure (not rebuilt),
+# so no case reads the real /run/booted-system, which differs after a switch.
 mktree() {
   t="$tmp/$1"
-  mkdir -p "$t/tb" "$t/drm" "$t/power"
+  mkdir -p "$t/tb" "$t/drm" "$t/power" "$t/sys-a" "$t/sys-b"
+  ln -s "$t/sys-a" "$t/booted"
+  ln -s "$t/sys-a" "$t/current"
   [ "$2" = missing ] || printf 'state:      %s\n' "$2" > "$t/lid"
   [ "$3" = missing ] || printf '%s\n' "$3" > "$t/power/online"
 }
+
+# rebuilt <tree>: the system profile moved on since boot.
+rebuilt() { ln -sfn "$tmp/$1/sys-b" "$tmp/$1/current"; }
 
 # tb <tree> <device-name> <authorized>
 tb() { mkdir -p "$tmp/$1/tb/$2"; printf '%s\n' "$3" > "$tmp/$1/tb/$2/authorized"; }
@@ -23,7 +30,8 @@ drm() { mkdir -p "$tmp/$1/drm/card1/card1-$2"; printf '%s\n' "$3" > "$tmp/$1/drm
 
 decide() {
   LID_STATE="$tmp/$1/lid" TB_DEVICES="$tmp/$1/tb" DRM_DIR="$tmp/$1/drm" \
-    AC_ONLINE="$tmp/$1/power/online" sh "$script"
+    AC_ONLINE="$tmp/$1/power/online" \
+    BOOTED_SYSTEM="$tmp/$1/booted" CURRENT_SYSTEM="$tmp/$1/current" sh "$script"
 }
 
 # An open lid must never trigger anything, whatever else is true.
@@ -81,5 +89,24 @@ mktree both closed 0
 tb both "0-1" 1
 drm both DP-4 connected
 check_eq "thunderbolt and display together stay awake" "stay-awake" "$(decide both)"
+
+# A rebuild since boot makes resume reject the hibernation image, so battery
+# falls back to plain S3 rather than losing the session.
+mktree rebatt closed 0
+rebuilt rebatt
+check_eq "battery after a rebuild since boot suspends, never hibernates" "suspend" "$(decide rebatt)"
+
+mktree reac closed 1
+rebuilt reac
+check_eq "AC after a rebuild since boot suspends" "suspend" "$(decide reac)"
+
+mktree retb closed 0
+tb retb "0-1" 1
+rebuilt retb
+check_eq "dock after a rebuild since boot stays awake" "stay-awake" "$(decide retb)"
+
+mktree nobooted closed 0
+rm "$tmp/nobooted/booted"
+check_eq "unknown booted system keeps suspend-then-hibernate" "suspend-then-hibernate" "$(decide nobooted)"
 
 finish
