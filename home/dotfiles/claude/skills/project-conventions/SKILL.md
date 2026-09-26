@@ -172,9 +172,13 @@ each time.
 - **Terse everywhere.** Commit subjects only by default, no per-file bullets; docs
   and chat short. A body on a commit is the exception, not the habit. Length is
   earned, not assumed.
-- **Comments state what, tersely, then stop.** One sentence at the right altitude;
-  no editorialising and no second sentence explaining the consequence. Rationale
-  belongs in the commit message, not the source. When in doubt, less.
+- **Comments state what, tersely, then stop.** One sentence at the right
+  altitude. A second short paragraph is allowed only for contract the
+  signature hides: units, input invariants, preconditions, what a return value
+  means. Never rationale, mechanism, design justification, advice, or measured
+  numbers; a reader has no access to those cases and does not care. Rationale
+  belongs in the commit message, not the source. Private helpers and inline
+  comments stay one line. When in doubt, less.
 - **Docs are timeless architecture, in a peer voice.** Describe the system as it
   is, not the change that produced it; no references to a PR, a status, or
   "currently". Write to a peer, explain or avoid jargon, and take the cue from a
