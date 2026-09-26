@@ -23,10 +23,8 @@ in
     # these zeroes vm.dirty_ratio / vm.dirty_background_ratio.
     "vm.dirty_bytes" = 67108864;
     # zram readahead: the default page-cluster of 3 faults 8 pages per
-    # swap-in. On a box whose overflow tier is a USB-backed swapfile that
-    # multiplies every miss into 8 reads off the same spindle the library
-    # streams from. zram itself has no seek cost to amortise, so 0 is right
-    # for both tiers here.
+    # swap-in. Compressed RAM has no seek cost to amortise, so fault only the
+    # requested page.
     "vm.page-cluster" = 0;
     # Wake kswapd earlier so allocations reclaim in the background instead of
     # stalling in direct reclaim, which is what the 2026-09-20 event was
@@ -126,19 +124,6 @@ in
       "subvol=immich"
       "noatime"
       "compress=zstd:1"
-      "nofail"
-      "x-systemd.automount"
-      "x-systemd.device-timeout=30s"
-    ];
-  };
-  # Swapfile subvolume. No compress=zstd: btrfs rejects a compressed or datacow
-  # swapfile.
-  fileSystems."/swap" = {
-    device = "/dev/mapper/backup";
-    fsType = "btrfs";
-    options = [
-      "subvol=swap"
-      "noatime"
       "nofail"
       "x-systemd.automount"
       "x-systemd.device-timeout=30s"
@@ -248,7 +233,6 @@ in
       mediaQuotaGiB = 3072;
       immichQuotaGiB = 2048;
       snapshotQuotaGiB = 1024;
-      swapFileGiB = 8;
     in
     {
       after = [
@@ -257,9 +241,10 @@ in
       ];
       # No `before` on the mounts, for the same cycle reason as
       # cryptsetup-backup above.
-      description = "Ensure the media/state/immich/snapshot/swap subvolumes and quotas exist";
+      description = "Ensure the media/state/immich/snapshot subvolumes and quotas exist";
       path = with pkgs; [
         btrfs-progs
+        coreutils
         util-linux
       ];
       script = ''
@@ -267,30 +252,24 @@ in
         top=$(mktemp -d)
         trap 'umount "$top" 2>/dev/null || true; rmdir "$top" 2>/dev/null || true' EXIT
         mount -o subvolid=5 /dev/mapper/backup "$top"
-        for sub in media state immich snapshot swap; do
+        for sub in media state immich snapshot; do
           if [ ! -e "$top/$sub" ]; then
             btrfs subvolume create "$top/$sub"
           fi
         done
-        # mkswapfile sets nocow, preallocates and runs mkswap; page size comes
-        # from the running kernel, so it must be built here, not by the builder.
-        if [ ! -e "$top/swap/swapfile" ]; then
-          btrfs filesystem mkswapfile -s ${toString swapFileGiB}g "$top/swap/swapfile"
-        fi
         # Quotas must be on before a limit will stick; enabling twice is a no-op.
         btrfs quota enable "$top" 2>/dev/null || true
         btrfs qgroup limit ${toString mediaQuotaGiB}G "$top/media"
         btrfs qgroup limit ${toString immichQuotaGiB}G "$top/immich"
         btrfs qgroup limit ${toString snapshotQuotaGiB}G "$top/snapshot"
         # services.immich's own tmpfiles rule can't fix this: systemd-tmpfiles
-        # skips paths under an automount rather than triggering it, so it never
-        # touches the real subvolume, which stays root-owned from `btrfs
-        # subvolume create` above. Immich then fails every write with
-        # "Failed to create <UPLOAD_LOCATION>/..." (hit on first deploy,
-        # 2026-08-27) since it runs as its own dedicated "immich" user, not
-        # root. Idempotent: harmless to re-chown an already-correct directory.
-        chown immich:immich "$top/immich"
-        chmod 0700 "$top/immich"
+        # skips paths under an automount rather than triggering it. Correct the
+        # real subvolume while Immich is enabled; its account is intentionally
+        # absent while the memory-heavy service is paused.
+        if id immich >/dev/null 2>&1; then
+          chown immich:immich "$top/immich"
+          chmod 0700 "$top/immich"
+        fi
       '';
       serviceConfig = {
         RemainAfterExit = true;
@@ -346,38 +325,6 @@ in
     ManagedOOMPreference = "omit";
     MemoryLow = "48M";
     OOMScoreAdjust = -900;
-  };
-  # Overflow tier below zram. zram alone wedged the host on 2026-09-05: it sat
-  # 97.7% full holding ~3.5 GiB of cold anonymous pages (jellyfin ~1.2 GiB,
-  # immich and its helpers ~1.5 GiB), and with nowhere left to put the next cold
-  # page the box thrashed until sshd stopped completing a handshake and the node
-  # dropped off the tailnet. Measured swap-in was ~1.6 MB per 20 s, so those
-  # pages really are cold and zram is doing useful work; the fault was that it
-  # had no overflow, not that it was too big. Shrinking zram would have made it
-  # worse, since every page it cannot hold stays resident instead.
-  #
-  # Overflow swap below zram (priority 0 vs 5). Not `swapDevices`: that unit is
-  # early boot, and this file needs cryptsetup-backup and btrfs-media-layout,
-  # which are multi-user. That ordering is a cycle; see CLAUDE.md Workarounds.
-  systemd.services.swapfile-activate = {
-    after = [
-      "btrfs-media-layout.service"
-      "swap.mount"
-    ];
-    description = "Enable the SSD swapfile below zram";
-    path = [ pkgs.util-linux ];
-    # Idempotent: swapon exits 255 with EBUSY if the file is already enabled.
-    script = ''
-      if ! swapon --show=NAME --noheadings | grep -qx /swap/swapfile; then
-        swapon --priority 0 /swap/swapfile
-      fi
-    '';
-    serviceConfig = {
-      RemainAfterExit = true;
-      Type = "oneshot";
-    };
-    unitConfig.RequiresMountsFor = "/swap";
-    wantedBy = [ "multi-user.target" ];
   };
   systemd.services.tailscaled.serviceConfig = {
     ManagedOOMPreference = "omit";
