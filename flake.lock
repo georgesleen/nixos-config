@@ -349,11 +349,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1787372347,
-        "narHash": "sha256-Foo41OtooHMiBITAFKdOhitmjrMZqcGy1epJNz7sNQ4=",
+        "lastModified": 1789370898,
+        "narHash": "sha256-QBlvSGth1NfAWw7iePOzFlrz0/pX6CfkFCcPALdySNI=",
         "owner": "ryoppippi",
         "repo": "nix-bun",
-        "rev": "fee8f233ad9409be44259b4f428f83ecb2812e37",
+        "rev": "48e887d7955c1c05b8d4627ed39bafe4bf2455a7",
         "type": "github"
       },
       "original": {
@@ -413,11 +413,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1789899853,
-        "narHash": "sha256-Zc86vJp7PYl0dSM6iTTl6wJoWBJf7/AQzTvnx/nF1W4=",
+        "lastModified": 1790439516,
+        "narHash": "sha256-yVGK8mhNdMYfSi7XQrKnPGtvOpGnU9k+ndq6zLZpjF8=",
         "ref": "refs/heads/main",
-        "rev": "0fa4a343b38f3e0630f4c84d52ae55c39cb4160e",
-        "revCount": 149,
+        "rev": "678a4f00e912a47ca7aac3c08811a750496e5709",
+        "revCount": 152,
         "type": "git",
         "url": "file:///home/george-sleen/Documents/projects/nixos-pi4"
       },
@@ -542,11 +542,11 @@
         "rust-overlay": "rust-overlay_3"
       },
       "locked": {
-        "lastModified": 1789175953,
-        "narHash": "sha256-H2tReAEMG197gMvXaeAP8aeRACmpOsmwLLijc6L63Z4=",
+        "lastModified": 1790278604,
+        "narHash": "sha256-2DjeRD7yJPj2R13/So8Z0EDogkL6APpSbNS4nkXKOOk=",
         "owner": "can1357",
         "repo": "oh-my-pi",
-        "rev": "f97fa5c95010b62ac34c7357f9a1cae6975e12d6",
+        "rev": "ba56afb26280a6a3195c329fa66a3f8fb52f82eb",
         "type": "github"
       },
       "original": {
