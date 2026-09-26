@@ -16,6 +16,14 @@ set dhcp.@dnsmasq[0].strictorder='1'
 delete dhcp.@dnsmasq[0].server
 add_list dhcp.@dnsmasq[0].server='100.126.186.49'
 add_list dhcp.@dnsmasq[0].server='1.1.1.1'
+# Exempt the media domain from dnsmasq's DNS-rebind protection. dnsmasq 2.90+
+# counts 100.64.0.0/10 (CGNAT) as a private range, and *.media.georgesleen.com
+# is a public Cloudflare record pointing at gs-pi4's Tailscale IP, so every
+# answer was stripped ("possible DNS-rebind attack detected") and LAN clients
+# got an empty NOERROR. The T480s never saw it because dnscrypt-proxy bypasses
+# this resolver; phones/tablets on the LAN could reach nothing on the tailnet
+# by name. Matches subdomains too.
+add_list dhcp.@dnsmasq[0].rebind_domain='media.georgesleen.com'
 EOF
 uci commit dhcp
 exit 0

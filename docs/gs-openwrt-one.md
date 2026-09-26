@@ -99,6 +99,17 @@ never kills DNS), and pins gs-pi4 at `192.168.10.219` via a DHCP reservation.
 Note: a client running its own resolver (the T480s's dnscrypt-proxy) bypasses
 this.
 
+`40-adblock-dns` also exempts `media.georgesleen.com` from dnsmasq's DNS-rebind
+protection. dnsmasq 2.90+ treats `100.64.0.0/10` (CGNAT) as a private range, and
+`*.media.georgesleen.com` is a **public** Cloudflare record pointing at gs-pi4's
+Tailscale IP, so dnsmasq stripped every answer and returned an empty NOERROR
+(`logread | grep rebind` shows "possible DNS-rebind attack detected"). Symptom
+(hit 2026-09-21): a phone/tablet on the LAN is on the tailnet, pings the pi
+fine, and still reaches nothing by name; the T480s is unaffected because its
+dnscrypt-proxy never asks this resolver. `rebind_domain` matches subdomains, so
+the one entry covers every service name. Any future tailnet-IP name served from
+public DNS needs the same exemption.
+
 ## Tailscale
 
 The `tailscale` package is in the image; `50-tailscale` puts `tailscale0` in the
