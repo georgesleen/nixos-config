@@ -336,6 +336,9 @@ in
   xdg.configFile."helix/helix.scm".text = ''
     (require (prefix-in helix. "helix/commands.scm"))
     (require (prefix-in helix.static. "helix/static.scm"))
+    (require (prefix-in ed. "helix/editor.scm"))
+    (require (prefix-in misc. "helix/misc.scm"))
+    (require-builtin steel/process)
     (require "cogs/session.scm")
     (require "cogs/test-debug.scm")
     (require "cogs/photo-insert.scm")
@@ -364,7 +367,8 @@ in
       photo-insert-taildrop
       photo-insert-next
       open-helix-scm
-      open-init-scm)
+      open-init-scm
+      diff-review)
 
     ;;@doc
     ;; Open the helix.scm file
@@ -375,6 +379,26 @@ in
     ;; Opens the init.scm file
     (define (open-init-scm)
       (helix.open (helix.static.get-init-scm-path)))
+
+    ;;@doc
+    ;; Review the focused document's repository in difit (browser).
+    ;; diff-review detaches difit and prints one status line, so waiting on it
+    ;; cannot stall the editor. A scratch buffer falls back to the editor's
+    ;; cwd. Hosts without the launcher (gs-server) get the failure status.
+    (define (diff-review)
+      (let* ((doc (ed.editor->doc-id (ed.editor-focus)))
+             (path (and doc (ed.editor-document->path doc)))
+             (spawned (spawn-process
+                       (set-stdout-piped!
+                        (command "diff-review" (if path (list path) '())))))
+             (output (if (Err? spawned)
+                         #f
+                         (let ((finished (wait->stdout (Ok->value spawned))))
+                           (if (Err? finished) #f (Ok->value finished))))))
+        (misc.set-status!
+         (if (and (string? output) (not (equal? "" output)))
+             output
+             "diff-review: could not open difit; run `diff-review` in a shell for the reason"))))
   '';
   xdg.configFile."helix/init.scm".text = ''
     (require "cogs/session.scm")
@@ -436,6 +460,14 @@ in
                              "d" ":photo-insert-in"
                              "t" ":photo-insert-taildrop"
                              "l" ":photo-insert-next")))))
+
+    ;; space v: review the repository like a pull request in difit. v is free
+    ;; in helix's own space menu (list above), and add-global-keybinding
+    ;; merges.
+    (add-global-keybinding
+     (hash "normal"
+           (hash "space"
+                 (hash "v" ":diff-review"))))
   '';
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80

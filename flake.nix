@@ -132,8 +132,10 @@
         pi-automode = final.callPackage ./pkgs/pi-automode.nix { };
       };
 
-      # Scripts packaged in this repo that are not tied to another tool.
+      # Packages defined in this repo that are not tied to another tool.
       localOverlay = final: _prev: {
+        diff-review = final.callPackage ./pkgs/diff-review.nix { };
+        difit = final.callPackage ./pkgs/difit.nix { };
         md-photo-import = final.callPackage ./pkgs/md-photo-import.nix { };
         md-photo-pick = final.callPackage ./pkgs/md-photo-pick.nix { };
       };
