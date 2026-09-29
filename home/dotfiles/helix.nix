@@ -308,6 +308,10 @@ in
       editor.line-number = "relative";
       editor.rulers = [ 80 ];
       editor.soft-wrap.enable = false;
+      # Helix binds delete_word_backward to C-w and A-backspace only; left Alt
+      # is Hyper_L under sway (sway.nix customKeymap), so A-backspace needs
+      # right Alt. kitty's keyboard protocol reports C-backspace distinctly.
+      keys.insert."C-backspace" = "delete_word_backward";
       theme = "nightfox";
     };
   };
