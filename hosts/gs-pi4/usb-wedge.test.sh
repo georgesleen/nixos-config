@@ -10,6 +10,10 @@ trap 'rm -rf "$tmp"' EXIT
 
 printf 'nothing interesting here\n' > "$tmp/clean.log"
 printf 'xhci_hcd 0000:01:00.0: WARNING: Host System Error\n' > "$tmp/fault.log"
+printf 'BTRFS error (device dm-0 state EA): bdev /dev/mapper/backup errs: wr 12, rd 723293, flush 0, corrupt 0, gen 0\n' > "$tmp/fs-error.log"
+# A healthy mount logs BTRFS lines too, and a non-error state letter must not
+# match (`M` is the remounting flag).
+printf 'BTRFS info (device dm-0): first mount of filesystem 1234\nBTRFS warning (device dm-0 state M): something benign\n' > "$tmp/fs-ok.log"
 printf '9999.50 12345.00\n' > "$tmp/uptime-old"
 printf '42.10 99.00\n' > "$tmp/uptime-fresh"
 
@@ -35,6 +39,13 @@ check_eq "media timeout alone means reboot" "reboot media-timeout" \
 
 check_eq "both signals are reported together" "reboot host-error,media-eio" \
   "$(plan MEDIA_PROBE=eio KERN_LOG=$tmp/fault.log)"
+
+# The 2026-10-03 outage: drive re-enumerated, cached listing still worked.
+check_eq "btrfs error state means reboot even with an ok probe" "reboot fs-error" \
+  "$(plan MEDIA_PROBE=ok KERN_LOG=$tmp/fs-error.log)"
+
+check_eq "benign btrfs lines stay ok" "ok" \
+  "$(plan MEDIA_PROBE=ok KERN_LOG=$tmp/fs-ok.log)"
 
 # An unmounted path is maintenance, not broken hardware. Rebooting here would
 # fight whoever unmounted it.

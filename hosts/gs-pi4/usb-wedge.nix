@@ -17,9 +17,13 @@ let
       ]
     }
 
-    # Touching the mount is the probe; a listing is real I/O, not just a stat.
-    # `ls` of a healthy but empty tree exits 0, so that still reads as ok.
-    out=$(timeout 15 ls -1 /srv/media 2>&1)
+    # The probe is one O_DIRECT block read of the LUKS mapper, which has to
+    # reach the disk. It used to be `ls /srv/media`, and on 2026-10-03 the drive
+    # dropped off the bus and re-enumerated as sdb while the mapper still held
+    # the dead sda: btrfs logged 700k read errors for 10+ hours and that listing
+    # kept returning rc=0 from the dentry cache, so the guard never fired. A
+    # closed mapper (maintenance) still reads as `missing`.
+    out=$(timeout 15 dd if=/dev/mapper/backup of=/dev/null bs=4096 count=1 iflag=direct status=none 2>&1)
     case "$?" in
     0) probe=ok ;;
     124) probe=timeout ;;

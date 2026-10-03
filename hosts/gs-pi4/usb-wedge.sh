@@ -3,10 +3,14 @@
 # whether a recovery reboot is allowed right now. Prints a verdict as the first
 # word: `ok`, `reboot` or `hold`, followed by the reasons.
 #
-# Two signals mean wedged. A "Host System Error" from xhci_hcd is the
+# Three signals mean wedged. A "Host System Error" from xhci_hcd is the
 # authoritative one: the controller itself faulted, so every device behind it
-# is gone and a replug logs nothing at all. An `eio` or `timeout` probe of the
-# media mount is the second, which catches a wedge that never logged that line.
+# is gone and a replug logs nothing at all. A btrfs error state (`state E...`
+# in a BTRFS kernel line) is the second: the drive dropped and re-enumerated
+# under a new name while the mapper still holds the old one, and btrfs never
+# leaves that state without a remount (2026-10-03). The only btrfs on this box
+# is the media drive; root is the SD card. An `eio` or `timeout` probe of the
+# media device is the third, which catches a wedge that logged neither line.
 # `missing` is deliberately not a wedge: an unmounted or absent path means
 # maintenance or a lost automount race, not broken hardware.
 #
@@ -39,6 +43,11 @@ add_reason() { reasons="${reasons:+$reasons,}$1"; }
 if [ -n "$kern_log" ] && [ -r "$kern_log" ] &&
   grep -q "Host System Error" "$kern_log"; then
   add_reason host-error
+fi
+
+if [ -n "$kern_log" ] && [ -r "$kern_log" ] &&
+  grep -Eq 'BTRFS [a-z]+ \(device [^ ]+ state [A-Z]*E[A-Z]*\)' "$kern_log"; then
+  add_reason fs-error
 fi
 
 case "$probe" in

@@ -75,7 +75,7 @@ in
       "noatime"
       "nofail"
       "x-systemd.automount"
-      "x-systemd.device-timeout=30s"
+      "x-systemd.device-timeout=90s"
     ];
   };
   # "media" subvolume (btrfs quota-capped, see btrfs-media-layout below, so
@@ -90,9 +90,11 @@ in
       "nofail"
       # a not-yet-unlocked mapper device can lose the boot readiness race and
       # fail the hard mount, dropping the media stack. automount defers the
-      # mount to first access; device-timeout bounds the wait.
+      # mount to first access; device-timeout bounds the wait. 90s, not 30s:
+      # it must outlast cryptsetup-backup's own 60s wait for the USB disk to
+      # enumerate, or a slow enumeration fails every media unit on boot.
       "x-systemd.automount"
-      "x-systemd.device-timeout=30s"
+      "x-systemd.device-timeout=90s"
     ];
   };
   # .state (SQLite DBs for the arrs/jellyfin/seerr) lived inside the "media"
@@ -111,7 +113,7 @@ in
       "compress=zstd:1"
       "nofail"
       "x-systemd.automount"
-      "x-systemd.device-timeout=30s"
+      "x-systemd.device-timeout=90s"
     ];
   };
   # Immich's photo/video library. Own sibling subvolume (not "media"): photos
@@ -126,7 +128,7 @@ in
       "compress=zstd:1"
       "nofail"
       "x-systemd.automount"
-      "x-systemd.device-timeout=30s"
+      "x-systemd.device-timeout=90s"
     ];
   };
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
@@ -277,22 +279,43 @@ in
       };
       wantedBy = [ "multi-user.target" ];
     };
-  # No `before` on the mounts: this is an ordinary service, so it implicitly
-  # follows basic.target, and ordering it ahead of a local-fs mount closes a loop
-  # through sysinit.target. The automounts already tolerate a late unlock.
-  # Requires the device unit, or it runs before USB enumeration and fails with
-  # "Device ... does not exist".
+  # Early-boot unit (DefaultDependencies off), so the mapper exists before
+  # anything waits on it. As an ordinary service it implicitly followed
+  # basic.target, and that deadlocked every boot until 2026-10-03: the
+  # .state/immich automounts nest under /srv/media, so systemd gives them
+  # Requires=srv-media.mount, and they sit Before=local-fs.target. Boot thus
+  # waited on /dev/mapper/backup to reach local-fs.target, while the only unit
+  # that creates it waited on basic.target, which is after local-fs.target. The
+  # 30s device timeout broke the deadlock by failing every media unit
+  # ("Dependency failed for /srv/media", podman containers, Jellyfin, Seerr),
+  # and the arrs, which started anyway, opened the empty directory under the
+  # not-yet-mounted /srv/media/.state: their APIs then reported 0 of Radarr's 59
+  # custom formats, so recyclarr re-created them and failed every run on
+  # `409 UNIQUE constraint failed: CustomFormats.Name`.
+  #
+  # Still no `before` on any mount, which would close the sysinit cycle
+  # described in CLAUDE.md. Nothing orders against this unit; the mount
+  # simply finds its device present. Its inputs are all up by then: the sops
+  # secret is installed during initrd activation, and udevd is ordered below.
+  # Waits for the disk itself rather than Requires= on the device unit: the
+  # USB drive can take tens of seconds to enumerate, and a Requires= fails the
+  # job the moment systemd finds the unit dead instead of waiting.
   systemd.services.cryptsetup-backup = {
-    after = [ backupDeviceUnit ];
-    before = [ "btrfs-media-layout.service" ];
+    after = [
+      backupDeviceUnit
+      "systemd-udevd.service"
+      "systemd-udev-trigger.service"
+    ];
+    before = [
+      "btrfs-media-layout.service"
+      "shutdown.target"
+    ];
+    conflicts = [ "shutdown.target" ];
     description = "Unlock the encrypted backup/media drive";
     path = [
       pkgs.cryptsetup
       pkgs.systemd
     ];
-    # Waits rather than Requires= on the device unit: this USB drive can take
-    # tens of seconds to enumerate, and a Requires= fails the job the moment
-    # systemd finds the unit dead instead of waiting.
     script = ''
       if [ -e /dev/mapper/backup ]; then
         exit 0
@@ -314,6 +337,7 @@ in
       RemainAfterExit = true;
       Type = "oneshot";
     };
+    unitConfig.DefaultDependencies = false;
     wantedBy = [ "multi-user.target" ];
   };
   # Keep the admin plane alive under pressure. During the 2026-09-20 event
