@@ -9,7 +9,6 @@
 
 {
   boot.kernelParams = lib.mkAfter [
-    "pcie_aspm=force"
     # Panel Self Refresh + framebuffer compression: cut idle GPU/display
     # power on the internal panel. Watch for flicker; disable if it appears.
     "i915.enable_psr=1"
@@ -47,11 +46,6 @@
       # tpacpi_wwan_sw at boot. BIOS Security -> I/O Port Access -> Wireless
       # WAN -> Disabled removes it entirely (optional manual step).
       DEVICES_TO_DISABLE_ON_STARTUP = "wwan";
-      PCIE_ASPM_ON_AC = "performance";
-      # pcie_aspm=force enables ASPM at the link level, but the policy
-      # governor stays "default" without this — drive it to the deepest
-      # state on battery.
-      PCIE_ASPM_ON_BAT = "powersupersave";
       RUNTIME_PM_ON_AC = "on";
       RUNTIME_PM_ON_BAT = "auto";
       # TLP is the single owner of the charge limit; see the upower

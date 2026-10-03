@@ -28,10 +28,11 @@ tb() { mkdir -p "$tmp/$1/tb/$2"; printf '%s\n' "$3" > "$tmp/$1/tb/$2/authorized"
 # drm <tree> <connector> <status>
 drm() { mkdir -p "$tmp/$1/drm/card1/card1-$2"; printf '%s\n' "$3" > "$tmp/$1/drm/card1/card1-$2/status"; }
 
+# decide <tree> [mode]
 decide() {
   LID_STATE="$tmp/$1/lid" TB_DEVICES="$tmp/$1/tb" DRM_DIR="$tmp/$1/drm" \
     AC_ONLINE="$tmp/$1/power/online" \
-    BOOTED_SYSTEM="$tmp/$1/booted" CURRENT_SYSTEM="$tmp/$1/current" sh "$script"
+    BOOTED_SYSTEM="$tmp/$1/booted" CURRENT_SYSTEM="$tmp/$1/current" sh "$script" ${2+"$2"}
 }
 
 # An open lid must never trigger anything, whatever else is true.
@@ -108,5 +109,14 @@ check_eq "dock after a rebuild since boot stays awake" "stay-awake" "$(decide re
 mktree nobooted closed 0
 rm "$tmp/nobooted/booted"
 check_eq "unknown booted system keeps suspend-then-hibernate" "suspend-then-hibernate" "$(decide nobooted)"
+
+# recheck: the display or power changed (or the machine resumed) with the lid
+# already shut. AC stays awake; only battery sleeps.
+check_eq "recheck on AC with nothing attached stays awake" "stay-awake" "$(decide ac recheck)"
+check_eq "lid mode is the default: closed on AC still suspends" "suspend" "$(decide ac)"
+check_eq "recheck on battery suspends then hibernates" "suspend-then-hibernate" "$(decide batt recheck)"
+check_eq "recheck on battery after a rebuild suspends" "suspend" "$(decide rebatt recheck)"
+check_eq "recheck with an external display on battery stays awake" "stay-awake" "$(decide dpdock recheck)"
+check_eq "recheck with the lid open does nothing" "none" "$(decide open recheck)"
 
 finish

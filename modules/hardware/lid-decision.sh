@@ -2,10 +2,17 @@
 # Decides what a closed lid should do, and prints exactly one of:
 #
 #   none                    lid is not closed, or state is unreadable
-#   stay-awake              docked (authorized Thunderbolt, or external display)
+#   stay-awake              docked (authorized Thunderbolt, or external display),
+#                           or in `recheck` mode on AC
 #   suspend                 on AC, or on battery after a rebuild since boot
 #                           (hibernate would not resume)
 #   suspend-then-hibernate  on battery
+#
+# Argument: mode, `lid` (default) or `recheck`.
+#   lid      the lid was just closed: nothing attached means sleep, AC or not.
+#   recheck  a display/power/resume event with the lid already closed: the
+#            display went away (or the machine woke) behind a shut lid, so on
+#            AC it stays awake and only battery goes to sleep.
 #
 # Split out of lid-sleep-action so the branch is testable against fixture
 # trees; the caller does the acting. Overrides, used by the tests:
@@ -74,9 +81,13 @@ rebuilt_since_boot() {
   ! [ "$booted_system" -ef "$current_system" ]
 }
 
+mode="${1:-lid}"
+
 if ! lid_closed; then
   echo none
 elif tb_docked || display_docked; then
+  echo stay-awake
+elif [ "$mode" = recheck ] && on_ac; then
   echo stay-awake
 elif on_ac || rebuilt_since_boot; then
   echo suspend

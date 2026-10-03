@@ -175,6 +175,7 @@ let
     profile = {
       exec = [
         "${allToInternalScript}"
+        "${lidReconcileScript}"
         wallpaperRefresh
         barRefresh
       ];

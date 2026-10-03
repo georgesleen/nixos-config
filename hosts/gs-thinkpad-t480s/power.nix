@@ -1,9 +1,8 @@
 {
   config,
-  pkgs,
   lib,
-  lidSleepAction,
-  pcieWakeupEnable,
+  lidSleepArm,
+  pkgs,
   ...
 }:
 
@@ -14,18 +13,16 @@ in
   # Hibernate resume; kernel cmdline `resume=` is derived automatically.
   boot.resumeDevice = resumeSwap;
 
-  # Re-arm PCIe root port wakeup disarmed before sleep, so the Thunderbolt dock
-  # can hotplug while awake. Then, on a lid-closed resume the lid switch never
-  # fired, so re-run the sleep decision to go straight back to sleep; catches
-  # a self-wake from hibernate that would otherwise leave the machine awake
-  # and draining. Otherwise refresh DNS and Wi-Fi after a real wake.
+  # Every resume is a hotplug event for the lid-sleep settle window: the dock
+  # re-attaches USB and DisplayPort for up to ~19 s after an S3 resume. A
+  # lid-closed wake therefore gets a settled `recheck` decision rather than an
+  # immediate re-sleep: AC stays awake, and a genuine battery self-wake goes
+  # back to sleep 30 s after the last event (modules/hardware/thinkpad.nix).
+  # No `exec`: the generated script is `set -e` and the DNS/Wi-Fi refresh
+  # below must run on every resume.
   powerManagement.resumeCommands = ''
-    ${pcieWakeupEnable}
-    if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
-      exec ${lidSleepAction}
-    fi
+    ${lidSleepArm} hotplug
     ${pkgs.systemd}/bin/systemctl try-restart dnscrypt-proxy.service
     ${pkgs.systemd}/bin/systemctl try-restart NetworkManager.service
-    ${pkgs.systemd}/bin/systemctl --no-block start tb-recover.service
   '';
 }

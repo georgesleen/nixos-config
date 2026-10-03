@@ -1,19 +1,34 @@
 # T480s power and sleep
 
-State as of 2026-09-24. Config lives in `modules/hardware/thinkpad.nix`
+State as of 2026-09-27. Config lives in `modules/hardware/thinkpad.nix`
 (lid handler, wake policy, sleep.conf), `modules/features/laptop-power.nix`
 (TLP, power profiles, charge thresholds) and `hosts/gs-thinkpad-t480s/power.nix`
 (resume hooks). One-liners for each workaround are in `CLAUDE.md`.
 
 ## Lid-close decision tree
 
-Handled by `lidSleepAction`, debounced 3 s via acpid (logind lid handling is
-disabled). In order:
+Handled by the `lid-sleep` service (`lidSleepAction`), started through
+`lidSleepArm` by acpid on a lid event, by udev on a DRM hotplug or `AC`
+change, and by `resumeCommands` on every resume. logind lid handling is
+disabled. Two modes:
 
-1. **Docked** (authorized Thunderbolt device, or any non-eDP DRM connector
+- **`lid`** (the lid was just closed): 3 s false-close debounce.
+- **`recheck`** (display/power/resume event with the lid already shut).
+
+Both then wait for the dock to settle: 30 s with no display, power or resume
+event (`/run/lid-sleep/hotplug` mtime; each new event pushes it out). Opening
+the lid stops a pending run; closing it restarts in `lid` mode. Every decision
+is logged: `journalctl -u lid-sleep -b` shows `lid-sleep: mode=… decision=…`.
+The decision (`modules/hardware/lid-decision.sh`), in order:
+
+1. **Lid open:** nothing.
+2. **Docked** (authorized Thunderbolt device, or any non-eDP DRM connector
    reporting `connected`): stay awake, treat as desktop.
-2. **On AC:** plain suspend (S3).
-3. **On battery:** `suspend-then-hibernate`; S3 for 30 minutes
+3. **`recheck` on AC:** stay awake. The display went away behind a shut lid
+   (or the machine woke); George's policy is to stay up on AC and sleep only
+   on battery.
+4. **On AC:** plain suspend (S3).
+5. **On battery:** `suspend-then-hibernate`; S3 for 30 minutes
    (`HibernateDelaySec=30min`), then an RTC wake fires and the machine
    hibernates to swap (S4). Unless the system was switched since boot
    (`/run/booted-system` ≠ `/nix/var/nix/profiles/system`): then plain S3,
@@ -22,6 +37,20 @@ disabled). In order:
 The delay is set explicitly on purpose: without it systemd estimates the
 hibernate point from the battery gauge, and this pack's gauge over-reports
 (below).
+
+Why the settle window: after every S3 resume the dock re-attaches USB and
+DisplayPort (see AV Access iDock KVM below), so `DP-3` is absent for 1–19 s.
+The old resume hook decided immediately and re-suspended a docked machine
+(2026-08-31 20:17:44, 09-12 23:52:42, 09-13 22:49:59, 09-27 21:16:21, each
+followed seconds later by kanshi applying `extend`), and the old 3 s lid
+debounce did the same when the lid closed 5 s into that bounce (09-27
+21:16:48). Nothing re-evaluated a closed lid when the display left, so on
+09-26 23:45 an unplugged HDMI left the laptop awake on battery until the
+critical-battery hibernate at 05:27; the udev triggers close that gap.
+
+With the lid shut and the laptop awake undocked, kanshi's `undocked` profile
+runs `lidReconcileScript` so `eDP-1` stays off; sway's `bindswitch lid:off`
+turns it on when the lid opens.
 
 ## Power profiles
 
@@ -35,8 +64,18 @@ power-profiles-daemon D-Bus API. Each profile is one set of TLP parameters:
 | power-saver | `_SAV` (falls back to `_BAT`) | `power` | off |
 
 Balanced lets HWP decide: turbo stays available and the CPU ramps up under
-load by itself. Power-saver is the pre-2026-09 battery policy. ASPM, runtime
-PM and Wi-Fi have no `_SAV` values, so power-saver inherits the battery ones.
+load by itself. Power-saver is the pre-2026-09 battery policy. Runtime PM and
+Wi-Fi have no `_SAV` values, so power-saver inherits the battery ones.
+
+ASPM is left to the BIOS: no `pcie_aspm=force`, no TLP `PCIE_ASPM_*`. The
+FADT opts out of OS-controlled ASPM (`FADT indicates ASPM is unsupported,
+using BIOS configuration`), so TLP cannot drive the policy, and forcing it put
+L0s/L1 on the NHI and Alpine Ridge xHCI links, which Ubuntu and Windows leave
+alone. Removed 2026-09-27 as a suspect [inference, unproven] in the
+post-resume `Timeout while waiting for setup device command` retries
+(baseline: 4 in the boot before, 28 in boot -4). If idle battery draw rises
+unacceptably and those timeouts are unchanged, re-adding it is independent of
+everything else.
 
 `TLP_AUTO_SWITCH=1` selects performance on AC and balanced on battery at every
 plug/unplug, boot, resume and `tlp start`. Switch by hand with a click on the
@@ -74,12 +113,34 @@ removes it entirely.
 - Only **LID** wakes from S4. `SLPB` (power button) is S3-only and there is no
   `PWRB` in the wake table: a hibernated laptop wakes by opening the lid only,
   plugging the dock does nothing.
-- PCIe/Thunderbolt root-port wakeup is disarmed just before sleep
-  (`disarm-pcie-wakeup`) and re-armed on resume; armed ports self-wake from S4
-  and drain the battery flat. Verified holding through real S4 on 2026-07-11
-  (11 h) and 2026-07-13 (100 min), zero self-wakes.
-- A lid-closed resume re-runs `lidSleepAction` as a backstop
-  (`resumeCommands`), so a stray self-wake goes straight back to sleep.
+- PCIe/Thunderbolt root-port wakeup is disarmed only for hibernation
+  (`disarm-pcie-wakeup`, wanted by `hibernate`, `hybrid-sleep` and
+  `suspend-then-hibernate` targets); armed ports self-wake from S4 and drain
+  the battery flat. Verified holding through real S4 on 2026-07-11 (11 h) and
+  2026-07-13 (100 min), zero self-wakes. Each port's prior value is saved and
+  restored when `sleep.target` stops on resume (bridges `05:00.0` and
+  `05:02.0` default to `disabled`; the old blanket re-arm to `enabled`
+  overwrote them). Plain S3 keeps the ports armed, so a dock keyboard can wake
+  it; self-wakes were never observed from S3.
+- A lid-closed resume gets a settled `recheck` decision: AC stays awake, a
+  battery self-wake goes back to sleep 30 s after the last event.
+
+## AV Access iDock KVM
+
+Carries the Lenovo S27i-30 on MST `DP-3`, the Keychron keyboards, RTL8153
+ethernet and USB-PD power. Observed 2026-09-27 (journal back to 2026-08-01):
+
+- Every S3 resume logs `xhci_hcd 0000:3c:00.0: xHC error in resume, USBSTS
+  0x401, Reinit`: the Alpine Ridge chip loses state and the dock re-attaches
+  USB and DP. Firmware behaviour, not configurable. Expect one display blink
+  after a resume; kanshi can go extend → undocked → extend (09-25
+  21:03:46–21:04:03), and USB enumeration can retry with `Timeout while
+  waiting for setup device command` (keyboard 27 s late on 09-25).
+- A KVM switch-away is clean: only the `3-1.1` / `4-1.1` USB subtree leaves
+  and returns (keyboard back in ~2 s), with no DRM uevent and no `AC` change,
+  so `DP-3` stays `connected` and lid-sleep does not run.
+- BIOS: `ThunderboltBIOSAssistMode=Disable` (native mode, as Windows 10
+  1709+), `WakeByThunderbolt=Enable`.
 
 ## The battery gauge lies
 
@@ -153,9 +214,12 @@ Consequences and handling:
   `diff <(journalctl -b -1 -k | grep BIOS-e820) <(journalctl -b 0 -k | grep BIOS-e820)`.
 - A rebuild between hibernate and resume causes a different, kernel-version
   image rejection.
-- If the Thunderbolt dock is dead after a resume, `tb-recover` runs
-  automatically; see `CLAUDE.md` for the manual sequence (unplug, rerun,
-  replug).
+- `tb-recover` (a Thunderbolt wedge detector and power-cycler) was removed
+  2026-09-27. It last detected a wedge on 2026-07-08, before the NHI
+  `power/control=on` hold; all 6 attempts logged `recovery failed, reboot
+  required`, and it did nothing across hundreds of resumes since. The udev
+  holds are what stopped the wedge. A dead Thunderbolt controller needs a
+  reboot.
 
 ## TPM-off test (George, manual)
 
@@ -181,13 +245,12 @@ suspend → 11:37:28 hibernate).
 
 Sleep policy, wake sources, and the battery-gauge issue: runbook in `docs/t480s-power.md`.
 
-- `modules/hardware/thinkpad.nix` lidEventCommands: the dock check skips `*-0` Thunderbolt entries (route 0 is the host controller, always authorized=1; without the skip every lid close looked docked and the laptop never slept). Second check is "any non-eDP DRM connector is `connected`": a plain USB-C dock (Lenovo 40AY) enumerates no Thunderbolt device at all, so the TB check alone called it undocked and the resume reconcile in power.nix re-slept the machine on every dock-button wake. Replaced a hardcoded HP-dock USB VID/PID list, which went stale when the dock changed.
-- `modules/hardware/thinkpad.nix` `disarm-pcie-wakeup`: pcieport wakeup is disarmed only just before sleep (armed ports self-wake S4 and drain the battery flat) and re-armed on resume; an always-on disable kills Thunderbolt dock hotplug. Only LID wakes from S4 (`SLPB` is S3-only, no `PWRB` in the wake table).
+- `modules/hardware/lid-decision.sh`: the dock check skips `*-0` Thunderbolt entries (route 0 is the host controller, always authorized=1; without the skip every lid close looked docked and the laptop never slept). Second check is "any non-eDP DRM connector is `connected`": a plain USB-C dock (Lenovo 40AY) enumerates no Thunderbolt device at all, so the TB check alone called it undocked. Replaced a hardcoded HP-dock USB VID/PID list, which went stale when the dock changed.
+- `modules/hardware/thinkpad.nix` `lid-sleep` / `lidSleepArm`: one settle-aware service replaces both the 3 s `lid-suspend-debounce` timer and the resume-time re-sleep, which judged a docked machine undocked during the post-resume dock bounce (see Lid-close decision tree).
+- `modules/hardware/thinkpad.nix` `disarm-pcie-wakeup`: pcieport wakeup is disarmed for hibernation only (armed ports self-wake S4 and drain the battery flat) and each port's prior value is restored on resume; an always-on disable kills Thunderbolt dock hotplug. Only LID wakes from S4 (`SLPB` is S3-only, no `PWRB` in the wake table).
 - `modules/hardware/thinkpad.nix` udev + `RUNTIME_PM_DRIVER_DENYLIST`: the Thunderbolt NHI is held at `power/control=on` permanently; any runtime-resume from deep D3cold (hibernate freeze phase, or a plain `power/control` write after sitting undocked, hit 2026-07-07) trips the kernel `nhi.c` "RX ring already enabled" bug, hangs the ICM, and drops the controller off the PCI bus (dock dead, replug invisible). udev matches driver `bind`, not device `add`: nhi_probe's own `pm_runtime_allow()` would overwrite an add-time hold whenever probe runs after udev (boot). The TLP denylist adds `thunderbolt` or `RUNTIME_PM_ON_BAT=auto` would undo the hold on battery. Replaced the older pre-sleep-only hold, which itself wedged the ICM when the NHI was already suspended.
 - `modules/hardware/thinkpad.nix` udev `8086:15c1` hold: the Alpine Ridge xHCI (`0000:3c:00.0`) is pinned at `power/control=on` too. It is the other function of the same JHL6240 chip and the only USB path the USB-C dock has, but it is bound to `xhci_hcd`, so the `DRIVER=="thunderbolt"` rule above never covered it and it sat at `auto`. Left there it drops to D3cold while undocked and can fail the runtime-resume a dock plug needs, with no log line at all; DP alt mode is muxed inside Alpine Ridge and needs no awake PCI function, so the monitor comes up while every dock USB device (ethernet, keyboard, mouse) stays invisible. Seen 2026-08-16 22:39 (plug after 78 min undocked, `extend` profile applied, zero USB enumeration on any bus) and as `xHC error in resume, USBSTS 0x401, Reinit` on an S3 resume at 14:04 the same day. Matched on PCI ID because a bare `DRIVER=="xhci_hcd"` would also pin the PCH controller at `00:14.0`. The TLP denylist does not do this job: it only stops TLP managing the driver, leaving the kernel default of `auto`. Matches `add|bind`, not `bind` alone like the NHI rule: xhci_hcd is in the initrd and binds at ~2s, while the real udevd and this rules file only start at ~5.6s, so the bind event is seen only by the initrd's minimal ruleset and lost; `systemd-udev-trigger` replays `add` and never `bind`, so `add` is what fires at boot, and it lands long after probe so `pm_runtime_allow()` cannot overwrite it. Shipping `bind` only left the hold silently inactive across every reboot.
 - **Dock SuperSpeed recovery was removed 2026-08-25**; do not rebuild it. The dock's SuperSpeed bus still intermittently comes up dead (USB2 enumerates in full, bus 4 stays empty, so the RTL8153 ethernet never appears). The `dock-ss-recover` oneshot tried a `usb4-port1/disable` power cycle and then a full `tb-power-cycle`, and it did not earn its complexity: it failed both attempts on 2026-08-25, and the one time it appeared to work (2026-08-18) a dock cold boot between attempts did the real work. **The recovery is manual: pull the dock's AC brick and its USB-C cable, wait 60s, reconnect power first and then USB-C.** That resets the dock's internal VIA USB3.1 hub, which is the half the host cannot reach. `Link=RxDetect` with no `CCS` on both SS ports looks like a dead physical link but is not one. Do NOT try a bare `xhci_hcd` unbind/rebind: the rebind times out and strands the controller with no USB at all (hit 2026-08-17). Root cause is the Alpine Ridge LP host controller, not the dock or its firmware: fwupd confirmed 2026-08-25 that the dock (DMC 3.3.0.1746) and the host Thunderbolt NVM (23.00) are both at their latest published versions.
-- `modules/hardware/thinkpad.nix` `tb-recover`: boot/resume oneshot; if the TB bridges are on PCI without the NHI (or the NHI is present with an empty domain), removes the stale controller functions, power-cycles via the intel-wmi-thunderbolt `force_power` knob (10s off dwell; 2s was not enough for a hung ICM), and rescans PCI. Stale-function removal matters: rescan alone re-reads the dead bridges and finds the NHI bus empty. A plugged dock can hold the chip powered through the cycle; if recovery fails, unplug the dock, rerun, replug.
-- `hosts/gs-thinkpad-t480s/power.nix` resumeCommands: re-arms pcieport wakeup, then on a lid-closed wake re-runs `lidSleepAction` (backstop for self-wakes; can't loop, lid open falls through), else refreshes DNS/network and pokes `tb-recover`.
 - `modules/hardware/thinkpad.nix` `HibernateDelaySec=30min`: set explicitly so suspend-then-hibernate uses a fixed delay instead of systemd's battery-estimate mode; the pack's fuel gauge (01AV478, LCC aftermarket cells) over-reports roughly 2x while discharging, so any gauge-based estimate hibernates far too late. The "5% at every hibernate resume" complaint was this gauge re-anchoring at power-on, not S4 drain (voltage flat across hibernates 2026-07-11 and 2026-07-13).
 - Hibernate resume rejects the image (`Image mismatch: architecture specific data`) whenever the firmware e820 map changes between the hibernate and the resume, which a `nixos-rebuild` in between usually causes. The moving piece is the UEFI TCG event log, a 44 KiB ACPI-data reservation whose base equals the `TPMEventLog=` address in the kernel's `efi:` line (0x634b3000, 0x634af000, 0x6349b000, 0x63489000 across boots 2026-08-18 to 2026-09-12), which shifts the adjacent System RAM boundaries in the firmware e820 table. `arch_hibernation_header_restore` compares `compute_e820_crc32(e820_table_firmware)` unconditionally, so there is no bypass: no kernel parameter, no config option. Over 43 boots, every consecutive pair with no rebuild between them had an identical map (10 of 10) and 30 of 33 pairs with a rebuild had a changed one, and all 32 failed resumes in that window had a rebuild straddling them. A clean cycle was finally demonstrated 2026-09-12: hibernated 22:28, resumed 23:52 with the session intact. Docked and undocked alike; the earlier "resume in the same dock state" rule was wrong. A critical-battery hibernate after a build day is still in practice a clean shutdown. Distinct from the kernel-version mismatch a rebuild-then-resume also causes.
 

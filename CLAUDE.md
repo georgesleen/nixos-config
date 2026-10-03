@@ -107,7 +107,7 @@ Current suites: `arr-season-plan`, `av-step`, `battery-level`,
 `gpu-busy`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
 `library-guard`, `lid-decision`, `media-free`, `media-health`,
 `pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
-`systemd-order-cycles`, `tb-state`, `ts-route`, `usb-wedge`, `waybar-fmt`,
+`systemd-order-cycles`, `ts-route`, `usb-wedge`, `waybar-fmt`,
 `win11-forward`, `workspace-plan`.
 
 ## Workarounds
@@ -133,7 +133,7 @@ One-liners: file, what, and why. Full detail lives in comments at the referenced
 
 Sleep policy, wake sources, the battery-gauge issue, and every power/dock/
 Thunderbolt workaround (pcieport wake disarm, the NHI and xHCI runtime-PM
-holds, `tb-recover`, the dead SuperSpeed recovery, hibernate resume):
+holds, the lid-sleep settle window, the dead SuperSpeed recovery, hibernate resume):
 `docs/t480s-power.md`. Read it before touching `modules/hardware/thinkpad.nix`
 or `hosts/gs-thinkpad-t480s/power.nix`.
 

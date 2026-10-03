@@ -8,17 +8,34 @@ let
   # tests run by `make test`.
   lidDecision = pkgs.writeShellScript "lid-decision" (builtins.readFile ./lid-decision.sh);
 
-  # Act on that decision. On AC: plain S3. On battery: S3 first, then hibernate
-  # via RTC wake after HibernateDelaySec (sleep.conf below); fast resume when
-  # the lid reopens soon, S4 when it doesn't. An older revision jumped straight
-  # to S4 out of distrust of the firmware RTC wake on battery; unverified,
-  # retested with systemd 260 as of 2026-07-13. --no-block so callers running
-  # inside the resume transition don't block sleep.target. After a rebuild
-  # since boot, battery also gets plain S3, because resume would reject the
-  # hibernation image (docs/t480s-power.md). Shared by the acpid lid handler
-  # (debounced) and the resume reconcile in the host's power.nix.
+  # Act on that decision, as the lid-sleep service below. On AC: plain S3. On
+  # battery: S3 first, then hibernate via RTC wake after HibernateDelaySec
+  # (sleep.conf below); fast resume when the lid reopens soon, S4 when it
+  # doesn't. --no-block so the service returns at once. After a rebuild since
+  # boot, battery also gets plain S3, because resume would reject the
+  # hibernation image (docs/t480s-power.md).
+  #
+  # Before deciding it waits for the dock to settle: 30 s with no display,
+  # power or resume event (the `hotplug` stamp lidSleepArm touches). After
+  # every S3 resume the Alpine Ridge xHCI reinitialises and the iDock
+  # re-attaches USB and DisplayPort, so DP-3 is absent for 1-19 s (19 s worst
+  # measured, 2026-09-25). Deciding inside that window judged a docked machine
+  # undocked and suspended it again (2026-08-31, 09-12, 09-13, 09-27). `lid`
+  # mode keeps the 3 s magnetic false-close debounce on top.
   lidSleepAction = pkgs.writeShellScript "lid-sleep-action" ''
-    case "$(${lidDecision})" in
+    stamp=/run/lid-sleep/hotplug
+    mode=$(${pkgs.coreutils}/bin/cat /run/lid-sleep/mode 2>/dev/null)
+    [ -n "$mode" ] || mode=lid
+    [ "$mode" = lid ] && ${pkgs.coreutils}/bin/sleep 3
+    while :; do
+      last=$(${pkgs.coreutils}/bin/stat -c %Y "$stamp" 2>/dev/null || echo 0)
+      wait=$((last + 30 - $(${pkgs.coreutils}/bin/date +%s)))
+      [ "$wait" -gt 0 ] || break
+      ${pkgs.coreutils}/bin/sleep "$wait"
+    done
+    d=$(${lidDecision} "$mode")
+    echo "lid-sleep: mode=$mode decision=$d"
+    case "$d" in
       suspend)
         exec ${pkgs.systemd}/bin/systemctl --no-block suspend
         ;;
@@ -31,65 +48,59 @@ let
     esac
   '';
 
-  # Hard reset of the whole Alpine Ridge chip: drop its PCI functions (a rescan
-  # alone re-reads the dead bridges and finds the NHI bus empty), cut power at
-  # the intel-wmi-thunderbolt force_power knob for a long off dwell (2s failed
-  # to reset a hung ICM; 10s recovered it), rescan, then release force_power so
-  # the firmware can power-gate the controller when idle. A plugged-in dock can
-  # hold the chip powered through the cycle. It is the only thing that resets
-  # this controller; a bare xhci_hcd unbind/rebind is not a substitute (the
-  # rebind times out).
-  tbPowerCycle = pkgs.writeShellScript "tb-power-cycle" ''
-    fp=$(echo /sys/bus/wmi/devices/86CCFD48-205E-4A77-9C48-2021CBEDE341*/force_power)
-    [ -e "$fp" ] || exit 1
-    for d in /sys/bus/pci/devices/*; do
-      [ "$(${pkgs.coreutils}/bin/cat "$d/vendor" 2>/dev/null)" = "0x8086" ] || continue
-      case "$(${pkgs.coreutils}/bin/cat "$d/device" 2>/dev/null)" in
-        0x15c0 | 0x15bf | 0x15c1) echo 1 > "$d/remove" 2>/dev/null ;;
-      esac
+  # Entry point for every trigger. `lid` (acpid, open and close): a close
+  # (re)starts lid-sleep in lid mode, replacing any pending recheck; an open
+  # cancels whatever is pending. `hotplug` (drm/AC uevents, resume): refresh
+  # the settle stamp, and with the lid shut start a recheck unless lid-sleep
+  # is already pending, since a running instance re-reads the stamp and a
+  # pending lid-mode run must keep its lid policy.
+  lidSleepArm = pkgs.writeShellScript "lid-sleep-arm" ''
+    systemctl=${pkgs.systemd}/bin/systemctl
+    closed() { ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; }
+    case "$1" in
+      lid)
+        if closed; then
+          echo lid > /run/lid-sleep/mode
+          exec $systemctl --no-block restart lid-sleep.service
+        fi
+        exec $systemctl --no-block stop lid-sleep.service
+        ;;
+      hotplug)
+        ${pkgs.coreutils}/bin/touch /run/lid-sleep/hotplug
+        closed || exit 0
+        # `failed` counts as idle, or one failed run would block every recheck.
+        case "$($systemctl show -P ActiveState lid-sleep.service)" in
+          inactive | failed) ;;
+          *) exit 0 ;;
+        esac
+        echo recheck > /run/lid-sleep/mode
+        exec $systemctl --no-block start lid-sleep.service
+        ;;
+    esac
+  '';
+
+  # Disarm wake on every PCIe root port before hibernation, saving each
+  # port's prior value so the restore puts back exactly what was there
+  # (bridges 05:00.0 and 05:02.0 default to `disabled`, which a blanket
+  # re-arm to `enabled` used to overwrite).
+  pcieWakeupDisarm = pkgs.writeShellScript "pcie-wakeup-disarm" ''
+    saved="$RUNTIME_DIRECTORY/saved"
+    : > "$saved"
+    for w in /sys/bus/pci/drivers/pcieport/*/power/wakeup; do
+      [ -e "$w" ] || continue
+      echo "$w $(${pkgs.coreutils}/bin/cat "$w")" >> "$saved"
+      echo disabled > "$w"
     done
-    ${pkgs.coreutils}/bin/sleep 2
-    echo 0 > "$fp"; ${pkgs.coreutils}/bin/sleep 10
-    echo 1 > "$fp"; ${pkgs.coreutils}/bin/sleep 5
-    echo 1 > /sys/bus/pci/rescan; ${pkgs.coreutils}/bin/sleep 3
-    echo 0 > "$fp"
   '';
 
-  # Detect and recover a wedged Thunderbolt controller. A hung ICM (e.g. the
-  # hibernate freeze bug above slipping through) leaves the bridge functions
-  # (8086:15c0) on the PCI bus with the NHI (8086:15bf) gone, or the NHI
-  # present with an empty thunderbolt domain; either way hotplug is invisible
-  # and replugging the dock does nothing. If recovery fails, unplug the dock,
-  # rerun, and replug.
-  # Wedge detection, kept in its own file so it is testable against fixture
-  # sysfs trees; tests run by `make test`.
-  tbState = pkgs.writeShellScript "tb-state" (builtins.readFile ./tb-state.sh);
-
-  tbRecover = pkgs.writeShellScript "tb-recover" ''
-    fp=$(echo /sys/bus/wmi/devices/86CCFD48-205E-4A77-9C48-2021CBEDE341*/force_power)
-    [ -e "$fp" ] || exit 0
-
-    # Let boot/resume enumeration settle before judging.
-    ${pkgs.coreutils}/bin/sleep 5
-
-    [ "$(${tbState})" = wedged ] || exit 0
-
-    echo "wedged Thunderbolt controller detected, power cycling"
-    ${tbPowerCycle}
-    ${tbState} domain-up && echo "thunderbolt domain recovered" ||
-      echo "recovery failed; unplug the dock, restart tb-recover, replug (else reboot)"
+  pcieWakeupRestore = pkgs.writeShellScript "pcie-wakeup-restore" ''
+    saved="$RUNTIME_DIRECTORY/saved"
+    [ -e "$saved" ] || exit 0
+    while read -r w v; do
+      [ -e "$w" ] && echo "$v" > "$w"
+    done < "$saved"
+    exit 0
   '';
-
-  # Set wakeup policy on every PCIe/Thunderbolt root port. `disabled` before
-  # sleep so only LID wakes from S4; `enabled` on resume so the dock can signal
-  # Thunderbolt hotplug while the machine is awake.
-  pcieWakeup =
-    state:
-    pkgs.writeShellScript "pcie-wakeup-${state}" ''
-      for w in /sys/bus/pci/drivers/pcieport/*/power/wakeup; do
-        [ -e "$w" ] && echo ${state} > "$w"
-      done
-    '';
 
   # Backstop for a wedged Embedded Controller during a sleep transition. When
   # the EC stops answering, the kernel busy-polls it (`ec_guard`, task state R,
@@ -115,35 +126,24 @@ let
   '';
 in
 {
-  # Shared with hosts/gs-thinkpad-t480s/power.nix resume reconcile.
-  _module.args.lidSleepAction = lidSleepAction;
-  _module.args.pcieWakeupEnable = pcieWakeup "enabled";
+  # Shared with hosts/gs-thinkpad-t480s/power.nix resumeCommands.
+  _module.args.lidSleepArm = lidSleepArm;
   environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
   # Intel Gen9.5 (UHD 620) VAAPI driver so hardware video decode works
   # (e.g. Moonlight). Without iHD, libva finds no Intel driver under
   # /run/opengl-driver and apps fall back to CPU decode. hardware.graphics
   # itself is enabled in modules/virtualization.nix.
   hardware.graphics.extraPackages = [ pkgs.intel-media-driver ];
-  # Debounced lid handler — cancels and re-arms a 3-second timer on every
-  # lid event so a brief magnetic false-close gets ignored.
+  # Every lid event goes through lidSleepArm, which branches on the lid state.
   services.acpid = {
     enable = true;
-    lidEventCommands = ''
-      ${pkgs.systemd}/bin/systemctl stop lid-suspend-debounce.timer 2>/dev/null || true
-
-      if ${pkgs.gnugrep}/bin/grep -q closed /proc/acpi/button/lid/LID/state; then
-        ${pkgs.systemd}/bin/systemd-run \
-          --unit=lid-suspend-debounce \
-          --on-active=3s \
-          ${lidSleepAction}
-      fi
-    '';
+    lidEventCommands = "${lidSleepArm} lid";
   };
   # Thunderbolt device authorization: boltd auto-authorizes enrolled devices
   # and boltctl does the one-time `boltctl enroll` (domain security level is
   # "user").
   services.hardware.bolt.enable = true;
-  # Lid handling is delegated to the debounced acpid script below.
+  # Lid handling is delegated to acpid and the lid-sleep service above.
   services.logind.settings.Login = {
     HandleLidSwitch = "ignore";
     HandleLidSwitchDocked = "ignore";
@@ -173,7 +173,7 @@ in
     # device add: nhi_probe ends with pm_runtime_allow() (same knob as
     # power/control), so a write at `add` gets flipped back to `auto` whenever
     # probe runs after udev (boot, module load); `bind` fires only after probe
-    # returns. Covers boot, resume, and tb-recover rescans alike. TLP is kept
+    # returns. Covers boot, resume, and rebinds alike. TLP is kept
     # from undoing this by RUNTIME_PM_DRIVER_DENYLIST below.
     ACTION=="bind", SUBSYSTEM=="pci", DRIVER=="thunderbolt", ATTR{power/control}="on"
 
@@ -192,20 +192,49 @@ in
     # only by the initrd's minimal ruleset and is lost. systemd-udev-trigger
     # replays `add`, never `bind`, so `add` is what actually fires at boot;
     # it lands long after probe, so the driver's pm_runtime_allow() cannot
-    # overwrite it. `bind` still covers rebinds and tb-recover rescans.
+    # overwrite it. `bind` still covers rebinds.
     ACTION=="add|bind", SUBSYSTEM=="pci", DRIVER=="xhci_hcd", ATTR{vendor}=="0x8086", ATTR{device}=="0x15c1", ATTR{power/control}="on"
+
+    # Re-check a closed lid whenever a display or AC comes or goes, so a
+    # laptop left shut when the dock is pulled does not sit awake on battery
+    # (2026-09-26 23:45 HDMI left with the lid shut; nothing re-evaluated it
+    # until the critical-battery hibernate at 05:27). `change` only, so
+    # coldplug `add` never fires it. KERNEL=="AC" excludes the
+    # apple_mfi_fastcharge supplies that follow the iPhone on the KVM's USB
+    # subtree. A KVM switch-away emits neither event, so it triggers nothing.
+    ACTION=="change", SUBSYSTEM=="drm", ENV{HOTPLUG}=="1", RUN+="${lidSleepArm} hotplug"
+    ACTION=="change", SUBSYSTEM=="power_supply", KERNEL=="AC", RUN+="${lidSleepArm} hotplug"
   '';
-  # Disarm wake-from-hibernate on the PCIe/Thunderbolt root ports, scoped to
-  # sleep.target (not boot), so only LID wakes from S4; otherwise they
-  # self-wake with the lid shut and the machine sits awake draining flat.
-  # Wakeup must stay enabled while awake or Thunderbolt dock hotplug breaks;
-  # resume re-arms via power.nix resumeCommands.
+  # Disarm wake on the PCIe/Thunderbolt root ports for hibernation only: from
+  # S4 they self-woke with the lid shut and the machine sat awake draining
+  # flat. Self-wakes were only ever observed from S4, so plain S3 keeps the
+  # ports armed and a dock keyboard can wake it. `PartOf = sleep.target` stops
+  # the unit when sleep.target deactivates on resume (as sleep-hang-guard
+  # relies on), and ExecStop restores each port's prior state rather than
+  # forcing `enabled`.
   systemd.services.disarm-pcie-wakeup = {
     before = [ "sleep.target" ];
-    description = "Disarm PCIe root port wake before sleep";
-    script = "${pcieWakeup "disabled"}";
-    serviceConfig.Type = "oneshot";
-    wantedBy = [ "sleep.target" ];
+    description = "Disarm PCIe root port wake for hibernation";
+    partOf = [ "sleep.target" ];
+    serviceConfig = {
+      ExecStart = "${pcieWakeupDisarm}";
+      ExecStop = "${pcieWakeupRestore}";
+      RemainAfterExit = true;
+      RuntimeDirectory = "pcie-wakeup";
+      Type = "oneshot";
+    };
+    wantedBy = [
+      "hibernate.target"
+      "hybrid-sleep.target"
+      "suspend-then-hibernate.target"
+    ];
+  };
+  systemd.services.lid-sleep = {
+    description = "Sleep a closed-lid laptop once display and power have settled";
+    serviceConfig = {
+      ExecStart = "${lidSleepAction}";
+      Type = "oneshot";
+    };
   };
   # Arm the EC-hang backstop for the duration of each sleep transition.
   # `PartOf = sleep.target` ties its lifetime to the sleep: it starts when
@@ -225,16 +254,11 @@ in
     };
     wantedBy = [ "sleep.target" ];
   };
-  # Self-heal a wedged Thunderbolt controller at boot and on resume (started
-  # non-blocking from power.nix resumeCommands). No-op when healthy.
-  systemd.services.tb-recover = {
-    description = "Recover a wedged Thunderbolt controller";
-    script = "${tbRecover}";
-    serviceConfig.Type = "oneshot";
-    wantedBy = [ "multi-user.target" ];
-  };
   # Suspend-then-hibernate: 30 min in S3, then the RTC alarm wakes the machine
   # to hibernate. Explicit delay opts out of systemd's battery-estimate mode,
   # which would trust the fuel gauge (this pack's gauge over-reports badly).
   systemd.sleep.settings.Sleep.HibernateDelaySec = "30min";
+  # lid-sleep state: `mode` (lid|recheck) and `hotplug`, whose mtime is the
+  # last display/power/resume event.
+  systemd.tmpfiles.rules = [ "d /run/lid-sleep 0755 root root -" ];
 }
