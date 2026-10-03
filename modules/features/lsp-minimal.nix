@@ -33,6 +33,7 @@
 
     # markdown
     marksman
+    prettier
 
     # spell checking
     harper

@@ -30,5 +30,6 @@ in
     pandoc # Markdown Renderer
     texliveMedium # LaTeX engine
     delfin # Jellyfin client
+    zathura # PDF viewer
   ];
 }

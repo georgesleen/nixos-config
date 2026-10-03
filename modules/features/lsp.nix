@@ -51,6 +51,7 @@
 
     # markdown
     marksman
+    prettier
 
     # openscad
     openscad-lsp
