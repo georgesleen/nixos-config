@@ -23,8 +23,21 @@
     cmake
     gdb
 
-    # python (uv is in core; python313 for nix-ld / system use)
-    python313
+    # python: the only interpreter on PATH (uv is in core). A second, bare
+    # python313 would shadow this one depending on profile order.
+    (python313.withPackages (
+      ps: with ps; [
+        numpy
+        matplotlib
+        pandas
+        scipy
+        sympy
+        jupyter
+        ipykernel
+        seaborn
+        scikit-learn
+      ]
+    ))
 
     # rust
     rustup

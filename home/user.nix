@@ -36,7 +36,6 @@
     ./dotfiles/omp.nix
     ./dotfiles/packages.nix
     (inputs.nixos-pi4 + "/home/pi-state-backup.nix")
-    ./dotfiles/python.nix
     ./dotfiles/rclone.nix
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
