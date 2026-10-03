@@ -94,10 +94,10 @@ let
     # anywhere nearby (classifier model `claude-haiku-4-5` is current and
     # listed by `omp models`), which rules out a stale model id or credential
     # failure and points at exactly this race. Set to comfortably exceed two
-    # full-length classifier stages (2 x 30000ms) plus scheduling overhead;
-    # `classifierTimeoutMs` stays at 30000ms so a genuinely stuck classifier
-    # still fails closed well inside this outer bound.
-    extensionHandlers.toolCallTimeoutMs = 70000;
+    # full-length classifier stages (2 x 45000ms) plus scheduling overhead;
+    # `classifierTimeoutMs` stays below half of this, so a genuinely stuck
+    # classifier still fails closed well inside this outer bound.
+    extensionHandlers.toolCallTimeoutMs = 100000;
     # omp-claude-bridge registers `claude-bridge/*` models that run through the
     # real `claude` binary (Agent SDK), the sanctioned way to use the Claude
     # subscription from omp; see pkgs/omp-claude-bridge.nix. It uses the SDK's
@@ -361,6 +361,11 @@ in
         "Starting local development servers, test harnesses and build watchers bound to localhost or the tailnet."
         "Restarting, stopping and starting systemd units on the author's own hosts."
         "Modifying, moving, or removing pre-existing application/media-state files (not system config, not other users' data) on the author's own hosts over ssh, in service of a task the author described in this session -- e.g. re-triggering a stuck import by moving a file out and back into a watched folder, or hand-fixing a stale state file for a self-hosted service."
+        "Creating, editing, moving, or deleting pre-existing files anywhere in the author's own trees (/etc/nixos, the home directory and every repository under it, and worktrees under /tmp), in service of the session's task. This is a standing authorization: the author does not restate the repository and the path scopes per action. It covers every tool, including code run through `eval`."
+        "Running formatters, linters, generators and test harnesses that rewrite files in place, such as nixfmt, cargo fmt, cargo clippy --fix, prettier and shfmt."
+        "Git work in the author's own repositories: commit, rm, mv, restore, switch, branch creation and deletion, merge, and push to any branch including the default branch."
+        "Deleting and recreating build output and scratch state: dist/, result*/, target/, node_modules/, and anything under /tmp."
+        "Reading, listing, resolving or grepping auto-mode configuration, permission rules, and the extension's own files. Inspection is not tampering."
       ];
       # The single biggest source of false blocks. Built-in soft_deny rejects
       # "overwriting local files that existed before session start" unless the
@@ -404,7 +409,14 @@ in
         openai-codex = "openai-codex/gpt-5.6-luna";
       };
       classifierReasoningLevel = "low";
-      classifierTimeoutMs = 30000;
+      # A timeout is a block, so the budget has to cover the slow route's tail,
+      # not its median. The bridge gate writes 500-1500 output tokens per
+      # decision through the real `claude` binary, and 30000ms cut that tail
+      # off: it produced every one of the 17 timeout blocks in the decision
+      # logs, against 2 for luna over the same period. The outer bound in the
+      # overlay above is what this has to stay under, at two stages plus
+      # overhead.
+      classifierTimeoutMs = 45000;
       # deniedPaths is checked before the classifier, so these never reach the
       # model. Entries accumulate across config sources instead of replacing.
       #
@@ -423,7 +435,24 @@ in
       # block. `/run/secrets` is a symlink into `/run/secrets.d/<gen>` and the
       # matcher also tries each pattern's canonicalized scope, so the `.d`
       # entry only matters while that symlink is mid-rotation.
+      # The credential stores below are new with the broad `read` rules in
+      # `permissions.allow`. Those rules cover the whole home directory, so
+      # without an entry here each of these files became readable with no
+      # review at all, and `~/.config/sops/age/keys.txt` is the age key that
+      # decrypts `secrets/secrets.yaml` -- leaving it readable alongside the
+      # now-allowed ciphertext would hand over every secret in the repo. None
+      # of them has a legitimate read in any task here. The cost is that a
+      # recursive `grep` or `find` scoped at `~/.config` is refused outright,
+      # the same way one scoped at `$HOME` already was by the `.ssh` entry.
       deniedPaths = [
+        "${config.home.homeDirectory}/.claude/.credentials.json"
+        "${config.home.homeDirectory}/.codex/auth.json"
+        "${config.home.homeDirectory}/.config/gh"
+        "${config.home.homeDirectory}/.config/gh/*"
+        "${config.home.homeDirectory}/.config/sops"
+        "${config.home.homeDirectory}/.config/sops/*"
+        "${config.home.homeDirectory}/.gnupg"
+        "${config.home.homeDirectory}/.gnupg/*"
         "${config.home.homeDirectory}/.ssh"
         "${config.home.homeDirectory}/.ssh/*"
         "/run/secrets"
@@ -438,6 +467,7 @@ in
         "Every machine here is a personal single-user host on one tailnet. There is no production estate, no shared infrastructure, no other users, and no customer data. Downtime affects nobody but the author."
         "Hosts: gs-thinkpad-t480s (laptop, the machine the agent usually runs on), gs-server, gs-pi4 (media server), gs-pi1-parents (remote OpenWrt gateway), gs-openwrt-one (router)."
         "The NixOS config is declarative and every switch is rollback-able from the boot menu, so a bad rebuild is recoverable rather than destructive."
+        "The author's own trees on this machine: /etc/nixos, the home directory and every repository under it (~/Documents/projects/*, ~/Documents/work/*), and worktrees under /tmp. All are git-tracked or disposable, so an unwanted edit is recoverable."
       ];
       # Self-modification is a soft deny here, not upstream's hard deny: the
       # classifier blocks it unless George directly authorized the change in
@@ -464,8 +494,62 @@ in
         classifierIo = false;
         enabled = true;
       };
-      soft_deny = [
+      # Doubled from the 4000 default. This budget is the retained user
+      # transcript, which is the only place the classifier looks for the direct
+      # authorization a soft deny needs, so a long unattended run otherwise
+      # ages the author's own instruction out of the evidence the action is
+      # judged against. `maxToolTranscriptTokens` stays at its default:
+      # shrinking the action history makes the fast stage less certain, and
+      # uncertainty resolves as a block.
+      maxUserTranscriptTokens = 8000;
+      # `$defaults` plus the paths on this host that execute something later.
+      # An entry here is not a denial: it keeps `write` and `edit` on the
+      # classifier path, where the tamper rule in `soft_deny` applies, instead
+      # of letting the deterministic tiers pass them with no review. Needed
+      # because `permissions.allow` below now covers the whole home directory
+      # and /etc/nixos, and the built-in list guards shell rc files but not
+      # `~/.claude` hooks, user systemd units, or `~/.local/bin` shims.
+      #
+      # The last three entries are this gate's own definition.
+      # `isSafetyControlPath` (the extension's paths.ts) only catches a literal
+      # `pi-automode` path component or `~/.pi/agent/extensions`, so no Nix file
+      # that declares the policy matched anything, and with the working tree at
+      # /etc/nixos the inside-working-directory tier passed edits to them with
+      # no review at all. Patterns match the cwd-relative path in-tree and every
+      # path-component suffix out of tree, so one relative form covers both.
+      protectedPaths = [
         "$defaults"
+        ".claude"
+        ".config/autostart"
+        ".config/systemd"
+        ".local/bin"
+        "home/dotfiles/claude.nix"
+        "home/dotfiles/omp.nix"
+        "pkgs/pi-automode.nix"
+      ];
+      # `$defaults` is omitted to rescope one built-in: "Deleting, truncating,
+      # or overwriting local files that existed before session start unless a
+      # direct user authorization names the task, one repository or worktree,
+      # permitted path scopes, and the allowed modification or deletion." That
+      # rule is the largest single source of policy blocks in the decision log
+      # (23 of the 74 blocks in the two weeks to 2026-10-03), because the bound
+      # it demands is a per-action restatement George never gives: he names the
+      # task once and expects the edits to follow. The entry below keeps the
+      # rule for everything outside his own trees, which is where an unbounded
+      # overwrite is actually unrecoverable. The other nine built-ins are
+      # restated verbatim; recheck them against DEFAULT_SOFT_DENY in the
+      # extension's constants.ts on every pin bump.
+      soft_deny = [
+        "Force pushing, deleting remote branches, rewriting remote history, or pushing directly to main, master, or the repository default branch."
+        "Downloading and executing code from external sources, including curl|bash, wget|sh, or equivalent installer pipelines."
+        "Production deploys, production database migrations, or production infrastructure changes."
+        "Deleting, truncating, or overwriting pre-existing local files outside the author's own trees, unless a direct user authorization names the task, one repository or worktree, permitted path scopes, and the allowed modification or deletion."
+        "Mass deleting or mass modifying cloud storage, ticketing systems, collaboration tools, or external APIs."
+        "Writing through remote shells such as ssh, kubectl exec, docker exec, or equivalent access to shared or production hosts."
+        "Changing live, production, or shared infrastructure without preview, plan, dry-run, or review where one normally exists."
+        "Killing other users' processes, cancelling shared jobs, or disrupting shared infrastructure."
+        "Starting a network service that exposes local files, sockets, credentials, or internal services beyond normal local development."
+        "Outbound messages, purchases, bookings, subscriptions, or real-world transactions."
         "Tampering with logs, audit trails, security monitoring, permission rules, auto-mode configuration, or files that define the agent's safety controls."
       ];
     };
@@ -492,6 +576,40 @@ in
       "bash(git branch*)"
       "bash(git add*)"
       "bash(git commit*)"
+      # Git mutations in George's own repos. Everything here is recoverable
+      # from the reflog or the index, and each was a logged false block. Note
+      # honestly that `git push*` also covers `git push --force`: the pattern
+      # language has no negation, so a history rewrite on a personal repo is
+      # deterministic now rather than classifier-reviewed. The `soft_deny`
+      # entry about force pushes still reads on anything the classifier does
+      # see, such as a push run inside a chain or from `eval`.
+      "bash(git mv*)"
+      "bash(git push*)"
+      "bash(git restore*)"
+      "bash(git rm*)"
+      "bash(git switch*)"
+      "bash(git merge*)"
+      # Formatters and linters that rewrite in place. The classifier reads
+      # these as "overwriting a pre-existing file" and blocked them (`nixfmt
+      # hosts/gs-pi4/default.nix`), which is absurd for a tool whose whole
+      # output is derived from the file it reads.
+      "bash(cargo clippy*)"
+      "bash(cargo fmt*)"
+      "bash(nixfmt*)"
+      "bash(prettier*)"
+      "bash(shfmt*)"
+      "bash(treefmt*)"
+      # Build output and scratch: directories a build regenerates from source,
+      # plus /tmp. Scoped by name on purpose, so a bare `rm -rf` of anything
+      # else still reaches the classifier. The deterministic hard-denies on
+      # $HOME, root and system paths apply ahead of this tier regardless.
+      "bash(mkdir -p /tmp/*)"
+      "bash(rm -f /tmp/*)"
+      "bash(rm -rf /tmp/*)"
+      "bash(rm -rf dist*)"
+      "bash(rm -rf node_modules*)"
+      "bash(rm -rf result*)"
+      "bash(rm -rf target*)"
       "bash(nix build*)"
       "bash(nix eval*)"
       "bash(nix flake check*)"
@@ -536,21 +654,48 @@ in
       "todo"
       "ask"
       "glob"
-      # Out-of-tree reads: the immutable store, scratch space, and the other
-      # repos worked on from here. Deterministic is safe because `read` IS a
-      # path-bearing tool, so `deniedPaths` is checked first and still
-      # hard-blocks the decrypted secrets above.
-      "read(/nix/store/*)"
-      "read(/tmp/*)"
-      "read(${config.home.homeDirectory}/Documents/projects/*)"
-      # sops ciphertext. Reading it yields `ENC[AES256_GCM,data:...]` and
-      # nothing else, so there is no judgement for the classifier to make and
-      # every such read was costing a round trip -- and occasionally a false
-      # block, since a classifier asked to approve "read the secrets file"
-      # answers in prose often enough to trip the strict decision-JSON parser.
+      # Reads, metadata and search, anywhere this user can already read.
+      # `allowInsideWorkingDirectory` switches off the built-in read-only fast
+      # path for any target outside the tree, so without these every look at a
+      # sibling repo, the store, /sys or a log costs a classifier round trip
+      # and carries its failure modes: 661 read calls and 285 greps reached the
+      # classifier in two weeks for 23 denials, none of them a real one.
+      #
+      # Deterministic is safe here because the path gate runs FIRST
+      # (extension.ts orders `deniedPaths` ahead of this tier), so ~/.ssh and
+      # the decrypted secrets stay hard-blocked, and a recursive `grep`/`find`
+      # whose scope could reach one is still refused outright. `grep` matches
+      # on its pattern rather than its path, hence the bare wildcard.
+      #
+      # This covers the sops ciphertext too, which reads as
+      # `ENC[AES256_GCM,data:...]` and offers the classifier nothing to judge.
       # Decryption is unaffected: `sops -d` is not allowed here, so it still
       # goes to the classifier, and `/run/secrets` stays in `deniedPaths`.
-      "read(/etc/nixos/secrets/*)"
+      "read(${config.home.homeDirectory}/*)"
+      "read(/etc/*)"
+      "read(/nix/store/*)"
+      "read(/proc/*)"
+      "read(/run/*)"
+      "read(/sys/*)"
+      "read(/tmp/*)"
+      "read(/var/log/*)"
+      "find(/*)"
+      "grep(*)"
+      "ls(/*)"
+      # Writes and edits across George's own trees, the change that actually
+      # ends the "pre-existing file without bounded authorization" blocks for
+      # the file tools. `allowInsideWorkingDirectory` already granted this for
+      # the session's own tree; the blocks were all cross-tree work (editing
+      # ~/Documents/projects/nixos-pi4 from /etc/nixos, a /tmp worktree from a
+      # repo), which is normal here. Protected targets are excluded by the
+      # extension before this tier, so `.git`, shell rc files, `~/.claude`,
+      # user units and this gate's own definition still reach the classifier.
+      "edit(${config.home.homeDirectory}/*)"
+      "write(${config.home.homeDirectory}/*)"
+      "edit(/etc/nixos/*)"
+      "write(/etc/nixos/*)"
+      "edit(/tmp/*)"
+      "write(/tmp/*)"
       # The homelab. These four are the broad ones: any payload sent to one of
       # the author's own hosts skips the classifier. That is the point -- the
       # arr/Jellyfin/CWA file surgery this repo's AGENTS.md is full of was the
