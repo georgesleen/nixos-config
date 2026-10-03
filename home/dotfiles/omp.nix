@@ -98,7 +98,15 @@ let
     # `classifierTimeoutMs` stays at 30000ms so a genuinely stuck classifier
     # still fails closed well inside this outer bound.
     extensionHandlers.toolCallTimeoutMs = 70000;
-    extensions = [ "${pkgs.pi-automode}/extensions/auto-mode.ts" ];
+    # omp-claude-bridge registers `claude-bridge/*` models that run through the
+    # real `claude` binary (Agent SDK), the sanctioned way to use the Claude
+    # subscription from omp; see pkgs/omp-claude-bridge.nix. It uses the SDK's
+    # bundled `claude`, logged in via `claude /login`, not omp's own
+    # `anthropic` credentials.
+    extensions = [
+      "${pkgs.pi-automode}/extensions/auto-mode.ts"
+      "${pkgs.omp-claude-bridge}/src/index.ts"
+    ];
     features.unexpectedStopDetection = "smart";
     followUpMode = "all";
     github.enabled = true;
@@ -116,10 +124,7 @@ let
     # Save approved plans using omp's default directory; leave autosaveDir unset.
     # omp has no age-based session pruning or retention setting. Only empty,
     # history-free sessions are automatically removed.
-    plan = {
-      autosave = true;
-      defaultOnStartup = true;
-    };
+    plan.autosave = true;
     # 1h cache entries, not the `auto` default's 5m. The 2x write beats the
     # repeated full re-ingests 5m caused.
     providers.cacheRetention = "long";
@@ -302,6 +307,17 @@ in
     mcpServers = import ./mcp-servers.nix { inherit pkgs; };
   };
 
+  # omp-claude-bridge config, read-only to the extension (it never writes this
+  # file), so a store symlink is safe. AskClaude is off: it runs a delegated
+  # Claude Code with `permissionMode: "bypassPermissions"` and Claude Code's
+  # own Bash/Write/Edit/Read, so pi-automode judges only the delegation prompt
+  # and never the actions inside it, and `deniedPaths` stops applying. The
+  # provider path is unaffected: it runs with `tools: []`, so every action
+  # comes back through omp's tools and the gate.
+  home.file.".omp/agent/claude-bridge.json".text = builtins.toJSON {
+    askClaude.enabled = false;
+  };
+
   # Custom theme, selected by `theme.dark` in the overlay above. Themes are
   # read-only to omp (it loads them and watches for edits, but only ever
   # writes config.yml), so a store symlink is safe here.
@@ -361,8 +377,7 @@ in
       # tools needed to fix its own setting deadlocks the session. The gate is
       # a two-stage yes/no decision, not reasoning work (stage one is a single
       # token), so a small fast model is the right tool; `low` is what Codex
-      # Auto Review uses for the same job, and Haiku over Sonnet because the
-      # gate never hits its own cache, leaving per-token price the only lever.
+      # Auto Review uses for the same job, and Haiku over Sonnet for price.
       #
       # `classifierModelByProvider` then keeps each session's gate on the
       # credentials that session is already using, so an auth failure or a
@@ -371,9 +386,21 @@ in
       # remains the fallback for providers with no entry. The cost is that a
       # gate request per tool call lands in the same plan quota as the session
       # itself, so pick the cheapest usable model on each provider.
-      classifierModel = "anthropic/claude-haiku-4-5";
+      #
+      # Claude sessions gate through `claude-bridge/*`, never omp's built-in
+      # `anthropic` provider: that one imitates Claude Code, which the terms
+      # prohibit for subscription logins, and the gate's plain request is what
+      # Anthropic caught and refused with `403 oauth_not_allowed_for_organization`.
+      # The bridge gate works, nested inside a bridge session too (it handles the
+      # re-entrant request), and caches ~95% of its prompt, but Haiku through
+      # Claude Code writes 500-1500 output tokens per decision even at
+      # effort=low: measured 7-16 s per gated call against ~1.4 s for luna.
+      # Accepted to keep Claude sessions on the Claude plan. The scalar is luna
+      # because the fallback should be the fast, compliant one.
+      classifierModel = "openai-codex/gpt-5.6-luna";
       classifierModelByProvider = {
-        anthropic = "anthropic/claude-haiku-4-5";
+        anthropic = "claude-bridge/claude-haiku-4-5";
+        claude-bridge = "claude-bridge/claude-haiku-4-5";
         openai-codex = "openai-codex/gpt-5.6-luna";
       };
       classifierReasoningLevel = "low";

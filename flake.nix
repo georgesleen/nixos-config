@@ -125,10 +125,12 @@
         moonlight-qt = prev.moonlight-qt.override { ffmpeg = final.ffmpeg_7; };
       };
 
-      # omp from its own flake, plus the auto-mode guardrail extension it loads
-      # by absolute path (see home/dotfiles/omp.nix).
+      # omp from its own flake, plus the extensions it loads by absolute path
+      # (see home/dotfiles/omp.nix): the auto-mode guardrail and the Claude
+      # Code provider bridge.
       ompOverlay = final: _prev: {
         omp = inputs.oh-my-pi.packages.${final.stdenv.hostPlatform.system}.omp;
+        omp-claude-bridge = final.callPackage ./pkgs/omp-claude-bridge.nix { };
         pi-automode = final.callPackage ./pkgs/pi-automode.nix { };
       };
 
