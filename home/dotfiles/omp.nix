@@ -599,6 +599,27 @@ in
       "bash(prettier*)"
       "bash(shfmt*)"
       "bash(treefmt*)"
+      # Builds and test runs in George's own projects. Each was waiting
+      # 7-16 s on the classifier and failing closed whenever it timed out
+      # (`cargo clippy && cargo test` on kitest, 2026-09-26 and 2026-10-01).
+      # These run build scripts and test code, so they trust the repo: the
+      # same trust `cargo clippy` above already extends. Scoped to named
+      # verbs and targets, never `make *` or `uv run *`, so a recipe or
+      # payload George did not write still reaches the classifier and
+      # `deniedPaths` stays meaningful for bash.
+      "bash(cargo build*)"
+      "bash(cargo check*)"
+      "bash(cargo test*)"
+      "bash(cargo run*)"
+      "bash(cargo doc*)"
+      "bash(make lint*)"
+      "bash(make pytest*)"
+      "bash(make stubs*)"
+      "bash(make build*)"
+      "bash(make fmt*)"
+      "bash(maturin develop*)"
+      "bash(uv run --no-sync pytest*)"
+      "bash(uv run --no-sync maturin*)"
       # Build output and scratch: directories a build regenerates from source,
       # plus /tmp. Scoped by name on purpose, so a bare `rm -rf` of anything
       # else still reaches the classifier. The deterministic hard-denies on
