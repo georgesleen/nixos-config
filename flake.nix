@@ -100,10 +100,18 @@
     let
       user = "george-sleen";
 
+      perlGrammarOverlay = _final: previous: {
+        perl = previous.perl.overrideAttrs (old: {
+          patches = (old.patches or [ ]) ++ [ ./pkgs/tree-sitter-perl-glibc-2.44.patch ];
+        });
+      };
+
       # Our Steel Helix fork, including the native coloured-output API, for
       # native x86_64 hosts. gs-pi4 keeps the cross build of upstream master.
       helixOverlay = final: _prev: {
-        helix = helix-steel.packages.${final.stdenv.hostPlatform.system}.default;
+        helix = helix-steel.packages.${final.stdenv.hostPlatform.system}.default.override {
+          grammarOverlays = [ perlGrammarOverlay ];
+        };
       };
 
       # Cross-compiled helix + pedantix for gs-pi4 (see overlays file).
@@ -122,14 +130,16 @@
         # removed). Built against ffmpeg 7 from current nixpkgs, not taken whole
         # from the last-good pin: that pin links libva 2.23, which cannot open
         # this system's intel-media-driver, so hardware decode was dead.
-        moonlight-qt = prev.moonlight-qt.override { ffmpeg = final.ffmpeg_7; };
+        moonlight-qt = prev.moonlight-qt.override { ffmpeg_8 = final.ffmpeg_7; };
       };
 
       # omp from its own flake, plus the extensions it loads by absolute path
       # (see home/dotfiles/omp.nix): the auto-mode guardrail and the Claude
       # Code provider bridge.
       ompOverlay = final: _prev: {
-        omp = inputs.oh-my-pi.packages.${final.stdenv.hostPlatform.system}.omp;
+        omp = inputs.oh-my-pi.packages.${final.stdenv.hostPlatform.system}.omp.overrideAttrs (old: {
+          patches = (old.patches or [ ]) ++ [ ./pkgs/omp-focused-switch.patch ];
+        });
         omp-claude-bridge = final.callPackage ./pkgs/omp-claude-bridge.nix { };
         pi-automode = final.callPackage ./pkgs/pi-automode.nix { };
       };

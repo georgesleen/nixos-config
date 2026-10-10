@@ -14,11 +14,9 @@
 # packages, and a real copy in node_modules would shadow the runtime's shim
 # with a version that does not match the running omp.
 #
-# The Agent SDK runs its own bundled `claude`
-# (@anthropic-ai/claude-agent-sdk-linux-x64), an unpatched glibc ELF from npm
-# that starts only because `programs.nix-ld` is on (modules/core/common.nix).
-# It is deliberately not pointed at `pkgs.claude-code`: the SDK and its CLI are
-# released as a pair, and the nixpkgs CLI lags by dozens of versions.
+# The Agent SDK ships a bundled `claude`, but home/dotfiles/omp.nix points the
+# bridge at `pkgs.claude-code` so model compatibility follows the system input
+# rather than this extension's dependency lock.
 {
   bun,
   cacert,

@@ -163,11 +163,14 @@ in
     "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
     "gs-thinkpad-t480s-1:jdyiTR6gbHJvrxBZBbje0XfVMEJedtekyVEIwoK8Kfs="
   ];
+  # Intro Skipper has no Jellyfin 12.1-compatible release.
+  nixflix.jellyfin.package =
+    inputs.nixpkgs-lastgood.legacyPackages.${pkgs.stdenv.hostPlatform.system}.jellyfin;
   nixpkgs.config.allowUnfree = true;
   nixpkgs.hostPlatform = "aarch64-linux";
   security.sudo.wheelNeedsPassword = false;
   # Cap the journal so it can't balloon on the SD (had grown past 400 MB).
-  services.journald.extraConfig = "SystemMaxUse=200M";
+  services.journald.settings.Journal.SystemMaxUse = "200M";
   services.openssh = {
     enable = true;
     settings.PasswordAuthentication = false;

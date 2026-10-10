@@ -1,0 +1,10 @@
+--- a/src/bsearch.c
++++ b/src/bsearch.c
+@@ -49,6 +49,7 @@
+ 
+ #include <stdio.h>
+ #include <sys/types.h> /* size_t */
++#undef bsearch
+ 
+ /*
+  * Perform a binary search.

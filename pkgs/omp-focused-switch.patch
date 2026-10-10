@@ -1,0 +1,815 @@
+--- a/docs/agent-hub.md
++++ b/docs/agent-hub.md
+@@ -78,6 +78,8 @@
+ 
+ Steering uses the normal prompt path, so the message and response are written to the subagent's persisted session history. While a subagent is focused, `Esc` returns to the main session; it does not interrupt the subagent.
+ 
++`/switch [model]` and the session-only model picker change the focused agent's model without changing the main session or model-role settings. The picker keeps its original target if focus changes. Streaming, retrying, or compacting agents refuse the switch: wait until idle, or stop an interruptible streaming turn with `Enter` in an empty editor before `/switch`. A smaller context window compacts that agent first; cancellation or failure keeps its model.
++
+ Contexts without a local focusable session use the Hub's full-screen transcript viewer instead. This includes collab guests, advisor rows, and aborted agents; advisor and aborted transcripts are read-only. The viewer incrementally tails the file-backed transcript and provides an input line only when the selected agent can be messaged. Sending there has the same semantics: revive if parked, steer if running, and prompt if idle.
+ 
+ ## Pinned jump list and click to focus
+--- a/packages/coding-agent/src/modes/controllers/input-controller.ts
++++ b/packages/coding-agent/src/modes/controllers/input-controller.ts
+@@ -167,6 +167,7 @@
+  */
+ const FOCUSED_VIEW_COMMANDS: Record<string, (args: string) => boolean> = {
+ 	btw: () => true,
++	switch: () => true,
+ 	export: () => true,
+ 	usage: args => {
+ 		const { verb, rest } = parseSubcommand(args);
+@@ -1427,7 +1428,7 @@
+ 		this.ctx.session.maybeStartTitleGeneration(text);
+ 	}
+ 
+-	/** Submit editor text to the focused subagent session (chat and continue shortcuts only). */
++	/** Submit editor text and viewer-scoped commands to the focused subagent session. */
+ 	async #submitToFocusedSession(text: string, streamingBehavior: "steer" | "followUp"): Promise<void> {
+ 		const target = this.ctx.viewSession;
+ 		const images = this.ctx.editor.pendingImages.length > 0 ? [...this.ctx.editor.pendingImages] : undefined;
+@@ -1445,8 +1446,7 @@
+ 		if (text?.startsWith("/")) {
+ 			const parsed = parseSlashCommand(text);
+ 			if (parsed && FOCUSED_VIEW_COMMANDS[parsed.name]?.(parsed.args)) {
+-				// Viewer-scoped commands: /btw asks about the focused transcript, /export
+-				// writes it (with its own subagents), /usage reports account-wide limits.
++				// Viewer-scoped commands use the focused transcript or session.
+ 				this.#recordSlashCommandUsage(text);
+ 				if ((await executeBuiltinSlashCommand(text, { ctx: this.ctx })) === true) {
+ 					if (!shouldSkipHistory(text)) this.ctx.editor.addToHistory(text);
+--- a/packages/coding-agent/src/slash-commands/builtin-modes.ts
++++ b/packages/coding-agent/src/slash-commands/builtin-modes.ts
+@@ -536,7 +536,7 @@
+ 				runtime.ctx.showModelSelector({ temporaryOnly: true });
+ 				return;
+ 			}
+-			const resolved = resolveSessionModelSelector(selector, runtime.ctx.session, runtime.ctx.settings);
++			const resolved = resolveSessionModelSelector(selector, runtime.ctx.viewSession, runtime.ctx.settings);
+ 			if (!resolved.model) {
+ 				runtime.ctx.showError(`Unknown model: ${selector}`);
+ 				return;
+--- a/packages/coding-agent/src/modes/controllers/selector-controller.ts
++++ b/packages/coding-agent/src/modes/controllers/selector-controller.ts
+@@ -50,6 +50,7 @@
+ } from "../../extensibility/plugins/marketplace";
+ import { getAvailableThemes, getSymbolTheme, previewTheme, theme } from "@oh-my-pi/pi-tui/theme";
+ import type { AgentHubOpenOptions, InteractiveModeContext } from "../../modes/types";
++import type { AgentSession } from "../../session/agent-session";
+ import type { SessionOAuthAccountList } from "../../session/agent-session-types";
+ import type { ResetCreditAccountStatus, ResetCreditRedeemOutcome } from "../../session/auth-storage";
+ import {
+@@ -637,11 +638,12 @@
+ 	 * picker. Failures surface as status errors.
+ 	 */
+ 	async switchSessionModel(model: Model, thinkingLevel?: ConfiguredThinkingLevel): Promise<void> {
+-		const contextTokens = this.ctx.session.getContextUsage()?.tokens ?? 0;
++		const target = this.ctx.viewSession;
++		const contextTokens = target.getContextUsage()?.tokens ?? 0;
+ 		const contextWindow = model.contextWindow ?? 0;
+ 		const overContext = contextWindow > 0 && contextTokens > contextWindow;
+ 		try {
+-			await this.#applySessionModel(model, `${model.provider}/${model.id}`, thinkingLevel, overContext);
++			await this.#applySessionModel(target, model, `${model.provider}/${model.id}`, thinkingLevel, overContext);
+ 		} catch (error) {
+ 			this.ctx.showError(error instanceof Error ? error.message : String(error));
+ 		}
+@@ -657,14 +659,31 @@
+ 	 * compaction keeps the current model.
+ 	 */
+ 	async #applySessionModel(
++		target: AgentSession,
+ 		model: Model,
+ 		selector: string,
+ 		thinkingLevel: ConfiguredThinkingLevel | undefined,
+ 		compactFirst: boolean,
+ 	): Promise<void> {
+-		const apply = async () => {
+-			const level = thinkingLevel ?? this.ctx.session.resolveTemporaryModelThinkingLevel(model);
+-			await this.ctx.session.setModelTemporary(model, level);
++		const focused = target !== this.ctx.session;
++		const refuseBusy = (ownCompaction = false) => {
++			if (focused && (target.isStreaming || target.isRetrying || (!ownCompaction && target.isCompacting))) {
++				throw new Error(
++					"Focused agent is busy; wait for streaming, retry, or compaction to finish before /switch.",
++				);
++			}
++		};
++		refuseBusy();
++		if (focused && !target.modelRegistry.hasConfiguredAuth(model)) {
++			throw new Error(`No API key for ${model.provider}/${model.id}`);
++		}
++		const apply = async (ownCompaction = false) => {
++			const level = thinkingLevel ?? target.resolveTemporaryModelThinkingLevel(model);
++			await target.setModelTemporary(
++				model,
++				level,
++				focused ? { beforeApply: () => refuseBusy(ownCompaction) } : undefined,
++			);
+ 			this.ctx.statusLine.invalidate();
+ 			this.ctx.updateEditorBorderColor();
+ 			const roleSelectorHint = appKey(this.ctx.keybindings, "app.model.select") || formatKeyHint("alt+m");
+@@ -672,6 +691,18 @@
+ 		};
+ 		if (!compactFirst) {
+ 			await apply();
++			return;
++		}
++		if (focused) {
++			this.ctx.showStatus("Compacting focused agent before switching model...");
++			let switched = false;
++			const applyOnce = async () => {
++				if (switched) return;
++				await apply(true);
++				switched = true;
++			};
++			await target.compact(undefined, undefined, applyOnce);
++			await applyOnce();
+ 			return;
+ 		}
+ 		let switched = false;
+@@ -690,11 +721,13 @@
+ 	 * highlighted and preselected; a leading `@` searches ctrl+p quick roles.
+ 	 */
+ 	#showModelPicker(): void {
++		const target = this.ctx.viewSession;
++		const focused = target !== this.ctx.session;
+ 		const { ModelPickerComponent } = loadModelOverlayComponents();
+-		const currentContextTokens = this.ctx.session.getContextUsage()?.tokens ?? 0;
+-		const current = this.ctx.session.model;
++		const currentContextTokens = target.getContextUsage()?.tokens ?? 0;
++		const current = target.model;
+ 		const quickRoleOrder = cfgCycleOrder.get(this.ctx.settings);
+-		const quickRoleCycle = this.ctx.session.getRoleModelCycle(quickRoleOrder);
++		const quickRoleCycle = target.getRoleModelCycle(quickRoleOrder);
+ 		const currentSelector = current ? `${current.provider}/${current.id}` : undefined;
+ 		// Preselect the effective Task model in task mode: the configured override,
+ 		// else the session model (the bundled task agent inherits it by default).
+@@ -711,15 +744,15 @@
+ 		const picker = new ModelPickerComponent(
+ 			this.ctx.ui,
+ 			createModelBrowserSource(this.ctx.settings),
+-			this.ctx.session.modelRegistry,
+-			this.ctx.session.scopedModels,
++			target.modelRegistry,
++			target.scopedModels,
+ 			{
+ 				onPick: async (model, selector, { overContext }) => {
+ 					try {
+ 						// Over-context pick: close the picker first so the compaction
+ 						// loader is visible.
+ 						if (overContext) done();
+-						await this.#applySessionModel(model, selector, undefined, overContext);
++						await this.#applySessionModel(target, model, selector, undefined, overContext);
+ 						if (!overContext) done();
+ 					} catch (error) {
+ 						this.ctx.showError(error instanceof Error ? error.message : String(error));
+@@ -727,6 +760,20 @@
+ 				},
+ 				onPickRole: async entry => {
+ 					try {
++						if (focused) {
++							const contextWindow = entry.model.contextWindow ?? 0;
++							const overContext = contextWindow > 0 && currentContextTokens > contextWindow;
++							if (overContext) done();
++							await this.#applySessionModel(
++								target,
++								entry.model,
++								`${entry.model.provider}/${entry.model.id}`,
++								entry.thinkingLevel,
++								overContext,
++							);
++							done();
++							return;
++						}
+ 						await this.ctx.session.applyRoleModel(entry);
+ 						this.ctx.statusLine.invalidate();
+ 						this.ctx.updateEditorBorderColor();
+@@ -740,6 +787,10 @@
+ 					}
+ 				},
+ 				onPickTask: (_model, selector) => {
++					if (focused) {
++						this.ctx.showError("Task model overrides are only available from the main session.");
++						return;
++					}
+ 					// Session-only: layer the Task override onto the runtime settings
+ 					// layer so it is never persisted, mirroring the session-model pick.
+ 					cfgTaskAgentModelOverrides.override(this.ctx.settings, {
+@@ -754,7 +805,7 @@
+ 			{
+ 				currentContextTokens,
+ 				currentSelector,
+-				taskModeKeys: this.ctx.keybindings.getKeys("app.model.selectTemporary"),
++				taskModeKeys: focused ? [] : this.ctx.keybindings.getKeys("app.model.selectTemporary"),
+ 				taskSelector,
+ 				quickRoles: quickRoleCycle?.models,
+ 				quickRoleOrder,
+--- a/packages/coding-agent/src/session/agent-session.ts
++++ b/packages/coding-agent/src/session/agent-session.ts
+@@ -6227,9 +6227,13 @@
+ 		return this.#maintenance.shake(mode, opts);
+ 	}
+ 
+-	/** Compact the active session history. */
+-	compact(customInstructions?: string, options?: CompactOptions): Promise<CompactionResult> {
+-		return this.#maintenance.compact(customInstructions, options);
++	/** Compact history; run beforeResume after success while queued turns remain suspended. */
++	compact(
++		customInstructions?: string,
++		options?: CompactOptions,
++		beforeResume?: () => Promise<void>,
++	): Promise<CompactionResult> {
++		return this.#maintenance.compact(customInstructions, options, 0, undefined, undefined, beforeResume);
+ 	}
+ 
+ 	/** Cancel active manual, automatic, and handoff maintenance, preserving an optional source reason. */
+@@ -9615,7 +9619,7 @@
+ 	setModelTemporary(
+ 		model: Model,
+ 		thinkingLevel?: ConfiguredThinkingLevel,
+-		options?: { ephemeral?: boolean },
++		options?: { ephemeral?: boolean; beforeApply?: () => void },
+ 	): Promise<void> {
+ 		return this.#models.setModelTemporary(model, thinkingLevel, options);
+ 	}
+--- a/packages/coding-agent/src/session/model-controls.ts
++++ b/packages/coding-agent/src/session/model-controls.ts
+@@ -274,7 +274,7 @@
+ 	async setModelTemporary(
+ 		model: Model,
+ 		thinkingLevel?: ConfiguredThinkingLevel,
+-		options?: { ephemeral?: boolean },
++		options?: { ephemeral?: boolean; beforeApply?: () => void },
+ 	): Promise<void> {
+ 		const previousEditMode = this.#host.resolveActiveEditMode();
+ 		if (!this.#host.modelRegistry.hasConfiguredAuth(model)) {
+@@ -282,6 +282,7 @@
+ 		}
+ 
+ 		const targetModel = await this.#host.modelRegistry.refreshSelectedModelMetadata(model);
++		options?.beforeApply?.();
+ 
+ 		this.#host.modelRegistry.clearSuppressedSelector(formatModelStringWithRouting(targetModel));
+ 		this.#host.clearActiveRetryFallback();
+--- a/packages/coding-agent/src/session/session-maintenance.ts
++++ b/packages/coding-agent/src/session/session-maintenance.ts
+@@ -1070,6 +1070,7 @@
+ 		methodOffset = 0,
+ 		retryController?: AbortController,
+ 		onCommitted?: () => void,
++		beforeResume?: () => Promise<void>,
+ 	): Promise<CompactionResult> {
+ 		const ownsCompactionController = retryController === undefined;
+ 		if (
+@@ -1095,6 +1096,7 @@
+ 		let methods: CompactionMethod[] = [];
+ 		let selectedMethodIndex = -1;
+ 		let compactionCommitted = false;
++		let compactionSucceeded = false;
+ 		const markCommitted = (): void => {
+ 			compactionCommitted = true;
+ 			onCommitted?.();
+@@ -1164,6 +1166,7 @@
+ 					markCommitted,
+ 				);
+ 				options?.onComplete?.(result);
++				compactionSucceeded = true;
+ 				return result;
+ 			}
+ 
+@@ -1219,13 +1222,15 @@
+ 				);
+ 				// The nested call runs on this controller, so it never owns the resume;
+ 				// it reports its commit back here instead.
+-				return await this.compact(
++				const result = await this.compact(
+ 					customInstructions,
+ 					options,
+ 					selectedMethodIndex + 1,
+ 					compactionAbortController,
+ 					markCommitted,
+ 				);
++				compactionSucceeded = true;
++				return result;
+ 			}
+ 			const pathEntries = this.#host.sessionManager.getBranch();
+ 			const preparation = prepareCompaction(pathEntries, effectiveSettings, activeModel, this.#tokenizer);
+@@ -1498,6 +1503,7 @@
+ 				preserveData: snapcompact.stripPreservedArchive(preserveData),
+ 			};
+ 			options?.onComplete?.(compactionResult);
++			compactionSucceeded = true;
+ 			return compactionResult;
+ 		} catch (error) {
+ 			const err = error instanceof Error ? error : new Error(String(error));
+@@ -1515,45 +1521,51 @@
+ 					`${methods[selectedMethodIndex]} compaction failed; trying the next preferred method`,
+ 					"compaction",
+ 				);
+-				return await this.compact(
++				const result = await this.compact(
+ 					customInstructions,
+ 					options,
+ 					selectedMethodIndex + 1,
+ 					compactionAbortController,
+ 					markCommitted,
+ 				);
++				compactionSucceeded = true;
++				return result;
+ 			}
+ 			options?.onError?.(err);
+ 			throw error;
+ 		} finally {
+ 			if (ownsCompactionController) {
+-				if (this.#compactionAbortController === compactionAbortController) {
+-					this.#compactionAbortController = undefined;
+-				}
+-				this.#host.reconnectToAgent();
+-				// Compaction disconnected before `await abort()`, so abort's finally drain
+-				// (and any steer/follow-up that arrived mid-compaction — async IRC, an
+-				// `xd://` mount notice, an SDK/RPC steer) was suppressed while disconnected
+-				// (issue #5800). Unlike `/new`/switchSession, compaction preserves the agent
+-				// queues, so nothing else resumes them: re-drain now that the listener is back
+-				// and `isCompacting` is false, or the queued turn hangs until the next prompt.
+-				this.#host.drainStrandedQueuedMessages();
+-				if (this.#manualCompactionCleanup === manualCompactionCleanup?.promise) {
+-					this.#manualCompactionCleanup = undefined;
+-				}
+-				manualCompactionCleanup?.resolve();
+-				// An inherited resume was earned by the pass that committed it; this
+-				// pass's own outcome (hook cancel, summarizer failure) only decides the
+-				// turn it interrupted itself, so the inherited one stays owed.
+-				if ((compactionCommitted || rejectedAsNoOp || inheritedResume) && resumeInterruptedTurn) {
+-					if (this.#promptsAwaitingCleanup > 0) {
+-						// A prompt parked on the barrier just resolved is the user's next
+-						// intent and takes the session instead (its continuation is a
+-						// microtask away). It reports back via `release`: a turn drops the
+-						// resume, a locally handled command hands it back.
+-						this.#deferredResumeGeneration = interruptedTurnGeneration;
+-					} else {
+-						this.#scheduleInterruptedTurnResume(interruptedTurnGeneration);
++				try {
++					if (compactionSucceeded) await beforeResume?.();
++				} finally {
++					if (this.#compactionAbortController === compactionAbortController) {
++						this.#compactionAbortController = undefined;
++					}
++					this.#host.reconnectToAgent();
++					// Compaction disconnected before `await abort()`, so abort's finally drain
++					// (and any steer/follow-up that arrived mid-compaction — async IRC, an
++					// `xd://` mount notice, an SDK/RPC steer) was suppressed while disconnected
++					// (issue #5800). Unlike `/new`/switchSession, compaction preserves the agent
++					// queues, so nothing else resumes them: re-drain now that the listener is back
++					// and `isCompacting` is false, or the queued turn hangs until the next prompt.
++					this.#host.drainStrandedQueuedMessages();
++					if (this.#manualCompactionCleanup === manualCompactionCleanup?.promise) {
++						this.#manualCompactionCleanup = undefined;
++					}
++					manualCompactionCleanup?.resolve();
++					// An inherited resume was earned by the pass that committed it; this
++					// pass's own outcome (hook cancel, summarizer failure) only decides the
++					// turn it interrupted itself, so the inherited one stays owed.
++					if ((compactionCommitted || rejectedAsNoOp || inheritedResume) && resumeInterruptedTurn) {
++						if (this.#promptsAwaitingCleanup > 0) {
++							// A prompt parked on the barrier just resolved is the user's next
++							// intent and takes the session instead (its continuation is a
++							// microtask away). It reports back via `release`: a turn drops the
++							// resume, a locally handled command hands it back.
++							this.#deferredResumeGeneration = interruptedTurnGeneration;
++						} else {
++							this.#scheduleInterruptedTurnResume(interruptedTurnGeneration);
++						}
+ 					}
+ 				}
+ 			}
+--- /dev/null
++++ b/packages/coding-agent/test/input-controller-focused-switch.test.ts
+@@ -0,0 +1,427 @@
++import { afterEach, beforeAll, describe, expect, it, vi } from "bun:test";
++import { scheduler } from "node:timers/promises";
++import { Agent, type StreamFn } from "@oh-my-pi/pi-agent-core";
++import type { AssistantMessage, Model, SimpleStreamOptions } from "@oh-my-pi/pi-ai";
++import { AssistantMessageEventStream } from "@oh-my-pi/pi-ai/utils/event-stream";
++import { getBundledModel } from "@oh-my-pi/pi-catalog/models";
++import { ModelRegistry } from "../src/config/model-registry";
++import { Settings } from "../src/config/settings";
++import { ExtensionRuntime, loadExtensionFromFactory } from "../src/extensibility/extensions/loader";
++import { ExtensionRunner } from "../src/extensibility/extensions/runner";
++import { InputController } from "../src/modes/controllers/input-controller";
++import { SelectorController } from "../src/modes/controllers/selector-controller";
++import type { InteractiveModeContext } from "../src/modes/types";
++import { AgentSession } from "../src/session/agent-session";
++import { AuthStorage } from "../src/session/auth-storage";
++import { SessionManager } from "../src/session/session-manager";
++import { EventBus } from "../src/utils/event-bus";
++import type { ModelPickerComponent } from "@oh-my-pi/pi-tui/overlays/model-picker";
++import { initTheme } from "@oh-my-pi/pi-tui/theme";
++import { TempDir, withTimeout } from "@oh-my-pi/pi-utils";
++
++beforeAll(async () => {
++	await initTheme(false);
++});
++
++function bundled(id: string): Model {
++	const model = getBundledModel("anthropic", id);
++	if (!model) throw new Error(`Missing bundled model: ${id}`);
++	return model;
++}
++const original = bundled("claude-sonnet-4-5");
++const replacement = bundled("claude-sonnet-4-6");
++const selector = `${replacement.provider}/${replacement.id}`;
++
++function answer(model: Model, failed = false): AssistantMessage {
++	return {
++		role: "assistant",
++		content: failed ? [{ type: "thinking", thinking: "Provider unavailable" }] : [{ type: "text", text: "answer" }],
++		api: model.api,
++		provider: model.provider,
++		model: model.id,
++		stopReason: failed ? "error" : "stop",
++		...(failed ? { errorMessage: "503 service unavailable: overloaded_error retry-after-ms=1" } : {}),
++		usage: {
++			input: 1000,
++			output: 10,
++			cacheRead: 0,
++			cacheWrite: 0,
++			totalTokens: 1010,
++			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
++		},
++		timestamp: Date.now(),
++	};
++}
++
++const disposers: Array<() => Promise<void>> = [];
++afterEach(async () => {
++	vi.restoreAllMocks();
++	for (const dispose of disposers.splice(0)) await dispose();
++});
++
++async function harness(options: { exhausted?: boolean; compact?: "ok" | "cancel" | "failure" } = {}) {
++	const directory = TempDir.createSync("@pi-focused-switch-");
++	const auth = await AuthStorage.create(":memory:");
++	auth.keys.setRuntime("anthropic", "test-key");
++	const registry = new ModelRegistry(auth);
++	const calls: Array<{ model: Model; context: string; options?: SimpleStreamOptions }> = [];
++	const settings = Settings.isolated({
++		"compaction.enabled": false,
++		"compaction.keepRecentTokens": 1,
++		"compaction.experimentalContextManagement": false,
++		"compaction.autoContinue": false,
++		"retry.enabled": options.exhausted ?? false,
++		"retry.maxRetries": 1,
++		"retry.baseDelayMs": 1,
++		"retry.maxDelayMs": 1000,
++		"retry.modelFallback": false,
++		"todo.enabled": false,
++	});
++	settings.setModelRole("default", `${original.provider}/${original.id}`);
++	const compactEntered = Promise.withResolvers<void>();
++	const releaseCompact = Promise.withResolvers<void>();
++	const streamEntered = Promise.withResolvers<void>();
++	const releaseStream = Promise.withResolvers<void>();
++	let parkStream = false;
++	const streamFn: StreamFn = (model, context, streamOptions) => {
++		calls.push({ model, context: JSON.stringify(context), options: streamOptions });
++		const stream = new AssistantMessageEventStream();
++		const parked = parkStream;
++		void (async () => {
++			if (parked) {
++				streamEntered.resolve();
++				await releaseStream.promise;
++			}
++			const message = answer(model, options.exhausted && model.id === original.id);
++			stream.push({ type: "start", partial: message });
++			if (message.stopReason === "error") stream.push({ type: "error", reason: "error", error: message });
++			else stream.push({ type: "done", reason: "stop", message });
++			stream.end();
++		})();
++		return stream;
++	};
++	async function createSession(worker: boolean) {
++		const manager = SessionManager.create(directory.path(), directory.path());
++		let extensionRunner: ExtensionRunner | undefined;
++		if (worker && options.compact) {
++			const runtime = new ExtensionRuntime();
++			const extension = await loadExtensionFromFactory(
++				pi => {
++					pi.on("session_before_compact", async event => {
++						compactEntered.resolve();
++						await releaseCompact.promise;
++						if (options.compact === "cancel") return { cancel: true };
++						return {
++							compaction: {
++								summary: "worker summary",
++								shortSummary: undefined,
++								firstKeptEntryId: event.preparation.firstKeptEntryId,
++								tokensBefore: event.preparation.tokensBefore,
++								details: {},
++							},
++						};
++					});
++				},
++				directory.path(),
++				new EventBus(),
++				runtime,
++				"focused-switch-compaction",
++			);
++			extensionRunner = new ExtensionRunner([extension], runtime, directory.path(), manager, registry);
++		}
++		const agent = new Agent({
++			initialState: {
++				model: original,
++				systemPrompt: [worker ? "Worker identity" : "Main identity"],
++				tools: [],
++				messages: [],
++			},
++			streamFn,
++		});
++		return new AgentSession({
++			agent,
++			sessionManager: manager,
++			settings,
++			modelRegistry: registry,
++			extensionRunner,
++			scopedModels: [{ model: original }, { model: replacement }],
++		});
++	}
++	const main = await createSession(false);
++	const worker = await createSession(true);
++	disposers.push(async () => {
++		releaseCompact.resolve();
++		releaseStream.resolve();
++		await worker.dispose();
++		await main.dispose();
++		auth.close();
++		directory.removeSync();
++	});
++	let editorText = "";
++	let picker: ModelPickerComponent | undefined;
++	const editor = {
++		pendingImages: [],
++		pendingImageLinks: [],
++		imageLinks: undefined,
++		getText: () => editorText,
++		setText: (text: string) => {
++			editorText = text;
++		},
++		setCollapsedText: (text: string) => {
++			editorText = text;
++		},
++		clearDraft: vi.fn(() => {
++			editorText = "";
++		}),
++		addToHistory: vi.fn(),
++		composerChips: () => [],
++	};
++	const raw = {
++		editor,
++		editorContainer: { children: [] },
++		ui: {
++			requestRender: vi.fn(),
++			setFocus: vi.fn(),
++			terminal: { rows: 40, columns: 100 },
++			showOverlay: vi.fn((component: ModelPickerComponent) => {
++				picker = component;
++				return { hide: vi.fn() };
++			}),
++		},
++		session: main,
++		viewSession: worker,
++		sessionManager: main.sessionManager,
++		settings,
++		focusedAgentId: "Worker" as string | undefined,
++		keybindings: { getKeys: () => [] },
++		statusLine: { invalidate: vi.fn() },
++		skillCommands: new Map(),
++		fileSlashCommands: new Set<string>(),
++		collabGuest: false,
++		compactionQueuedMessages: [],
++		locallySubmittedUserSignatures: new Set<string>(),
++		showStatus: vi.fn(),
++		showError: vi.fn(),
++		updateEditorBorderColor: vi.fn(),
++		updatePendingMessagesDisplay: vi.fn(),
++		withLocalSubmission: async <T>(_text: string, fn: () => Promise<T>) => fn(),
++		isGuidedGoalInterviewActive: () => false,
++		handleCompactCommand: vi.fn<InteractiveModeContext["handleCompactCommand"]>(
++			async (_instructions, _mode, beforeFlush) => {
++				await beforeFlush?.("ok");
++				return "ok";
++			},
++		),
++		showModelSelector: (_options?: { temporaryOnly?: boolean }) => {},
++		switchSessionModel: async (_model: Model) => {},
++	};
++	const context = raw as unknown as InteractiveModeContext;
++	const selectors = new SelectorController(context);
++	raw.showModelSelector = options => selectors.showModelSelector(options);
++	raw.switchSessionModel = model => selectors.switchSessionModel(model);
++	new InputController(context).setupEditorSubmitHandler();
++	const submit = async (text: string) => {
++		editor.setText(text);
++		await context.editor.onSubmit?.(text);
++	};
++	return {
++		main,
++		worker,
++		calls,
++		raw,
++		settings,
++		submit,
++		getPicker: () => picker,
++		compactEntered,
++		releaseCompact,
++		streamEntered,
++		releaseStream,
++		parkStream: () => {
++			parkStream = true;
++		},
++	};
++}
++
++describe("editor /switch targets the viewed real session", () => {
++	it("switches after retry exhaustion and retains history, identity, and defaults on the next turn", async () => {
++		const h = await harness({ exhausted: true });
++		const exhausted = Promise.withResolvers<void>();
++		h.worker.subscribe(event => {
++			if (event.type === "auto_retry_end" && !event.success) exhausted.resolve();
++		});
++		await h.submit("original worker request");
++		await withTimeout(exhausted.promise, 3000, "worker retry did not exhaust");
++		await h.worker.waitForIdle();
++		expect(h.calls.filter(call => call.model.id === original.id).length).toBeGreaterThanOrEqual(2);
++		const previous = h.worker.sessionManager.getEntries().slice();
++		const identity = h.worker.agent.sessionId;
++		const systemPrompt = h.worker.agent.state.systemPrompt;
++		await h.submit(`/switch ${selector}`);
++		expect(h.worker.model?.id).toBe(replacement.id);
++		expect(h.main.model?.id).toBe(original.id);
++		expect(h.worker.sessionManager.getEntries().slice(0, previous.length)).toEqual(previous);
++		expect(
++			h.worker.sessionManager
++				.getEntries()
++				.some(entry => entry.type === "model_change" && entry.model === selector && entry.role === "temporary"),
++		).toBe(true);
++		await h.worker.sessionManager.flush();
++		const reopened = await SessionManager.open(h.worker.sessionManager.getSessionFile()!);
++		expect(
++			reopened
++				.getEntries()
++				.some(entry => entry.type === "model_change" && entry.model === selector && entry.role === "temporary"),
++		).toBe(true);
++		await h.submit("next worker request");
++		await h.worker.waitForIdle();
++		expect(h.calls.at(-1)?.model.id).toBe(replacement.id);
++		expect(h.calls.at(-1)?.context).toContain("original worker request");
++		expect(h.calls.at(-1)?.context).toContain("next worker request");
++		expect(h.worker.agent.sessionId).toBe(identity);
++		expect(h.worker.agent.state.systemPrompt).toEqual(systemPrompt);
++		expect(h.calls.at(-1)?.options?.sessionId).toBe(identity);
++		expect(h.settings.getModelRole("default")).toBe(`${original.provider}/${original.id}`);
++		expect(h.main.sessionManager.getEntries()).toHaveLength(0);
++	});
++
++	it("preserves main-session switching and leaves the worker alone", async () => {
++		const h = await harness();
++		h.raw.focusedAgentId = undefined;
++		h.raw.viewSession = h.main;
++		await h.submit(`/switch ${selector}`);
++		expect(h.main.model?.id).toBe(replacement.id);
++		expect(h.worker.model?.id).toBe(original.id);
++		expect(h.settings.getModelRole("default")).toBe(`${original.provider}/${original.id}`);
++	});
++
++	it("captures the picker target even if focus returns to main before selection", async () => {
++		const h = await harness();
++		await h.submit("/switch");
++		const picker = h.getPicker();
++		expect(picker).toBeDefined();
++		h.raw.focusedAgentId = undefined;
++		h.raw.viewSession = h.main;
++		picker!.handleInput(replacement.id);
++		picker!.handleInput("\r");
++		const deadline = Date.now() + 1000;
++		while (h.worker.model?.id !== replacement.id && !h.raw.showError.mock.calls.length && Date.now() < deadline) {
++			await scheduler.yield();
++		}
++		expect(h.raw.showError).not.toHaveBeenCalled();
++		expect(h.worker.model?.id).toBe(replacement.id);
++		expect(h.main.model?.id).toBe(original.id);
++	});
++
++	it("visibly refuses a streaming worker without steering or mutating either model", async () => {
++		const h = await harness();
++		h.parkStream();
++		const live = h.submit("parked request");
++		await h.streamEntered.promise;
++		await h.submit(`/switch ${selector}`);
++		expect(h.raw.showError).toHaveBeenCalledWith(expect.stringContaining("busy"));
++		expect(h.worker.model?.id).toBe(original.id);
++		expect(h.main.model?.id).toBe(original.id);
++		expect(h.worker.queuedMessageCount).toBe(0);
++		h.releaseStream.resolve();
++		await live;
++	});
++
++	it.each(["isRetrying", "isCompacting"] as const)("refuses a worker with %s set", async state => {
++		const h = await harness();
++		Object.defineProperty(h.worker, state, { configurable: true, get: () => true });
++		try {
++			await h.submit(`/switch ${selector}`);
++			expect(h.raw.showError).toHaveBeenCalledWith(expect.stringContaining("busy"));
++			expect(h.worker.model?.id).toBe(original.id);
++			expect(h.main.model?.id).toBe(original.id);
++		} finally {
++			Reflect.deleteProperty(h.worker, state);
++		}
++	});
++
++	it.each(["unknown", "auth"] as const)("reports %s without changing either session", async failure => {
++		const h = await harness();
++		const entries = h.worker.sessionManager.getEntries().slice();
++		if (failure === "auth") vi.spyOn(h.worker.modelRegistry, "hasConfiguredAuth").mockReturnValue(false);
++		await h.submit(`/switch ${failure === "unknown" ? "nonexistent-model-regression" : selector}`);
++		expect(h.raw.showError).toHaveBeenCalledWith(
++			expect.stringContaining(failure === "unknown" ? "Unknown model" : "No API key"),
++		);
++		expect(h.worker.model?.id).toBe(original.id);
++		expect(h.main.model?.id).toBe(original.id);
++		expect(h.worker.sessionManager.getEntries()).toEqual(entries);
++		expect(h.calls).toHaveLength(0);
++	});
++
++	it("refuses a switch when streaming starts during model metadata refresh", async () => {
++		const h = await harness();
++		const metadataEntered = Promise.withResolvers<void>();
++		const releaseMetadata = Promise.withResolvers<void>();
++		vi.spyOn(h.worker.modelRegistry, "refreshSelectedModelMetadata").mockImplementation(async model => {
++			metadataEntered.resolve();
++			await releaseMetadata.promise;
++			return model;
++		});
++		const switching = h.submit(`/switch ${selector}`);
++		await withTimeout(metadataEntered.promise, 1000, "switch metadata refresh not reached");
++		h.parkStream();
++		const live = h.submit("worker starts while selector metadata is pending");
++		await h.streamEntered.promise;
++		releaseMetadata.resolve();
++		await switching;
++		expect(h.raw.showError).toHaveBeenCalledWith(expect.stringContaining("busy"));
++		expect(h.worker.model?.id).toBe(original.id);
++		expect(h.main.model?.id).toBe(original.id);
++		expect(h.worker.sessionManager.getEntries().some(entry => entry.type === "model_change")).toBe(false);
++		h.releaseStream.resolve();
++		await live;
++	});
++
++	it.each(["ok", "cancel", "failure"] as const)(
++		"worker compact %s drains queued steering on the correct model",
++		async outcome => {
++			const h = await harness({ compact: outcome });
++			await h.submit("first worker turn");
++			await h.submit("second worker turn");
++			const mainEntries = h.main.sessionManager.getEntries().slice();
++			const replacementWindow = replacement.contextWindow;
++			const originalWindow = original.contextWindow;
++			if (replacementWindow == null || originalWindow == null) {
++				throw new Error("Expected bundled switch models to declare context windows");
++			}
++			vi.spyOn(h.worker, "getContextUsage").mockReturnValue({
++				tokens: replacementWindow + 1,
++				contextWindow: originalWindow,
++				percent: 100,
++			});
++			if (outcome === "failure")
++				vi.spyOn(h.worker.sessionManager, "appendCompaction").mockImplementation(() => {
++					throw new Error("worker compaction persistence failed");
++				});
++			const switching = h.submit(`/switch ${selector}`);
++			await withTimeout(h.compactEntered.promise, 1000, "worker compaction hook not reached");
++			await h.worker.steer("steering queued during switch");
++			expect(h.worker.queuedMessageCount).toBeGreaterThan(0);
++			await h.submit(`/switch ${selector}`);
++			expect(h.raw.showError).toHaveBeenCalledWith(expect.stringContaining("busy"));
++			h.raw.showError.mockClear();
++			h.releaseCompact.resolve();
++			await switching;
++			await h.worker.waitForIdle();
++			const expected = outcome === "ok" ? replacement.id : original.id;
++			expect(h.worker.model?.id).toBe(expected);
++			expect(h.calls.at(-1)?.model.id).toBe(expected);
++			expect(h.calls.at(-1)?.context).toContain("steering queued during switch");
++			expect(h.calls.filter(call => call.context.includes("steering queued during switch"))).toHaveLength(1);
++			expect(h.worker.queuedMessageCount).toBe(0);
++			expect(h.main.model?.id).toBe(original.id);
++			expect(h.main.sessionManager.getEntries()).toEqual(mainEntries);
++			expect(h.raw.handleCompactCommand).not.toHaveBeenCalled();
++			expect(h.worker.sessionManager.getEntries().filter(entry => entry.type === "compaction")).toHaveLength(
++				outcome === "ok" ? 1 : 0,
++			);
++			if (outcome === "ok") expect(h.raw.showError).not.toHaveBeenCalled();
++			else expect(h.raw.showError).toHaveBeenCalled();
++		},
++	);
++});

@@ -100,14 +100,14 @@ let
     extensionHandlers.toolCallTimeoutMs = 100000;
     # omp-claude-bridge registers `claude-bridge/*` models that run through the
     # real `claude` binary (Agent SDK), the sanctioned way to use the Claude
-    # subscription from omp; see pkgs/omp-claude-bridge.nix. It uses the SDK's
-    # bundled `claude`, logged in via `claude /login`, not omp's own
+    # subscription from omp; see pkgs/omp-claude-bridge.nix. It uses the
+    # Nix-managed `claude`, logged in via `claude /login`, not omp's own
     # `anthropic` credentials.
     extensions = [
       "${pkgs.pi-automode}/extensions/auto-mode.ts"
       "${pkgs.omp-claude-bridge}/src/index.ts"
     ];
-    features.unexpectedStopDetection = "smart";
+    features.unexpectedStopDetection = "off";
     followUpMode = "all";
     github.enabled = true;
     hideThinkingBlock = true;
@@ -316,6 +316,7 @@ in
   # comes back through omp's tools and the gate.
   home.file.".omp/agent/claude-bridge.json".text = builtins.toJSON {
     askClaude.enabled = false;
+    provider.pathToClaudeCodeExecutable = "${pkgs.claude-code}/bin/claude";
   };
 
   # Custom theme, selected by `theme.dark` in the overlay above. Themes are
