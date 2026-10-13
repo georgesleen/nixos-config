@@ -64,6 +64,32 @@ check_eq "a null height falls back to scale 1" \
 output eDP-1 position 0 0
 output \"DP-4\" position 1920 0" "$(plan extend "$nullh")"
 
+# Came up at 640x480 before its EDID was read; the plan must pin the best mode.
+stuck='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}},
+        {"name":"DP-5","active":true,"rect":{"x":1920},"current_mode":{"width":640,"height":480},
+         "modes":[{"width":1920,"height":1080,"refresh":60000},{"width":640,"height":480,"refresh":59940},
+                  {"width":1920,"height":1080,"refresh":100000},{"width":1280,"height":1024,"refresh":75025}]}]'
+check_eq "a monitor stuck at 640x480 is pinned to its largest, fastest mode" \
+"output \"DP-5\" mode 1920x1080@100Hz
+output \"DP-5\" scale 1 subpixel rgb
+output eDP-1 position 0 0
+output \"DP-5\" position 1920 0" "$(plan extend "$stuck")"
+
+# Resolution beats refresh (4K@30 over 1080p60), and scale follows the pinned
+# mode rather than the stale current one.
+tv='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}},
+     {"name":"HDMI-A-1","active":true,"rect":{"x":1920},"current_mode":{"width":1920,"height":1080},
+      "modes":[{"width":1920,"height":1080,"refresh":60000},{"width":3840,"height":2160,"refresh":29970}]}]'
+check_eq "4K@30 wins over 1080p60 and gets scale 2" \
+"output \"HDMI-A-1\" mode 3840x2160@29.97Hz
+output \"HDMI-A-1\" scale 2 subpixel rgb
+output \"HDMI-A-1\" position 0 0" "$(plan external-only "$tv")"
+
+check_eq "mirror pins the mode too" \
+"output \"DP-5\" mode 1920x1080@100Hz
+output \"DP-5\" scale 1
+output \"DP-5\" mirror eDP-1" "$(plan mirror "$stuck")"
+
 check_eq "undocked produces no commands" "" "$(plan extend "$solo")"
 check_exit "undocked signals no external with exit 1" 1 sh -c "printf '%s' '$solo' | sh '$script' extend"
 check_eq "an inactive external is ignored" "" "$(plan extend "$inactive")"
