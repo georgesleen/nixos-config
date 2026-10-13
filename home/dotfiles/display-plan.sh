@@ -84,10 +84,13 @@ case "$layout" in
     echo "output \"$ext\" position 0 0"
     ;;
   mirror)
-    # Reset to scale 1 in case it carried a scale over from extend.
+    # sway cannot mirror outputs; the caller runs wl-mirror fullscreen on the
+    # external. It sits apart from eDP-1 so the cursor, clamped to the nearest
+    # output, cannot wander onto it.
     mode_line
     echo "output \"$ext\" scale 1"
-    echo "output \"$ext\" mirror eDP-1"
+    echo "output eDP-1 position 0 0"
+    echo "output \"$ext\" position 4000 0"
     ;;
   swap)
     edp_x=$(printf '%s' "$outputs" \

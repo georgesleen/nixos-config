@@ -39,9 +39,18 @@ let
     ${swaymsg} -t get_outputs | ${displayPlan} "$1" | ${runPlan}
   '';
 
+  # sway has no output mirroring, so Duplicate shows eDP-1 on the external
+  # through wl-mirror, run as a transient unit so there is only ever one.
+  mirrorUnit = "display-mirror";
   mirrorScript = pkgs.writeShellScript "kanshi-mirror" ''
     ${swaymsg} -t get_outputs | ${displayPlan} mirror | ${runPlan}
+    ${detectExternal}
+    [ -z "$ext" ] && exit 0
+    ${pkgs.systemd}/bin/systemctl --user stop ${mirrorUnit} 2>/dev/null
+    ${pkgs.systemd}/bin/systemd-run --user --collect --unit=${mirrorUnit} \
+      ${pkgs.wl-mirror}/bin/wl-mirror --fullscreen-output "$ext" eDP-1
   '';
+  mirrorStop = "${pkgs.systemd}/bin/systemctl --user stop ${mirrorUnit}";
 
   # kanshi only acts when the set of outputs changes, but an external can come
   # up on a fallback mode and have its real EDID arrive later on the same
@@ -98,6 +107,7 @@ let
   extendProfile = {
     profile = {
       exec = [
+        mirrorStop
         "${applyExternalScript} extend"
         "${splitWorkspacesScript}"
         "${lidReconcileScript}"
@@ -147,6 +157,7 @@ let
     profile = {
       exec = [
         "${applyExternalScript} external-only"
+        mirrorStop
         "${allToExternalScript}"
         wallpaperRefresh
         barRefresh
@@ -169,6 +180,7 @@ let
   internalOnlyProfile = {
     profile = {
       exec = [
+        mirrorStop
         "${allToInternalScript}"
         wallpaperRefresh
         barRefresh
@@ -191,6 +203,7 @@ let
   undockedProfile = {
     profile = {
       exec = [
+        mirrorStop
         "${allToInternalScript}"
         "${lidReconcileScript}"
         wallpaperRefresh

@@ -55,9 +55,10 @@ check_eq "external-only puts the external at the origin" \
 "output \"DP-4\" scale 1 subpixel rgb
 output \"DP-4\" position 0 0" "$(plan external-only "$hd")"
 
-check_eq "mirror resets scale before mirroring" \
+check_eq "mirror resets scale and parks the external apart from the laptop" \
 "output \"DP-4\" scale 1
-output \"DP-4\" mirror eDP-1" "$(plan mirror "$uhd")"
+output eDP-1 position 0 0
+output \"DP-4\" position 4000 0" "$(plan mirror "$uhd")"
 
 check_eq "swap moves the laptop to the right when it is at the origin" \
 "output eDP-1 position 1920 0
@@ -105,7 +106,8 @@ output \"HDMI-A-1\" position 0 0" "$(plan external-only "$tv")"
 check_eq "mirror pins the mode too" \
 "output \"DP-5\" mode 1920x1080@100.000Hz
 output \"DP-5\" scale 1
-output \"DP-5\" mirror eDP-1" "$(plan mirror "$stuck")"
+output eDP-1 position 0 0
+output \"DP-5\" position 4000 0" "$(plan mirror "$stuck")"
 
 check_eq "reconcile fixes a stuck mode and its scale" \
 "output \"DP-5\" mode 1920x1080@100.000Hz
