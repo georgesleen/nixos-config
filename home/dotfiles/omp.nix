@@ -1,5 +1,7 @@
 {
   config,
+  lib,
+  osConfig,
   pkgs,
   ...
 }:
@@ -286,9 +288,15 @@ let
     # omp rewrites `~/.omp/agent/config.yml` whenever it saves a setting, and a
     # stored `approvalMode` there outranks the overlay. The documented
     # per-session override does not go through that file at all.
+    #
+    # OLLAMA_CONTEXT_LENGTH: omp otherwise sizes the implicit `ollama`
+    # provider from `/api/show`, the model's trained maximum (128k for gemma4),
+    # while the server truncates at the num_ctx it was started with. Mirrored
+    # from modules/features/ollama.nix so the two cannot drift.
     postBuild = ''
       wrapProgram $out/bin/omp \
-        --add-flags "--config ${ompPolicy} --approval-mode yolo"
+        --add-flags "--config ${ompPolicy} --approval-mode yolo" \
+        ${lib.optionalString osConfig.services.ollama.enable "--set-default OLLAMA_CONTEXT_LENGTH ${osConfig.services.ollama.environmentVariables.OLLAMA_CONTEXT_LENGTH}"}
     '';
   };
 in
