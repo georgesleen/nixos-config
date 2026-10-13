@@ -23,6 +23,7 @@ let
   # sway state and pipe the result back into swaymsg.
   displayPlan = pkgs.writeShellScript "display-plan" ''
     export JQ="${jq}"
+    PATH="${pkgs.coreutils}/bin:$PATH"
     ${builtins.readFile ./display-plan.sh}
   '';
   workspacePlan = pkgs.writeShellScript "workspace-plan" ''
@@ -40,6 +41,22 @@ let
 
   mirrorScript = pkgs.writeShellScript "kanshi-mirror" ''
     ${swaymsg} -t get_outputs | ${displayPlan} mirror | ${runPlan}
+  '';
+
+  # kanshi only acts when the set of outputs changes, but an external can come
+  # up on a fallback mode and have its real EDID arrive later on the same
+  # connector. Any DRM hotplug event re-checks the mode; the burst one event
+  # brings is drained for 2 s so sway has re-probed before the check.
+  modeGuardScript = pkgs.writeShellScript "display-mode-guard" ''
+    reconcile() {
+      ${swaymsg} -t get_outputs </dev/null | ${displayPlan} reconcile \
+        | while IFS= read -r c; do echo "$c"; ${swaymsg} "$c" >/dev/null; done
+    }
+    reconcile
+    ${pkgs.systemd}/bin/udevadm monitor --udev --subsystem-match=drm | while read -r _; do
+      while read -r -t 2 _; do :; done
+      reconcile
+    done
   '';
 
   # mode is split | all-internal | all-external.
@@ -239,6 +256,20 @@ in
       undockedProfile
     ];
     systemdTarget = "sway-session.target";
+  };
+
+  systemd.user.services.display-mode-guard = {
+    Install.WantedBy = [ "sway-session.target" ];
+    Service = {
+      ExecStart = "${modeGuardScript}";
+      Restart = "always";
+      RestartSec = 2;
+    };
+    Unit = {
+      After = [ "sway-session.target" ];
+      Description = "Keep the external monitor on its native mode";
+      PartOf = [ "sway-session.target" ];
+    };
   };
 
   wayland.windowManager.sway.config.keybindings = {

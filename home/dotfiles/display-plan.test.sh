@@ -22,6 +22,23 @@ swapped='[{"name":"eDP-1","active":true,"rect":{"x":1920},"current_mode":{"heigh
 spaced='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}},
          {"name":"Big Screen","active":true,"rect":{"x":1920},"current_mode":{"height":1080}}]'
 
+# Fixture DRM tree, empty unless a test writes an EDID into it, so the host's
+# real /sys/class/drm never leaks in.
+DRM_SYS=$(mktemp -d)
+export DRM_SYS
+trap 'rm -rf "$DRM_SYS"' EXIT
+
+# Writes a 128-byte EDID for connector $1 whose first detailed timing is $2x$3.
+edid() {
+  mkdir -p "$DRM_SYS/card1-$1"
+  {
+    head -c 54 /dev/zero
+    printf "$(printf '\\%03o\\%03o\\%03o\\000\\%03o\\%03o\\000\\%03o' \
+      2 58 $(($2 % 256)) $(($2 / 256 * 16)) $(($3 % 256)) $(($3 / 256 * 16)))"
+    head -c 66 /dev/zero
+  } >"$DRM_SYS/card1-$1/edid"
+}
+
 plan() { printf '%s' "$2" | sh "$script" "$1"; }
 
 check_eq "extend places the external to the right at scale 1" \
@@ -69,8 +86,8 @@ stuck='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":10
         {"name":"DP-5","active":true,"rect":{"x":1920},"current_mode":{"width":640,"height":480},
          "modes":[{"width":1920,"height":1080,"refresh":60000},{"width":640,"height":480,"refresh":59940},
                   {"width":1920,"height":1080,"refresh":100000},{"width":1280,"height":1024,"refresh":75025}]}]'
-check_eq "a monitor stuck at 640x480 is pinned to its largest, fastest mode" \
-"output \"DP-5\" mode 1920x1080@100Hz
+check_eq "a monitor stuck at 640x480 without an EDID gets its largest, fastest mode" \
+"output \"DP-5\" mode 1920x1080@100.000Hz
 output \"DP-5\" scale 1 subpixel rgb
 output eDP-1 position 0 0
 output \"DP-5\" position 1920 0" "$(plan extend "$stuck")"
@@ -81,14 +98,53 @@ tv='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}
      {"name":"HDMI-A-1","active":true,"rect":{"x":1920},"current_mode":{"width":1920,"height":1080},
       "modes":[{"width":1920,"height":1080,"refresh":60000},{"width":3840,"height":2160,"refresh":29970}]}]'
 check_eq "4K@30 wins over 1080p60 and gets scale 2" \
-"output \"HDMI-A-1\" mode 3840x2160@29.97Hz
+"output \"HDMI-A-1\" mode 3840x2160@29.970Hz
 output \"HDMI-A-1\" scale 2 subpixel rgb
 output \"HDMI-A-1\" position 0 0" "$(plan external-only "$tv")"
 
 check_eq "mirror pins the mode too" \
-"output \"DP-5\" mode 1920x1080@100Hz
+"output \"DP-5\" mode 1920x1080@100.000Hz
 output \"DP-5\" scale 1
 output \"DP-5\" mirror eDP-1" "$(plan mirror "$stuck")"
+
+check_eq "reconcile fixes a stuck mode and its scale" \
+"output \"DP-5\" mode 1920x1080@100.000Hz
+output \"DP-5\" scale 1" "$(plan reconcile "$stuck")"
+
+settled='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}},
+          {"name":"DP-5","active":true,"rect":{"x":1920},"current_mode":{"width":1920,"height":1080,"refresh":100000},
+           "modes":[{"width":1920,"height":1080,"refresh":100000},{"width":640,"height":480,"refresh":59940}]}]'
+check_eq "reconcile leaves an output already on its best mode alone" "" "$(plan reconcile "$settled")"
+check_eq "reconcile does nothing for a mode-less output" "" "$(plan reconcile "$hd")"
+
+# A 1080p panel that also accepts a downscaled 4K signal: native beats largest.
+downscaler='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}},
+             {"name":"DP-6","active":true,"rect":{"x":1920},"current_mode":{"width":3840,"height":2160},
+              "modes":[{"width":3840,"height":2160,"refresh":60000},{"width":1920,"height":1080,"refresh":60000},
+                       {"width":1920,"height":1080,"refresh":75000}]}]'
+edid DP-6 1920 1080
+check_eq "the EDID's native resolution wins over a larger accepted mode" \
+"output \"DP-6\" mode 1920x1080@75.000Hz
+output \"DP-6\" scale 1 subpixel rgb
+output \"DP-6\" position 0 0" "$(plan external-only "$downscaler")"
+
+# A 4K TV that also lists DCI 4096x2160: the UHD panel size must win.
+dci='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}},
+      {"name":"HDMI-A-2","active":true,"rect":{"x":1920},"current_mode":{"width":1920,"height":1080},
+       "modes":[{"width":4096,"height":2160,"refresh":24000},{"width":3840,"height":2160,"refresh":30000},
+                {"width":1920,"height":1080,"refresh":60000}]}]'
+edid HDMI-A-2 3840 2160
+check_eq "a 4K TV is pinned to 3840x2160, not DCI 4096x2160" \
+"output \"HDMI-A-2\" mode 3840x2160@30.000Hz
+output \"HDMI-A-2\" scale 2 subpixel rgb
+output \"HDMI-A-2\" position 0 0" "$(plan external-only "$dci")"
+
+# An EDID whose native mode sway does not list falls back to the largest.
+edid DP-5 2560 1440
+check_eq "a native mode missing from the list falls back to the largest" \
+"output \"DP-5\" mode 1920x1080@100.000Hz
+output \"DP-5\" scale 1" "$(plan reconcile "$stuck")"
+rm -rf "$DRM_SYS/card1-DP-5"
 
 check_eq "undocked produces no commands" "" "$(plan extend "$solo")"
 check_exit "undocked signals no external with exit 1" 1 sh -c "printf '%s' '$solo' | sh '$script' extend"
