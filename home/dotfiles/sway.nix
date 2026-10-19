@@ -66,6 +66,7 @@ let
         ;;
       mute) ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
     esac
+    ${pkgs.procps}/bin/pkill -RTMIN+8 -x waybar || true
     raw=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@)
     if echo "$raw" | grep -q MUTED; then
       ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-volume "Volume" "Muted"
@@ -77,6 +78,7 @@ let
 
   micMuteScript = pkgs.writeShellScript "micmute" ''
     ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+    ${pkgs.procps}/bin/pkill -RTMIN+8 -x waybar || true
     raw=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@)
     led=/sys/class/leds/platform::micmute/brightness
     if echo "$raw" | grep -q MUTED; then

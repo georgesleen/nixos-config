@@ -1,6 +1,6 @@
-# Status bar. Native waybar modules cover the simple readouts (network, volume,
-# memory) and the SNI tray (swaybar rendered tray icons as blobs). Blocks with
-# deliberate custom logic stay shell scripts: battery counts down to the
+# Status bar. Native waybar modules cover network, memory and the SNI tray
+# (swaybar rendered tray icons as blobs). Audio uses wpctl for device tooltips.
+# Blocks with deliberate custom logic stay shell scripts: battery counts down to the
 # hibernate target not 0% (see battery-thresholds.nix), gpu reads Intel RC6, cpu
 # shows freq+temp, disk aggregates all real filesystems, brightness via
 # brightnessctl (waybar's native backlight module renders nothing here), clock
@@ -11,7 +11,12 @@
 # below. Default nightfox, matching the helix theme; its accent is the same
 # lavender omp's dark-mix theme uses, so bar and agent share one accent hue.
 
-{ lib, pkgs, ... }:
+{
+  lib,
+  osConfig,
+  pkgs,
+  ...
+}:
 
 let
   thresh = import ./battery-thresholds.nix;
@@ -43,32 +48,149 @@ let
   fmtFreq = pkgs.writeShellScript "fmt-freq" ''exec ${waybarFmt} freq "$@"'';
   fmtBytes = pkgs.writeShellScript "fmt-bytes" ''exec ${waybarFmt} bytes "$@"'';
 
+  tooltipJson = pkgs.writeShellScript "waybar-tooltip-json" ''
+    exec ${pkgs.jq}/bin/jq -n -c --arg text "$1" --arg tooltip "$2" \
+      '{text: $text, tooltip: ($tooltip | @html)}'
+  '';
+
   brightnessBlock = pkgs.writeShellScript "waybar-brightness" ''
     set -euo pipefail
-    cur="$(${pkgs.brightnessctl}/bin/brightnessctl get)"
-    max="$(${pkgs.brightnessctl}/bin/brightnessctl max)"
-    echo "<span color='${c.brightness}'>󰃟 $((cur * 100 / max))%</span>"
+    cur="$(${pkgs.brightnessctl}/bin/brightnessctl --class=backlight get)"
+    max="$(${pkgs.brightnessctl}/bin/brightnessctl --class=backlight max)"
+    tooltip="Backlight: $cur / $max ($((cur * 100 / max))%)"
+    for device in /sys/class/backlight/*; do
+      [ -r "$device/brightness" ] || continue
+      tooltip+=$'\n'"Backlight device: ''${device##*/}"
+    done
+    for device in /sys/class/leds/*::kbd_backlight; do
+      [ -r "$device/brightness" ] && [ -r "$device/max_brightness" ] || continue
+      read -r level < "$device/brightness"
+      read -r maximum < "$device/max_brightness"
+      tooltip+=$'\n'"Keyboard (''${device##*/}): $level / $maximum"
+    done
+    for device in /sys/bus/iio/devices/iio:device*; do
+      if [ -r "$device/in_illuminance_input" ]; then
+        read -r lux < "$device/in_illuminance_input"
+      elif [ -r "$device/in_illuminance_raw" ] && [ -r "$device/in_illuminance_scale" ]; then
+        read -r raw < "$device/in_illuminance_raw"
+        read -r scale < "$device/in_illuminance_scale"
+        offset=0
+        [ ! -r "$device/in_illuminance_offset" ] || read -r offset < "$device/in_illuminance_offset"
+        lux=$(${pkgs.gawk}/bin/awk -v raw="$raw" -v scale="$scale" -v offset="$offset" \
+          'BEGIN { printf "%.1f", (raw + offset) * scale }')
+      else
+        continue
+      fi
+      tooltip+=$'\n'"Ambient light: $lux lux"
+    done
+    ${tooltipJson} "<span color='${c.brightness}'>󰃟 $((cur * 100 / max))%</span>" "$tooltip"
+  '';
+  audioBlock = pkgs.writeShellScript "waybar-audio" ''
+    set -euo pipefail
+    devices="$(${pkgs.pipewire}/bin/pw-dump)"
+    device_name() {
+      printf '%s\n' "$devices" | ${pkgs.jq}/bin/jq -r --arg key "default.audio.$1" '
+        . as $devices |
+        ([.[] | select(.type == "PipeWire:Interface:Metadata") |
+          .metadata[]? | select(.key == $key) |
+          (.value | if type == "string" then fromjson else . end).name][0]) as $name |
+        ([$devices[] | .info.props? |
+          select(.["node.name"] == $name and $name != null)][0]) as $node |
+        if $node == null then "Unavailable" else
+          ([$devices[] | select((.id | tostring) == ($node["device.id"] | tostring)) |
+            .info.props?][0] // {}) as $device |
+          [$node["node.description"], $node["node.nick"],
+            $node["alsa.mixer_name"], $device["alsa.mixer_name"],
+            $device["device.product.name"]] |
+          map(select(. != null and . != "")) | unique |
+          if length == 0 then $name else join("\n  ") end
+        end
+      '
+    }
+    volume() {
+      local raw
+      if raw=$(${pkgs.wireplumber}/bin/wpctl get-volume "$1"); then
+        printf '%s\n' "$raw" | ${pkgs.gawk}/bin/awk \
+          '{printf "%d%%%s", $2 * 100 + 0.5, ($3 == "[MUTED]" ? " (muted)" : "")}'
+      else
+        printf 'Unavailable'
+      fi
+    }
+    output=$(volume @DEFAULT_AUDIO_SINK@)
+    input=$(volume @DEFAULT_AUDIO_SOURCE@)
+    icon="󰕾"
+    case "$output" in *muted*) icon="󰖁" ;; esac
+    tooltip="Default output: $(device_name sink)"$'\n'"Volume: $output"
+    tooltip+=$'\n\n'"Default input: $(device_name source)"$'\n'"Volume: $input"
+    ${tooltipJson} "$icon $output" "$tooltip"
+  '';
+  powerPolicyDetails = pkgs.writeShellScript "waybar-power-policy-details" ''
+    set -euo pipefail
+    PATH="${pkgs.coreutils}/bin:${pkgs.gawk}/bin:$PATH"
+    show() {
+      local label="$1" file="$2" value
+      [ -r "$file" ] || return 0
+      read -r value < "$file" || return 0
+      printf '%s: %s\n' "$label" "$value"
+    }
+    show "Computer" /sys/class/dmi/id/product_name
+    show "Firmware platform profile" /sys/firmware/acpi/platform_profile
+    preferences=""
+    for file in /sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference; do
+      [ -r "$file" ] || continue
+      read -r value < "$file" || continue
+      preferences+="$value"$'\n'
+    done
+    if [ -n "$preferences" ]; then
+      printf 'CPU EPP: %s\n' "$(printf '%s' "$preferences" | sort -u | paste -sd ', ' -)"
+    fi
+    if [ -r /sys/devices/system/cpu/intel_pstate/no_turbo ]; then
+      read -r disabled < /sys/devices/system/cpu/intel_pstate/no_turbo
+      if [ "$disabled" = 0 ]; then echo "CPU turbo: enabled"; else echo "CPU turbo: disabled"; fi
+    else
+      show "CPU boost (1 = enabled)" /sys/devices/system/cpu/cpufreq/boost
+    fi
+    show "PCIe ASPM policy (active in brackets)" /sys/module/pcie_aspm/parameters/policy
+    for device in /sys/class/drm/card[0-9]*/device; do
+      [ -d "$device" ] || continue
+      card="''${device%/device}"
+      card="''${card##*/}"
+      [[ "$card" =~ ^card[0-9]+$ ]] || continue
+      show "GPU $card runtime power control" "$device/power/control"
+      show "GPU $card runtime status" "$device/power/runtime_status"
+      show "GPU $card DPM policy" "$device/power_dpm_force_performance_level"
+      for file in "$device"/tile*/gt*/freq*/power_profile; do
+        show "GPU $card ''${file#"$device"/} mode" "$file"
+      done
+    done
+    show "Intel GPU power saving (i915 enable_dc)" /sys/module/i915/parameters/enable_dc
   '';
   powerBlock = pkgs.writeShellScript "waybar-power" ''
     set -euo pipefail
+    PATH="${pkgs.gawk}/bin:$PATH"
     upower_bin="${pkgs.upower}/bin/upower"
-    bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
-    if [ -z "$bat" ]; then
-      echo "<span color='${c.muted}'>󱐋 n/a</span>"
-      exit 0
+    bat=$("$upower_bin" -e | awk '/battery|BAT/ {print; exit}')
+    tooltip="Battery power: unavailable"
+    text="<span color='${c.muted}'>󱐋 n/a</span>"
+    if [ -n "$bat" ]; then
+      info="$("$upower_bin" -i "$bat")"
+      rate=$(printf '%s\n' "$info" | awk '/energy-rate:/ {printf "%.2f %s", $2, $3}')
+      state=$(printf '%s\n' "$info" | awk '/^[[:space:]]*state:/ {print $2}')
+      rate="''${rate:-0 W}"
+      text="<span color='${c.power}'>󱐋 $rate</span>"
+      tooltip="Battery state: $state"$'\n'"Battery energy rate: $rate (not wall power)"
     fi
-    rate=$("$upower_bin" -i "$bat" | ${pkgs.ripgrep}/bin/rg -m 1 -i "energy-rate" | awk '{printf "%.2f %s\n", $2, $3}')
-    if [ -z "$rate" ]; then
-      rate="0 W"
-    fi
-    echo "<span color='${c.power}'>󱐋 $rate</span>"
+    policy="$(${powerPolicyDetails})"
+    [ -z "$policy" ] || tooltip+=$'\n\n'"$policy"
+    ${tooltipJson} "$text" "$tooltip"
   '';
   batteryBlock = pkgs.writeShellScript "waybar-battery" ''
     set -euo pipefail
+    PATH="${pkgs.gawk}/bin:$PATH"
     upower_bin="${pkgs.upower}/bin/upower"
-    bat=$("$upower_bin" -e | ${pkgs.ripgrep}/bin/rg -m 1 -i "battery|BAT")
+    bat=$("$upower_bin" -e | awk '/battery|BAT/ {print; exit}')
     if [ -z "$bat" ]; then
-      echo "<span color='${c.muted}'>󰂑 n/a</span>"
+      ${tooltipJson} "<span color='${c.muted}'>󰂑 n/a</span>" "Battery: unavailable"
       exit 0
     fi
     info="$("$upower_bin" -i "$bat")"
@@ -120,7 +242,24 @@ let
       color="${c.battery}"
       label="$pct $tte_fmt"
     fi
-    echo "<span color='$color'>$icon $label</span>"
+    tooltip="$(printf '%s\n' "$info" | awk '
+      /^[[:space:]]*(vendor|model|native-path|state|percentage|energy|energy-full|energy-full-design|capacity|time to empty|time to full|energy-rate):/ {
+        sub(/^[[:space:]]+/, ""); sub(/^capacity:/, "Health (full/design):"); print
+      }')"
+    if [ "$state" = discharging ]; then
+      tooltip+=$'\n'"Discharge countdown: $tte_fmt to ${toString thresh.criticalPct}% hibernate target"
+    fi
+    for device in /sys/class/power_supply/*; do
+      [ -r "$device/type" ] || continue
+      read -r type < "$device/type"
+      [ "$type" = Battery ] || continue
+      for field in cycle_count charge_control_start_threshold charge_control_end_threshold; do
+        [ -r "$device/$field" ] || continue
+        read -r value < "$device/$field" || continue
+        tooltip+=$'\n'"''${device##*/} $field: $value"
+      done
+    done
+    ${tooltipJson} "<span color='$color'>$icon $label</span>" "$tooltip"
   '';
   cpuBlock = pkgs.writeShellScript "waybar-cpu" ''
     cpu_freq() {
@@ -162,16 +301,30 @@ let
     fi
 
     label="$load/''${cores}c"
-    [ "$freq" -gt 0 ] 2>/dev/null && label="$label @ $(${fmtFreq} "$freq")"
-    [ -n "$temp" ] && label="$label (''${temp} °C)"
-
-    echo "<span color='$color'>󰍛 $label</span>"
+    tooltip="CPU load (1 minute): $load / $cores logical CPUs"
+    model=$(${pkgs.gawk}/bin/awk '/^model name[[:space:]]*:/ {sub(/^[^:]*:[[:space:]]*/, ""); print; exit}' /proc/cpuinfo)
+    [ -z "$model" ] || tooltip="CPU: $model"$'\n'"$tooltip"
+    tooltip+=$'\n'"Average frequency: $(${fmtFreq} "$freq")"
+    [ -z "$temp" ] || tooltip+=$'\n'"CPU temperature (hottest core/package): $temp °C"
+    if [ "''${1:-}" != compact ]; then
+      [ "$freq" -gt 0 ] 2>/dev/null && label="$label @ $(${fmtFreq} "$freq")"
+      [ -n "$temp" ] && label="$label (''${temp} °C)"
+    fi
+    ${tooltipJson} "<span color='$color'>󰍛 $label</span>" "$tooltip"
   '';
   gpuBlock = pkgs.writeShellScript "waybar-gpu" ''
-    STATE="''${XDG_RUNTIME_DIR:-/tmp}/waybar-gpu-state"
+    STATE="''${XDG_RUNTIME_DIR:-/tmp}/waybar-gpu-state-''${1:-full}"
     # Render-GT idle residency and actual frequency: i915 paths, then xe.
     rc6_path=$(ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms /sys/class/drm/card*/device/tile0/gt0/gtidle/idle_residency_ms 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
     freq_path=$(ls /sys/class/drm/card*/gt/gt0/rps_act_freq_mhz /sys/class/drm/card*/device/tile0/gt0/freq0/act_freq 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
+    card_path="''${rc6_path#/sys/class/drm/}"
+    card="''${card_path%%/*}"
+    pci_device=$(${pkgs.coreutils}/bin/readlink -f "/sys/class/drm/$card/device")
+    gpu_model=""
+    if [[ "''${pci_device##*/}" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]]; then
+      gpu_model=$(${pkgs.pciutils}/bin/lspci -D -s "''${pci_device##*/}" |
+        ${pkgs.gawk}/bin/awk '{sub(/^[^ ]+ [^:]+: /, ""); print}')
+    fi
 
     # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
     intel_busy() {
@@ -205,7 +358,7 @@ let
     if [ -f "$rc6_path" ]; then
       busy=$(intel_busy); freq=$(intel_freq); temp=$(intel_temp)
     else
-      echo "<span color='${c.muted}'>󰾲 GPU n/a</span>"
+      ${tooltipJson} "<span color='${c.muted}'>󰾲 GPU n/a</span>" "GPU utilization unavailable"
       exit 0
     fi
 
@@ -215,10 +368,20 @@ let
     fi
 
     label="''${busy}%"
-    [ "''${freq:-0}" -gt 0 ] 2>/dev/null && label="$label @ $(${fmtFreq} "''${freq:-0}")"
-    [ -n "$temp" ] && label="$label (''${temp} °C)"
-
-    echo "<span color='$color'>󰾲 $label</span>"
+    tooltip="Render GPU busy: $busy%"
+    [ -z "$gpu_model" ] || tooltip="GPU: $gpu_model"$'\n'"$tooltip"
+    tooltip+=$'\n'"Render GPU frequency: $(${fmtFreq} "''${freq:-0}")"
+    for media_freq in /sys/class/drm/card*/device/tile0/gt1/freq0/act_freq; do
+      [ -r "$media_freq" ] || continue
+      read -r media < "$media_freq"
+      tooltip+=$'\n'"Media GT frequency: $(${fmtFreq} "$media")"
+    done
+    [ -z "$temp" ] || tooltip+=$'\n'"CPU package temperature (shared package): $temp °C"
+    if [ "''${1:-}" != compact ]; then
+      [ "''${freq:-0}" -gt 0 ] 2>/dev/null && label="$label @ $(${fmtFreq} "''${freq:-0}")"
+      [ -n "$temp" ] && label="$label (''${temp} °C)"
+    fi
+    ${tooltipJson} "<span color='$color'>󰾲 $label</span>" "$tooltip"
   '';
   # Clock via glibc `date`, not waybar's native module: libstdc++'s std::chrono
   # tzdb drops the DST offset on a zone line whose RULES column is a literal
@@ -233,14 +396,33 @@ let
   '';
   diskBlock = pkgs.writeShellScript "waybar-disk" ''
     set -euo pipefail
-    stats="$(${pkgs.coreutils}/bin/df -B1 \
+    PATH="${pkgs.gawk}/bin:$PATH"
+    filesystems="$(${pkgs.coreutils}/bin/df -B1 \
       -x tmpfs -x devtmpfs -x efivarfs -x squashfs -x overlay \
-      --output=source,used,size 2>/dev/null \
-      | awk 'NR>1 && !seen[$1]++ {u+=$2; t+=$3} END{print u, t}')"
-    used_b="$(echo "$stats" | awk '{print $1}')"
-    total_b="$(echo "$stats" | awk '{print $2}')"
+      --output=source,used,size,avail 2>/dev/null \
+      | awk 'NR>1 && !seen[$1]++ {print}')"
+    read -r used_b total_b < <(printf '%s\n' "$filesystems" \
+      | awk '{u+=$2; t+=$3} END{printf "%.0f %.0f\n", u, t}')
     label="$(${fmtBytes} "$used_b" "$total_b")"
-    echo "<span color='${c.disk}'>󰋊 $label</span>"
+    if [ "''${1:-}" = compact ]; then
+      label="$(awk -v u="$used_b" -v t="$total_b" 'BEGIN {printf "%.0f%%", (t > 0 ? 100*u/t : 0)}')"
+    fi
+    tooltip="Mounted filesystems (one entry per source; not physical drive capacity)"
+    while read -r source used total available; do
+      [ -n "$source" ] || continue
+      details="$(${fmtBytes} "$used" "$total")"
+      free="$(${pkgs.coreutils}/bin/numfmt --to=iec-i --suffix=B --format=%.2f "$available")"
+      tooltip+=$'\n'"$source: $details used/total; $free available"
+      block_source="''${source%%\[*}"
+      if [ -b "$block_source" ]; then
+        models="$(${pkgs.util-linux}/bin/lsblk --json --inverse --paths --output NAME,MODEL "$block_source" |
+          ${pkgs.jq}/bin/jq -r '[.blockdevices[] | recurse(.children[]?) |
+            .model // empty | gsub("^\\s+|\\s+$"; "") |
+            select(. != "")] | unique | join(", ")')"
+        [ -z "$models" ] || tooltip+=$'\n'"Storage model: $models"
+      fi
+    done <<< "$filesystems"
+    ${tooltipJson} "<span color='${c.disk}'>󰋊 $label</span>" "$tooltip"
   '';
 in
 {
@@ -249,13 +431,24 @@ in
     settings =
       let
         bar = {
+          "custom/audio" = {
+            exec = "${audioBlock}";
+            interval = 5;
+            on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+            on-scroll-down = "${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
+            on-scroll-up = "${pkgs.wireplumber}/bin/wpctl set-volume --limit 1.0 @DEFAULT_AUDIO_SINK@ 5%+";
+            return-type = "json";
+            signal = 8;
+          };
           "custom/battery" = {
             exec = "${batteryBlock}";
             interval = 30;
+            return-type = "json";
           };
           "custom/brightness" = {
             exec = "${brightnessBlock}";
             interval = 2;
+            return-type = "json";
           };
           "custom/clock" = {
             exec = "${clockBlock}";
@@ -265,24 +458,29 @@ in
           "custom/cpu" = {
             exec = "${cpuBlock}";
             interval = 5;
+            return-type = "json";
           };
           "custom/disk" = {
             exec = "${diskBlock}";
             interval = 60;
+            return-type = "json";
           };
           "custom/gpu" = {
             exec = "${gpuBlock}";
             interval = 5;
+            return-type = "json";
           };
           "custom/power" = {
             exec = "${powerBlock}";
             interval = 10;
+            return-type = "json";
           };
           height = 30;
           layer = "top";
           memory = {
             format = "󰒋 {used:0.2f}/{total:0.2f} GiB";
             interval = 10;
+            tooltip-format = "RAM used: {used:0.2f} / {total:0.2f} GiB ({percentage}%)\nAvailable: {avail:0.2f} GiB\nSwap used: {swapUsed:0.2f} / {swapTotal:0.2f} GiB ({swapPercentage}%)\nSwap available: {swapAvail:0.2f} GiB";
           };
           modules-center = [ ];
           modules-left = [
@@ -292,7 +490,7 @@ in
           modules-right = [
             "network"
             "custom/brightness"
-            "wireplumber"
+            "custom/audio"
             "custom/cpu"
             "custom/gpu"
             "memory"
@@ -307,7 +505,12 @@ in
             format-disconnected = "󰤭 down";
             format-ethernet = "󰲝 {ifname}";
             format-wifi = "󰤨 {essid} {signalStrength}%";
-            tooltip-format = "{ifname}: {ipaddr}";
+            tooltip-format = "{ifname}: {ipaddr}/{cidr}\nGateway: {gwaddr}";
+            tooltip-format-wifi =
+              lib.optionalString (
+                osConfig.networking.hostName == "gs-framework-13-pro"
+              ) "Intel Wi-Fi 7 BE211 320MHz\n"
+              + "{essid}\nInterface: {ifname}\nAddress: {ipaddr}/{cidr}\nGateway: {gwaddr}\nSignal: {signalStrength}% ({signaldBm} dBm)\nFrequency: {frequency} GHz";
           };
           position = "top";
           power-profiles-daemon = {
@@ -318,7 +521,7 @@ in
               performance = "󰓅";
               power-saver = "󰌪";
             };
-            tooltip-format = "Power profile: {profile}\nDriver: {driver}";
+            tooltip-format = "Power profile: {profile}\nDriver: {driver}\nClick to cycle profiles.\nActual firmware, CPU and GPU policies: hover the watts pill.";
           };
           spacing = 4;
           "sway/mode".format = "<span style=\"italic\">{}</span>";
@@ -327,18 +530,27 @@ in
             icon-size = 16;
             spacing = 8;
           };
-          wireplumber = {
-            format = "󰕾 {volume}%";
-            format-muted = "󰖁 {volume}% (muted)";
-            on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
-            scroll-step = 5;
-          };
         };
       in
       {
         # Smaller font on the laptop panel only; external monitors keep the default.
         laptop = bar // {
+          "custom/cpu" = bar."custom/cpu" // {
+            exec = "${cpuBlock} compact";
+          };
+          "custom/disk" = bar."custom/disk" // {
+            exec = "${diskBlock} compact";
+          };
+          "custom/gpu" = bar."custom/gpu" // {
+            exec = "${gpuBlock} compact";
+          };
+          memory = bar.memory // {
+            format = "󰒋 {percentage}%";
+          };
           name = "laptop";
+          network = bar.network // {
+            format-wifi = "󰤨 {essid}";
+          };
           output = "eDP-1";
         };
         mainBar = bar // {
@@ -356,7 +568,7 @@ in
       }
       window#waybar.laptop #network,
       window#waybar.laptop #custom-brightness,
-      window#waybar.laptop #wireplumber,
+      window#waybar.laptop #custom-audio,
       window#waybar.laptop #custom-cpu,
       window#waybar.laptop #custom-gpu,
       window#waybar.laptop #memory,
@@ -390,7 +602,7 @@ in
       /* Each status block is a pill, so adjacent colours never blend. */
       #network,
       #custom-brightness,
-      #wireplumber,
+      #custom-audio,
       #custom-cpu,
       #custom-gpu,
       #memory,
@@ -405,9 +617,9 @@ in
         border-radius: 7px;
       }
       #tray { margin-right: 6px; }
-      /* Custom modules colour themselves via pango; these are waybar natives. */
+      /* Native modules and audio inherit their palette colours from CSS. */
       #network     { color: ${c.network}; }
-      #wireplumber { color: ${c.audio}; }
+      #custom-audio { color: ${c.audio}; }
       #memory      { color: ${c.memory}; }
       #power-profiles-daemon { color: ${c.power}; }
       #power-profiles-daemon.performance { color: ${c.batLow}; }
