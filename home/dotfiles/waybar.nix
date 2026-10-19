@@ -169,12 +169,13 @@ let
   '';
   gpuBlock = pkgs.writeShellScript "waybar-gpu" ''
     STATE="''${XDG_RUNTIME_DIR:-/tmp}/waybar-gpu-state"
+    # Render-GT idle residency and actual frequency: i915 paths, then xe.
+    rc6_path=$(ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms /sys/class/drm/card*/device/tile0/gt0/gtidle/idle_residency_ms 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
+    freq_path=$(ls /sys/class/drm/card*/gt/gt0/rps_act_freq_mhz /sys/class/drm/card*/device/tile0/gt0/freq0/act_freq 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
 
     # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
     intel_busy() {
-      local rc6_path now rc6 busy prev_time prev_rc6
-      rc6_path=$(ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
-      [ -f "$rc6_path" ] || { echo 0; return; }
+      local now rc6 busy prev_time prev_rc6
       rc6=$(${pkgs.coreutils}/bin/cat "$rc6_path")
       now=$(${pkgs.coreutils}/bin/date +%s%3N)
       busy=0
@@ -186,9 +187,7 @@ let
       echo "$busy"
     }
     intel_freq() {
-      local p
-      p=$(ls /sys/class/drm/card*/gt/gt0/rps_act_freq_mhz 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
-      [ -f "$p" ] && ${pkgs.coreutils}/bin/cat "$p" || echo 0
+      [ -f "$freq_path" ] && ${pkgs.coreutils}/bin/cat "$freq_path" || echo 0
     }
     intel_temp() {
       local d name f
@@ -203,7 +202,7 @@ let
     }
 
     busy=0 freq=0 temp=""
-    if ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms > /dev/null 2>&1; then
+    if [ -f "$rc6_path" ]; then
       busy=$(intel_busy); freq=$(intel_freq); temp=$(intel_temp)
     else
       echo "<span color='${c.muted}'>󰾲 GPU n/a</span>"
@@ -247,97 +246,127 @@ in
 {
   programs.waybar = {
     enable = true;
-    settings.mainBar = {
-      "custom/battery" = {
-        exec = "${batteryBlock}";
-        interval = 30;
-      };
-      "custom/brightness" = {
-        exec = "${brightnessBlock}";
-        interval = 2;
-      };
-      "custom/clock" = {
-        exec = "${clockBlock}";
-        interval = 5;
-        return-type = "json";
-      };
-      "custom/cpu" = {
-        exec = "${cpuBlock}";
-        interval = 5;
-      };
-      "custom/disk" = {
-        exec = "${diskBlock}";
-        interval = 60;
-      };
-      "custom/gpu" = {
-        exec = "${gpuBlock}";
-        interval = 5;
-      };
-      "custom/power" = {
-        exec = "${powerBlock}";
-        interval = 10;
-      };
-      height = 30;
-      layer = "top";
-      memory = {
-        format = "󰒋 {used:0.2f}/{total:0.2f} GiB";
-        interval = 10;
-      };
-      modules-center = [ ];
-      modules-left = [
-        "sway/workspaces"
-        "sway/mode"
-      ];
-      modules-right = [
-        "network"
-        "custom/brightness"
-        "wireplumber"
-        "custom/cpu"
-        "custom/gpu"
-        "memory"
-        "custom/disk"
-        "custom/battery"
-        "custom/power"
-        "power-profiles-daemon"
-        "custom/clock"
-        "tray"
-      ];
-      network = {
-        format-disconnected = "󰤭 down";
-        format-ethernet = "󰲝 {ifname}";
-        format-wifi = "󰤨 {essid} {signalStrength}%";
-        tooltip-format = "{ifname}: {ipaddr}";
-      };
-      position = "top";
-      power-profiles-daemon = {
-        format = "{icon}";
-        format-icons = {
-          balanced = "󰗑";
-          default = "󰓅";
-          performance = "󰓅";
-          power-saver = "󰌪";
+    settings =
+      let
+        bar = {
+          "custom/battery" = {
+            exec = "${batteryBlock}";
+            interval = 30;
+          };
+          "custom/brightness" = {
+            exec = "${brightnessBlock}";
+            interval = 2;
+          };
+          "custom/clock" = {
+            exec = "${clockBlock}";
+            interval = 5;
+            return-type = "json";
+          };
+          "custom/cpu" = {
+            exec = "${cpuBlock}";
+            interval = 5;
+          };
+          "custom/disk" = {
+            exec = "${diskBlock}";
+            interval = 60;
+          };
+          "custom/gpu" = {
+            exec = "${gpuBlock}";
+            interval = 5;
+          };
+          "custom/power" = {
+            exec = "${powerBlock}";
+            interval = 10;
+          };
+          height = 30;
+          layer = "top";
+          memory = {
+            format = "󰒋 {used:0.2f}/{total:0.2f} GiB";
+            interval = 10;
+          };
+          modules-center = [ ];
+          modules-left = [
+            "sway/workspaces"
+            "sway/mode"
+          ];
+          modules-right = [
+            "network"
+            "custom/brightness"
+            "wireplumber"
+            "custom/cpu"
+            "custom/gpu"
+            "memory"
+            "custom/disk"
+            "custom/battery"
+            "custom/power"
+            "power-profiles-daemon"
+            "custom/clock"
+            "tray"
+          ];
+          network = {
+            format-disconnected = "󰤭 down";
+            format-ethernet = "󰲝 {ifname}";
+            format-wifi = "󰤨 {essid} {signalStrength}%";
+            tooltip-format = "{ifname}: {ipaddr}";
+          };
+          position = "top";
+          power-profiles-daemon = {
+            format = "{icon}";
+            format-icons = {
+              balanced = "󰗑";
+              default = "󰓅";
+              performance = "󰓅";
+              power-saver = "󰌪";
+            };
+            tooltip-format = "Power profile: {profile}\nDriver: {driver}";
+          };
+          spacing = 4;
+          "sway/mode".format = "<span style=\"italic\">{}</span>";
+          "sway/workspaces".format = "{name}";
+          tray = {
+            icon-size = 16;
+            spacing = 8;
+          };
+          wireplumber = {
+            format = "󰕾 {volume}%";
+            format-muted = "󰖁 {volume}% (muted)";
+            on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
+            scroll-step = 5;
+          };
         };
-        tooltip-format = "Power profile: {profile}\nDriver: {driver}";
+      in
+      {
+        # Smaller font on the laptop panel only; external monitors keep the default.
+        laptop = bar // {
+          name = "laptop";
+          output = "eDP-1";
+        };
+        mainBar = bar // {
+          output = "!eDP-1";
+        };
       };
-      spacing = 4;
-      "sway/mode".format = "<span style=\"italic\">{}</span>";
-      "sway/workspaces".format = "{name}";
-      tray = {
-        icon-size = 16;
-        spacing = 8;
-      };
-      wireplumber = {
-        format = "󰕾 {volume}%";
-        format-muted = "󰖁 {volume}% (muted)";
-        on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
-        scroll-step = 5;
-      };
-    };
     style = ''
       * {
         font-family: "JetBrains Mono", "JetBrainsMono Nerd Font";
         font-size: 13px;
         min-height: 0;
+      }
+      window#waybar.laptop * {
+        font-size: 11.5px;
+      }
+      window#waybar.laptop #network,
+      window#waybar.laptop #custom-brightness,
+      window#waybar.laptop #wireplumber,
+      window#waybar.laptop #custom-cpu,
+      window#waybar.laptop #custom-gpu,
+      window#waybar.laptop #memory,
+      window#waybar.laptop #custom-disk,
+      window#waybar.laptop #custom-battery,
+      window#waybar.laptop #custom-power,
+      window#waybar.laptop #power-profiles-daemon,
+      window#waybar.laptop #custom-clock {
+        margin: 4px 1px;
+        padding: 0 6px;
       }
       window#waybar {
         background: ${hexToRgba c.bg c.bgAlpha};
