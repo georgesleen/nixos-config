@@ -250,6 +250,17 @@
               '';
         in
         builtins.mapAttrs shellTest suites
+        // {
+          librepods-watch =
+            pkgs.runCommand "test-librepods-watch"
+              {
+                nativeBuildInputs = [ pkgs.python3 ];
+              }
+              ''
+                set -o pipefail
+                python ${./home/dotfiles/librepods-watch.test.py} ${./home/dotfiles/librepods-watch.py} 2>&1 | tee "$out"
+              '';
+        }
       );
 
       devShells = forAllSystems (

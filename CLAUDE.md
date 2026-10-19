@@ -105,10 +105,12 @@ the unit exited early on every plug and silently no-opped for its whole life.
 Current suites: `arr-season-plan`, `av-step`, `battery-level`,
 `claude-review-trigger`, `cwa-ingest-sweep`, `display-plan`, `epub-normalize`,
 `gpu-busy`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
-`library-guard`, `lid-decision`, `media-free`, `media-health`,
+`library-guard`, `librepods-watch`, `lid-decision`, `media-free`, `media-health`,
 `pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
 `systemd-order-cycles`, `ts-route`, `usb-wedge`, `waybar-fmt`,
 `win11-forward`, `workspace-plan`.
+
+`librepods-watch` is a Python unittest check for the paired/connected AirPods predicate; the other suites use the shell harness above.
 
 ## Workarounds
 
@@ -139,6 +141,7 @@ One-liners: file, what, and why. Full detail lives in comments at the referenced
 - [Framework's published battery tests](https://frame.work/ca/en/laptop13pro): 20 h Netflix 4K, 17 h active web use and 11 h conferencing. The Netflix footnote specifies X7 358H, Arc B390, 32 GB RAM, 1 TB storage, 250-nit brightness, 60 Hz, Wi-Fi on, volume 30%, Dolby Atmos off, Windows 11 Netflix app and Best Power Efficiency mode. A 74 Wh pack over 20 h implies 3.7 W average; our ~7 W background-work samples are not an equivalent workload or evidence of the hardware's runtime ceiling. Brightness percentage is not calibrated nits.
 - `hosts/gs-framework-13-pro/power.nix`: TLP requests firmware `performance` on AC, `low-power` on battery and saver, with PCIe ASPM `powersupersave` on battery/saver. Shared TLP EPP remains performance/balance_power/power, with turbo disabled only in saver. Sequential idle measurements fell from 8.31 W to 6.93 W after platform/ASPM changes; the post-switch sample was 7.27 W, so do not promise a fixed runtime gain. TLP 1.10 already selects xe `power_saving` on battery. Fedora's [balanced-battery profile](https://github.com/redhat-performance/tuned/blob/master/profiles/balanced-battery/tuned.conf) uses the same EPP; no extra Framework-specific policy was found in the distro sources checked.
 - eDP-1 stays at 120 Hz with adaptive sync disabled: enabling sway adaptive sync was accepted by the panel but George observed choppy cursor movement. Do not re-enable it solely because the reported status is `enabled`.
+- `home/dotfiles/librepods.nix` / `librepods-watch.py`: the login-started unit is now a passive BlueZ listener, not the LibrePods GUI. It starts the GUI only for paired and connected devices advertising LibrePods' AirPods UUID (`74ec2172-0bad-4d01-8f77-997b2be0722a`) and stops it after the last disconnect or BlueZ shutdown. Pairing alone is not enough; device names are not used. LibrePods 0.2.5 hardcodes continuous BLE discovery, which caused system-wide D-Bus wakeups even without AirPods nearby. The watcher requests no discovery and ignores RSSI-only changes. Ordinary Bluetooth audio remains independent; LibrePods controls remain automatic when connected. `librepods-watch` check covers matching, late UUIDs and multiple devices; private-D-Bus runtime smoke also exercised the real user service through connection/removal and BlueZ restart events.
 
 ### T480s power, dock, Thunderbolt
 
