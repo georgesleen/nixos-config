@@ -267,6 +267,7 @@
         }
       );
       nixosConfigurations = {
+        gs-framework-13-pro = mkHost ./hosts/gs-framework-13-pro ./home/user.nix;
         gs-pi4 = nixpkgs.lib.nixosSystem {
           modules = [
             ./hosts/gs-pi4

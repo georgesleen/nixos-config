@@ -474,7 +474,7 @@ in
       environment = [
         "$defaults"
         "Every machine here is a personal single-user host on one tailnet. There is no production estate, no shared infrastructure, no other users, and no customer data. Downtime affects nobody but the author."
-        "Hosts: gs-thinkpad-t480s (laptop, the machine the agent usually runs on), gs-server, gs-pi4 (media server), gs-pi1-parents (remote OpenWrt gateway), gs-openwrt-one (router)."
+        "Hosts: gs-framework-13-pro (laptop, the machine the agent usually runs on), gs-server, gs-pi4 (media server), gs-pi1-parents (remote OpenWrt gateway), gs-openwrt-one (router)."
         "The NixOS config is declarative and every switch is rollback-able from the boot menu, so a bad rebuild is recoverable rather than destructive."
         "The author's own trees on this machine: /etc/nixos, the home directory and every repository under it (~/Documents/projects/*, ~/Documents/work/*), and worktrees under /tmp. All are git-tracked or disposable, so an unwanted edit is recoverable."
       ];

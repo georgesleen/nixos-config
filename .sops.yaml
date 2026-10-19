@@ -1,6 +1,6 @@
 keys:
   - &user_george age1lgmlzm9asevnq45z7zwsmzddz7qmjwhuvr0mhceftkkffgrjyvcsng9t3p
-  - &host_gs_thinkpad_t480s age194ysktmvcyfrxl4etdq2al76q3vll405z0plc8vk4up47fwzr52q00ratx
+  - &host_gs_framework_13_pro age194ysktmvcyfrxl4etdq2al76q3vll405z0plc8vk4up47fwzr52q00ratx
   - &host_gs_pi4 age1zjpq985pnns0cdrc03plwh8zl3nn7u5czcnfxpl7cnrsa7ascv9ql0f2f8
   - &host_gs_server age1hg824nflnncaury5pu0c0e0rwshtl4cfgrxdz30d3y84n7ujagtshgjr70
 
@@ -14,5 +14,5 @@ creation_rules:
     key_groups:
       - age:
           - *user_george
-          - *host_gs_thinkpad_t480s
+          - *host_gs_framework_13_pro
           - *host_gs_server

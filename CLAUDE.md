@@ -4,7 +4,7 @@ Guidance for Claude Code in this repository.
 
 ## Key Commands
 
-Replace `<host>` with one of: `gs-thinkpad-t480s`, `gs-server`, `gs-pi4`.
+Replace `<host>` with one of: `gs-framework-13-pro`, `gs-server`, `gs-pi4` (`gs-thinkpad-t480s` is retired hardware; its SSD now runs `gs-framework-13-pro`).
 
 ```bash
 sudo nixos-rebuild switch --flake .#<host>   # apply system + home-manager changes
@@ -20,15 +20,15 @@ For long builds (e.g. SD card images), `inhibit-sleep` / `resume-sleep` hold and
 
 ## Architecture
 
-NixOS flake config for three hosts: `gs-thinkpad-t480s` (ThinkPad T480s, primary daily driver), `gs-server` (Framework-class server, win11 VM via libvirt/vfio), `gs-pi4` (Raspberry Pi 4, built via QEMU binfmt emulation).
+NixOS flake config for three hosts: `gs-framework-13-pro` (Framework Laptop 13 Pro, Intel Core Ultra Series 3, primary daily driver, nixos-hardware `framework-intel-core-ultra-series3`), `gs-server` (Framework-class server, win11 VM via libvirt/vfio), `gs-pi4` (Raspberry Pi 4, built via QEMU binfmt emulation). `gs-thinkpad-t480s` is kept for the old ThinkPad; its SSD, and with it the SSH host key (sops identity) and Tailscale state, moved to the Framework in October 2026, so most T480s notes below describe hardware no longer in use.
 
 It also builds two non-NixOS OpenWrt images: `gs-openwrt-one` (the router, `docs/gs-openwrt-one.md`) and `gs-pi1-parents` (a Raspberry Pi 1 B+ Tailscale exit node and subnet router for a remote household, `docs/gs-pi1-parents.md`).
 
-**Entry point:** `flake.nix`. The `mkHost hostPath hmHome` helper wires a host together with home-manager as a NixOS module (T480s: `home/user.nix`, server: `home/user-server.nix`); `gs-pi4` is wired directly via `nixosSystem` with `home/user-pi.nix`.
+**Entry point:** `flake.nix`. The `mkHost hostPath hmHome` helper wires a host together with home-manager as a NixOS module (laptops: `home/user.nix`, server: `home/user-server.nix`); `gs-pi4` is wired directly via `nixosSystem` with `home/user-pi.nix`.
 
 **Layers:**
 
-- `hosts/<host>/` (hardware, networking, boot, services, power). The T480s adds dnscrypt-proxy DoH; `gs-server` carries the win11 passthrough setup.
+- `hosts/<host>/` (hardware, networking, boot, services, power). The laptops add dnscrypt-proxy DoH; `gs-server` carries the win11 passthrough setup.
 - `modules/` (system-level, `default.nix` aggregates):
   - `modules/core/common.nix`: packages for all hosts
   - `modules/features/`: opt-in features (fonts, btrfs, audio, desktop, sway, virtualization, user-packages for desktop hosts, ...)
