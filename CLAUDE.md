@@ -50,7 +50,7 @@ when the setup changes.
 
 ## Secrets
 
-Managed with [sops-nix](https://github.com/Mic92/sops-nix). `.sops.yaml` lists age recipients (one personal key, one per host derived from its SSH host key). Encrypted secrets live in `secrets/secrets.yaml`; only `gs-thinkpad-t480s` consumes it so far. Decrypted values land at `/run/secrets/<name>` at activation.
+Managed with [sops-nix](https://github.com/Mic92/sops-nix). `.sops.yaml` lists age recipients (one personal key, one per host derived from its SSH host key). Encrypted secrets live in `secrets/secrets.yaml`; only the laptop (`gs-framework-13-pro`, formerly `gs-thinkpad-t480s` on the same SSD and host key) consumes it so far. Decrypted values land at `/run/secrets/<name>` at activation.
 
 ```bash
 sops secrets/secrets.yaml                        # edit (decrypts to $EDITOR)
@@ -58,7 +58,7 @@ ssh-to-age -i /etc/ssh/ssh_host_ed25519_key.pub  # onboard a host: derive its ag
 sops updatekeys secrets/secrets.yaml             # re-encrypt for new recipient set
 ```
 
-Each host declares `sops.defaultSopsFile` + `sops.age.sshKeyPaths` + its `sops.secrets.<name>` entries (see `hosts/gs-thinkpad-t480s/default.nix`).
+Each host declares `sops.defaultSopsFile` + `sops.age.sshKeyPaths` + its `sops.secrets.<name>` entries (see `hosts/gs-framework-13-pro/default.nix`).
 
 ## Git hooks
 
@@ -128,6 +128,14 @@ One-liners: file, what, and why. Full detail lives in comments at the referenced
 - `boot.loader.systemd-boot.bootCounting.enable` (same module) demotes an entry that cannot reach `boot-complete.target` after 3 tries and falls back to an older generation unattended. The chain is fragile and silent: `boot-complete.target` has **no `[Install]` section**, `systemd-bless-boot.service` only reaches it via its own `Requires=`, and the service is pulled in only by `systemd-bless-boot-generator`, which runs only when the loader exported `LoaderBootCountPath`. Break any link and the counter is never cleared, every boot decrements it, and a good generation is silently demoted after three boots. The pin service therefore also calls `systemd-bless-boot good` directly (it lives in `lib/systemd`, not `bin`). Re-running the installer cannot undo a blessing: `from_entry` matches existing entries with the counter suffix optional and reuses that filename.
 - `configurationLimit` bounds the boot *menu*, not the ESP: entries are ~1 KB and kernels/initrds dedupe by content across generations (21 entries = 58 MB of a 2 GB ESP).
 - Cheap audits: `nix-store --gc --print-roots | grep -v /proc` for what is pinning the store (`.direnv/flake-inputs` roots across projects held 23.9 GiB here, and a stale `/etc/nixos/result-gs-pi4` uniquely pins a 9.2 GiB aarch64 closure that no GC can ever touch).
+
+### Framework 13 Pro (gs-framework-13-pro)
+
+- Moving the SSD from the T480s (2026-10-19) kept the OS but not state tied to the old hardware. NetworkManager profiles were pinned to the old card (`connection.interface-name wlp61s0`, two by `802-11-wireless.mac-address`), so they silently never matched the new `wlp0s20f3` and NM created `<name> 1` duplicates when George re-entered keys; pins are now cleared, so a future card swap is a non-event. Bluetooth pairings are keyed by the adapter address and must be re-paired. libvirtd failed with "TPM key integrity check failed": `virt-secret-init-encryption` seals `/var/lib/libvirt/secrets/secrets-encryption-key` to the TPM, so it was deleted to be regenerated for the new one. The RTC came up at 2025-01-01, which only produced "persistent file timestamp in the future" timer warnings and one failed `gs-pi4-state-pull`; NTP corrected it.
+- `hosts/gs-framework-13-pro/default.nix` `services.hardware.bolt.enable`: both USB4 domains report security level `user`, so without boltd a Thunderbolt dock's PCIe tunnel is never authorized. The T480s got bolt from `thinkpad.nix`, which this host does not import.
+- `home/dotfiles/waybar.nix` gpuBlock reads `device/tile0/gt0/gtidle/idle_residency_ms` and `freq0/act_freq` when the i915 `gt/gt0` files are absent; the Arc B390 runs on `xe`, which has no `rc6_residency_ms`. gt0 is render, gt1 is media.
+- `home/dotfiles/waybar.nix` `laptop` bar (`output = "eDP-1"`, CSS class `.laptop`): the 1440-px-wide logical panel clipped the clock's AM/PM and the tray at 13 px; the laptop bar is 11.5 px with tighter pills, and the `mainBar` on every other output is unchanged.
+- Battery: idle draw measured 7.5 W at 30% brightness with C10 residency 80%, about 10 h from the 74 Wh pack; 60 Hz versus 120 Hz measured no difference (7.6 vs 7.5 W). Short-window estimates while building read 10-11 W and project ~6.5 h.
 
 ### T480s power, dock, Thunderbolt
 
