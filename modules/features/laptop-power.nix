@@ -2,18 +2,11 @@
 
 {
   config,
-  lib,
   pkgs,
   ...
 }:
 
 {
-  boot.kernelParams = lib.mkAfter [
-    # Panel Self Refresh + framebuffer compression: cut idle GPU/display
-    # power on the internal panel. Watch for flicker; disable if it appears.
-    "i915.enable_psr=1"
-    "i915.enable_fbc=1"
-  ];
   hardware.bluetooth.enable = true;
   hardware.bluetooth.powerOnBoot = true;
   networking.networkmanager.wifi.powersave = true;

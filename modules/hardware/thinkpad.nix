@@ -128,6 +128,11 @@ in
 {
   # Shared with hosts/gs-thinkpad-t480s/power.nix resumeCommands.
   _module.args.lidSleepArm = lidSleepArm;
+  # Panel Self Refresh + framebuffer compression on the i915 UHD 620 panel.
+  boot.kernelParams = [
+    "i915.enable_psr=1"
+    "i915.enable_fbc=1"
+  ];
   environment.sessionVariables.LIBVA_DRIVER_NAME = "iHD";
   # Intel Gen9.5 (UHD 620) VAAPI driver so hardware video decode works
   # (e.g. Moonlight). Without iHD, libva finds no Intel driver under

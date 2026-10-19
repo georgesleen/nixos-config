@@ -39,6 +39,12 @@ in
   # bootable escape hatch past both horizons.
   boot.loader.systemd-boot.configurationLimit = 20;
   boot.loader.systemd-boot.enable = true;
+  # 8x16 console text is unreadable on the 2880x1920 panel (boot log, tuigreet).
+  console = {
+    earlySetup = true;
+    font = "ter-v32n";
+    packages = [ pkgs.terminus_font ];
+  };
   # Point sudo at the fuzzel askpass so ttyless invocations (Claude Code Bash)
   # prompt on-screen instead of failing "a terminal is required".
   environment.etc."sudo.conf".text = ''
@@ -108,6 +114,8 @@ in
       user = "greeter";
     };
   };
+  # Both USB4 domains are at security level `user`, so docks need boltd to authorize.
+  services.hardware.bolt.enable = true;
   services.openssh.enable = true;
   # Services
   services.printing.enable = true;
