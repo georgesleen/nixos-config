@@ -404,10 +404,7 @@ let
     read -r used_b total_b < <(printf '%s\n' "$filesystems" \
       | awk '{u+=$2; t+=$3} END{printf "%.0f %.0f\n", u, t}')
     label="$(${fmtBytes} "$used_b" "$total_b")"
-    if [ "''${1:-}" = compact ]; then
-      label="$(awk -v u="$used_b" -v t="$total_b" 'BEGIN {printf "%.0f%%", (t > 0 ? 100*u/t : 0)}')"
-    fi
-    tooltip="Mounted filesystems (one entry per source; not physical drive capacity)"
+    tooltip="Mounted filesystems"
     while read -r source used total available; do
       [ -n "$source" ] || continue
       details="$(${fmtBytes} "$used" "$total")"
@@ -538,14 +535,8 @@ in
           "custom/cpu" = bar."custom/cpu" // {
             exec = "${cpuBlock} compact";
           };
-          "custom/disk" = bar."custom/disk" // {
-            exec = "${diskBlock} compact";
-          };
           "custom/gpu" = bar."custom/gpu" // {
             exec = "${gpuBlock} compact";
-          };
-          memory = bar.memory // {
-            format = "󰒋 {percentage}%";
           };
           name = "laptop";
           network = bar.network // {
