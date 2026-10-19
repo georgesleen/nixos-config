@@ -12,6 +12,9 @@ let
   '';
 in
 {
+  # NVMe sits behind Intel VMD when the BIOS enables it; without this the
+  # initrd never sees the root disk.
+  boot.initrd.availableKernelModules = [ "vmd" ];
   # Strict per-interface ARP so the wired dock and wifi can share the home /24
   # without ARP flux stalling the Moonlight stream to the win11 VM.
   boot.kernel.sysctl = {
