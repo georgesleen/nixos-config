@@ -1,0 +1,24 @@
+diff --git a/src/modules/sway/workspaces.cpp b/src/modules/sway/workspaces.cpp
+--- a/src/modules/sway/workspaces.cpp
++++ b/src/modules/sway/workspaces.cpp
+@@ -97,6 +97,20 @@ Workspaces::Workspaces(const std::string& id, const Bar& bar, const Json::Value& config)
+ 
+ void Workspaces::onEvent(const struct Ipc::ipc_response& res) {
+   try {
++    const bool displays_windows =
++        config_["window-rewrite"].isObject() && config_["format"].isString() &&
++        std::string_view(config_["format"].asCString()).find("{windows") !=
++            std::string_view::npos;
++    if (res.type == IPC_EVENT_WINDOW && !displays_windows) {
++      // Title changes do not affect workspace names, focus, occupancy or urgency.
++      std::lock_guard<std::mutex> lock(mutex_);
++      const auto event = parser_.parse(res.payload);
++      if (event["change"].isString() &&
++          std::string_view(event["change"].asCString()) == "title") {
++        return;
++      }
++    }
++
+     ipc_.sendCmd(IPC_GET_TREE);
+   } catch (const std::exception& e) {
+     spdlog::error("Workspaces: {}", e.what());
