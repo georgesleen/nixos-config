@@ -1,7 +1,7 @@
 {
   config,
-  pkgs,
   lib,
+  pkgs,
   ...
 }:
 
@@ -43,27 +43,22 @@ in
     classesBisync
     classesResync
   ];
-
-  xdg.configFile."rclone/excludes.txt".source = ./rclone/excludes.txt;
-
+  # Automatic syncing is paused; this service remains available for manual runs.
   systemd.user.services.rclone-classes = {
-    Unit = {
-      Description = "Bisync classes with Google Drive";
-      After = [ "network-online.target" ];
-      Wants = [ "network-online.target" ];
-      OnFailure = [ "rclone-classes-notify-failure.service" ];
-    };
     Service = {
-      Type = "simple";
       ExecStart = "${classesBisync}/bin/rclone-classes-bisync";
       SuccessExitStatus = [ 143 ];
+      Type = "simple";
+    };
+    Unit = {
+      After = [ "network-online.target" ];
+      Description = "Bisync classes with Google Drive";
+      OnFailure = [ "rclone-classes-notify-failure.service" ];
+      Wants = [ "network-online.target" ];
     };
   };
-
   systemd.user.services.rclone-classes-notify-failure = {
-    Unit.Description = "Desktop notification for rclone-classes failures";
     Service = {
-      Type = "oneshot";
       ExecStart = pkgs.writeShellScript "rclone-classes-notify-failure" ''
         if journalctl --user -u rclone-classes -n 200 --since "10 min ago" \
              | grep -qE 'Error 401|Invalid Credentials|authError|oauth2: .*invalid_grant'; then
@@ -77,33 +72,20 @@ in
           --urgency=critical --app-name=rclone --icon=dialog-error \
           "$title" "$body"
       '';
+      Type = "oneshot";
     };
+    Unit.Description = "Desktop notification for rclone-classes failures";
   };
-
   systemd.user.services.rclone-classes-resync = {
+    Service = {
+      ExecStart = "${classesResync}/bin/rclone-classes-resync";
+      Type = "oneshot";
+    };
     Unit = {
-      Description = "Resync classes with Google Drive";
       After = [ "network-online.target" ];
+      Description = "Resync classes with Google Drive";
       Wants = [ "network-online.target" ];
     };
-    Service = {
-      Type = "oneshot";
-      ExecStart = "${classesResync}/bin/rclone-classes-resync";
-    };
   };
-
-  systemd.user.timers.rclone-classes = {
-    Unit = {
-      Description = "Run Google Drive bisync for classes every 5 minutes";
-    };
-    Timer = {
-      OnBootSec = "2m";
-      OnUnitActiveSec = "5m";
-      Persistent = true;
-      Unit = "rclone-classes.service";
-    };
-    Install = {
-      WantedBy = [ "timers.target" ];
-    };
-  };
+  xdg.configFile."rclone/excludes.txt".source = ./rclone/excludes.txt;
 }

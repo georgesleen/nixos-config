@@ -1,4 +1,10 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  osConfig,
+  pkgs,
+  ...
+}:
 
 let
   swayBg = builtins.path {
@@ -18,28 +24,82 @@ let
   lockCmd = "${pkgs.systemd}/bin/systemctl --user start swaylock.service";
   dpmsOffCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms off\"";
   dpmsOnCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms on\"";
+  batteryIdleEnabled = osConfig.networking.hostName == "gs-framework-13-pro";
+  batteryIdle = pkgs.writeShellApplication {
+    name = "battery-idle";
+    runtimeInputs = with pkgs; [
+      brightnessctl
+      coreutils
+      jq
+      sway
+      systemd
+      util-linux
+    ];
+    text = builtins.readFile ./battery-idle.sh;
+  };
+  restoreBattery = "${batteryIdle}/bin/battery-idle restore";
+  batteryIdleMonitor = pkgs.writeShellScript "battery-idle-monitor" ''
+    set -euo pipefail
+    ${batteryIdle}/bin/battery-idle restore-if-ac
+    ${pkgs.systemd}/bin/udevadm monitor --udev --property --subsystem-match=power_supply \
+      | while IFS= read -r property; do
+          if [[ "$property" == POWER_SUPPLY_ONLINE=1 ]]; then
+            ${batteryIdle}/bin/battery-idle restore-if-ac
+          fi
+        done
+  '';
 in
 {
+  home.packages = lib.optional batteryIdleEnabled batteryIdle;
   services.swayidle = {
     enable = true;
     events = {
-      after-resume = dpmsOnCmd;
+      after-resume = if batteryIdleEnabled then "${restoreBattery}; ${dpmsOnCmd}" else dpmsOnCmd;
       before-sleep = lockCmd;
       lock = lockCmd;
     };
-    timeouts = [
-      {
-        command = lockCmd;
-        timeout = 1800;
-      }
-      {
-        command = dpmsOffCmd;
-        resumeCommand = dpmsOnCmd;
-        timeout = 1801;
-      }
-    ];
+    timeouts =
+      lib.optionals batteryIdleEnabled [
+        {
+          command = "${batteryIdle}/bin/battery-idle dim";
+          resumeCommand = restoreBattery;
+          timeout = 120;
+        }
+        {
+          command = "${batteryIdle}/bin/battery-idle off";
+          resumeCommand = restoreBattery;
+          timeout = 300;
+        }
+      ]
+      ++ [
+        {
+          command = lockCmd;
+          timeout = 1800;
+        }
+        {
+          command = dpmsOffCmd;
+          resumeCommand = dpmsOnCmd;
+          timeout = 1801;
+        }
+      ];
   };
-
+  systemd.user.services.battery-idle-monitor = lib.mkIf batteryIdleEnabled {
+    Install.WantedBy = [ "sway-session.target" ];
+    Service = {
+      ExecStart = "${batteryIdleMonitor}";
+      Restart = "always";
+      RestartSec = 2;
+    };
+    Unit = {
+      After = [ "sway-session.target" ];
+      Description = "Restore the internal panel when AC connects";
+      PartOf = [ "sway-session.target" ];
+    };
+  };
+  systemd.user.services.swayidle.Service = lib.mkIf batteryIdleEnabled {
+    ExecStartPre = restoreBattery;
+    ExecStopPost = restoreBattery;
+  };
   # swaylock as a unit, not a bare command: swayidle fires both `lock` and
   # `before-sleep` for one sleep, and systemd keeps that to one instance. A
   # lock client that dies leaves sway locked with no lock surface, which
@@ -62,7 +122,6 @@ in
       StartLimitIntervalSec = 60;
     };
   };
-
   xdg.configFile."swaylock/config".text = ''
     image=${swaylockBg}/background.png
     scaling=fill
