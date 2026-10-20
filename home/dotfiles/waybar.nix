@@ -265,8 +265,7 @@ let
     cpu_freq() {
       local sum=0 count=0 f val
       for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq; do
-        [ -f "$f" ] || continue
-        val=$(${pkgs.coreutils}/bin/cat "$f")
+        read -r val < "$f" 2>/dev/null || continue
         sum=$(( sum + val ))
         count=$(( count + 1 ))
       done
@@ -276,19 +275,17 @@ let
     cpu_temp() {
       local d name f max=0 val
       for d in /sys/class/hwmon/hwmon*; do
-        [ -d "$d" ] || continue
-        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
+        read -r name < "$d/name" 2>/dev/null || continue
         case "$name" in coretemp|k10temp|zenpower) ;; *) continue ;; esac
         for f in "$d"/temp*_input; do
-          [ -f "$f" ] || continue
-          val=$(${pkgs.coreutils}/bin/cat "$f")
+          read -r val < "$f" 2>/dev/null || continue
           [ "$val" -gt "$max" ] && max="$val"
         done
       done
       [ "$max" -gt 0 ] && echo $(( max / 1000 )) || echo ""
     }
 
-    load=$(${pkgs.coreutils}/bin/uptime | awk -F'load average: ' '{split($2,a,","); print a[1]}')
+    read -r load _ < /proc/loadavg
     cores=$(${pkgs.coreutils}/bin/nproc)
     freq=$(cpu_freq)
     temp=$(cpu_temp)
@@ -302,7 +299,10 @@ let
 
     label="$load/''${cores}c"
     tooltip="CPU load (1 minute): $load / $cores logical CPUs"
-    model=$(${pkgs.gawk}/bin/awk '/^model name[[:space:]]*:/ {sub(/^[^:]*:[[:space:]]*/, ""); print; exit}' /proc/cpuinfo)
+    model=""
+    while IFS=: read -r key value; do
+      case "$key" in "model name"*) model="''${value# }"; break ;; esac
+    done < /proc/cpuinfo
     [ -z "$model" ] || tooltip="CPU: $model"$'\n'"$tooltip"
     tooltip+=$'\n'"Average frequency: $(${fmtFreq} "$freq")"
     [ -z "$temp" ] || tooltip+=$'\n'"CPU temperature (hottest core/package): $temp °C"
@@ -314,23 +314,35 @@ let
   '';
   gpuBlock = pkgs.writeShellScript "waybar-gpu" ''
     STATE="''${XDG_RUNTIME_DIR:-/tmp}/waybar-gpu-state-''${1:-full}"
+    MODEL_CACHE="''${XDG_RUNTIME_DIR:-/tmp}/waybar-gpu-model"
     # Render-GT idle residency and actual frequency: i915 paths, then xe.
-    rc6_path=$(ls /sys/class/drm/card*/gt/gt0/rc6_residency_ms /sys/class/drm/card*/device/tile0/gt0/gtidle/idle_residency_ms 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
-    freq_path=$(ls /sys/class/drm/card*/gt/gt0/rps_act_freq_mhz /sys/class/drm/card*/device/tile0/gt0/freq0/act_freq 2>/dev/null | ${pkgs.coreutils}/bin/head -1)
-    card_path="''${rc6_path#/sys/class/drm/}"
-    card="''${card_path%%/*}"
-    pci_device=$(${pkgs.coreutils}/bin/readlink -f "/sys/class/drm/$card/device")
+    rc6_path="" freq_path=""
+    for f in /sys/class/drm/card*/gt/gt0/rc6_residency_ms /sys/class/drm/card*/device/tile0/gt0/gtidle/idle_residency_ms; do
+      [ -f "$f" ] && { rc6_path="$f"; break; }
+    done
+    for f in /sys/class/drm/card*/gt/gt0/rps_act_freq_mhz /sys/class/drm/card*/device/tile0/gt0/freq0/act_freq; do
+      [ -f "$f" ] && { freq_path="$f"; break; }
+    done
+    # The model is fixed for the session, so lspci runs once per login.
     gpu_model=""
-    if [[ "''${pci_device##*/}" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]]; then
-      gpu_model=$(${pkgs.pciutils}/bin/lspci -D -s "''${pci_device##*/}" |
-        ${pkgs.gawk}/bin/awk '{sub(/^[^ ]+ [^:]+: /, ""); print}')
+    if [ -f "$MODEL_CACHE" ]; then
+      read -r gpu_model < "$MODEL_CACHE"
+    elif [ -n "$rc6_path" ]; then
+      card_path="''${rc6_path#/sys/class/drm/}"
+      pci_device=$(${pkgs.coreutils}/bin/readlink -f "/sys/class/drm/''${card_path%%/*}/device")
+      if [[ "''${pci_device##*/}" =~ ^[[:xdigit:]]{4}:[[:xdigit:]]{2}:[[:xdigit:]]{2}\.[0-7]$ ]]; then
+        gpu_model=$(${pkgs.pciutils}/bin/lspci -D -s "''${pci_device##*/}" |
+          ${pkgs.gawk}/bin/awk '{sub(/^[^ ]+ [^:]+: /, ""); print}')
+        [ -z "$gpu_model" ] || printf '%s\n' "$gpu_model" > "$MODEL_CACHE"
+      fi
     fi
 
     # Intel: GPU busy = 1 - (Δrc6_ms / Δwall_ms)
     intel_busy() {
       local now rc6 busy prev_time prev_rc6
-      rc6=$(${pkgs.coreutils}/bin/cat "$rc6_path")
-      now=$(${pkgs.coreutils}/bin/date +%s%3N)
+      read -r rc6 < "$rc6_path"
+      now=''${EPOCHREALTIME//[!0-9]/}
+      now=$(( now / 1000 ))
       busy=0
       if [ -f "$STATE" ]; then
         read -r prev_time prev_rc6 < "$STATE" 2>/dev/null || true
@@ -340,16 +352,16 @@ let
       echo "$busy"
     }
     intel_freq() {
-      [ -f "$freq_path" ] && ${pkgs.coreutils}/bin/cat "$freq_path" || echo 0
+      local value=0
+      [ -f "$freq_path" ] && read -r value < "$freq_path"
+      echo "$value"
     }
     intel_temp() {
-      local d name f
+      local d name value
       for d in /sys/class/hwmon/hwmon*; do
-        [ -d "$d" ] || continue
-        name=$(${pkgs.coreutils}/bin/cat "$d/name" 2>/dev/null) || continue
+        read -r name < "$d/name" 2>/dev/null || continue
         [ "$name" = "coretemp" ] || continue
-        f="$d/temp1_input"
-        [ -f "$f" ] && echo $(( $(${pkgs.coreutils}/bin/cat "$f") / 1000 )) && return
+        read -r value < "$d/temp1_input" 2>/dev/null && echo $(( value / 1000 )) && return
       done
       echo ""
     }
@@ -433,7 +445,7 @@ in
         bar = {
           "custom/audio" = {
             exec = "${audioBlock}";
-            interval = 5;
+            interval = 30;
             on-click = "${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle";
             on-scroll-down = "${pkgs.wireplumber}/bin/wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-";
             on-scroll-up = "${pkgs.wireplumber}/bin/wpctl set-volume --limit 1.0 @DEFAULT_AUDIO_SINK@ 5%+";
@@ -447,8 +459,9 @@ in
           };
           "custom/brightness" = {
             exec = "${brightnessBlock}";
-            interval = 2;
+            interval = 60;
             return-type = "json";
+            signal = 9;
           };
           "custom/clock" = {
             exec = "${clockBlock}";
@@ -457,7 +470,7 @@ in
           };
           "custom/cpu" = {
             exec = "${cpuBlock}";
-            interval = 5;
+            interval = 10;
             return-type = "json";
           };
           "custom/disk" = {
@@ -467,12 +480,12 @@ in
           };
           "custom/gpu" = {
             exec = "${gpuBlock}";
-            interval = 5;
+            interval = 10;
             return-type = "json";
           };
           "custom/power" = {
             exec = "${powerBlock}";
-            interval = 10;
+            interval = 30;
             return-type = "json";
           };
           height = 30;

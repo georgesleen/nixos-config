@@ -66,7 +66,7 @@ let
         ;;
       mute) ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
     esac
-    ${pkgs.procps}/bin/pkill -RTMIN+8 -x waybar || true
+    ${pkgs.systemd}/bin/systemctl --user kill --kill-whom=main --signal=RTMIN+8 waybar.service || true
     raw=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@)
     if echo "$raw" | grep -q MUTED; then
       ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-volume "Volume" "Muted"
@@ -78,7 +78,7 @@ let
 
   micMuteScript = pkgs.writeShellScript "micmute" ''
     ${pkgs.wireplumber}/bin/wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
-    ${pkgs.procps}/bin/pkill -RTMIN+8 -x waybar || true
+    ${pkgs.systemd}/bin/systemctl --user kill --kill-whom=main --signal=RTMIN+8 waybar.service || true
     raw=$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@)
     led=/sys/class/leds/platform::micmute/brightness
     if echo "$raw" | grep -q MUTED; then
@@ -91,9 +91,10 @@ let
   '';
 
   brightnessScript = pkgs.writeShellScript "brightness" ''
-    pct=$(${pkgs.brightnessctl}/bin/brightnessctl -m info | cut -d, -f4 | tr -d '%')
+    pct=$(${pkgs.brightnessctl}/bin/brightnessctl --class=backlight -m info | cut -d, -f4 | tr -d '%')
     new=$(${avStepScript} "$1" "$pct" ${toString avStep})
-    ${pkgs.brightnessctl}/bin/brightnessctl set "''${new}%" >/dev/null
+    ${pkgs.brightnessctl}/bin/brightnessctl --class=backlight set "''${new}%" >/dev/null
+    ${pkgs.systemd}/bin/systemctl --user kill --kill-whom=main --signal=RTMIN+9 waybar.service || true
     ${pkgs.libnotify}/bin/notify-send -t 1000 -h string:x-canonical-private-synchronous:sys-brightness "Brightness" "''${new}%"
   '';
 
