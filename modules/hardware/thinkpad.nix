@@ -160,6 +160,9 @@ in
   # stops TLP managing these drivers; it does not set `on` itself, so the udev
   # rules do the actual holding.
   services.tlp.settings.RUNTIME_PM_DRIVER_DENYLIST = "mei_me nouveau radeon xhci_hcd thunderbolt";
+  # Charge limit for the T480s pack; the Framework's limit is set in its BIOS.
+  services.tlp.settings.START_CHARGE_THRESH_BAT0 = 80;
+  services.tlp.settings.STOP_CHARGE_THRESH_BAT0 = 85;
   # Mic-mute LED: let the `input` group flip the brightness file so the sway
   # micmute binding can update it without sudo.
   services.udev.extraRules = ''

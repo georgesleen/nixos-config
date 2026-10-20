@@ -41,10 +41,6 @@
       DEVICES_TO_DISABLE_ON_STARTUP = "wwan";
       RUNTIME_PM_ON_AC = "on";
       RUNTIME_PM_ON_BAT = "auto";
-      # TLP is the single owner of the charge limit; see the upower
-      # tmpfiles rule below.
-      START_CHARGE_THRESH_BAT0 = 80;
-      STOP_CHARGE_THRESH_BAT0 = 85;
       # AC always forces performance, battery always forces balanced. A manual
       # waybar/`tlpctl` choice lasts until the next plug/unplug or resume.
       TLP_AUTO_SWITCH = 1;
@@ -70,10 +66,8 @@
     KillMode = "mixed";
     TimeoutStopSec = "10s";
   };
-  # upower's own charge-limit feature had been switched on (this state file
-  # read `1` since 2026-02-05), and at startup upower then rewrites sysfs to
-  # its 75/80 defaults. It starts after tlp.service, so it overrode TLP's
-  # 80/85 on every boot. Forcing the state to `0` means upower never writes
-  # thresholds, leaving START/STOP_CHARGE_THRESH_BAT0 as the single owner.
+  # upower's own charge-limit feature, when its state file reads `1`, rewrites
+  # the sysfs thresholds to its 75/80 defaults at startup, after tlp.service.
+  # Forcing the state to `0` keeps the firmware or TLP limit in place.
   systemd.tmpfiles.rules = [ "f+ /var/lib/upower/charging-threshold-status 0644 root root - 0" ];
 }
