@@ -115,16 +115,14 @@ in
       cursor               #b49ae0
     '';
 
-    # Custom tab bar (tab_bar_style custom): left side is kitty's stock tab list
-    # honoring tab_title_template; the last tab additionally draws a lavender
-    # right-aligned clock, mirroring tmux's default status-right. A 5s timer
-    # keeps HH:MM current.
+    # Custom tab bar: stock tab labels plus a right-aligned minute clock.
     xdg.configFile."kitty/tab_bar.py".text = ''
       import socket
       from datetime import datetime
+      from time import time
 
       from kitty.boss import get_boss
-      from kitty.fast_data_types import Screen, add_timer
+      from kitty.fast_data_types import Screen, add_timer, wakeup_main_loop
       from kitty.tab_bar import (
           DrawData,
           ExtraData,
@@ -147,9 +145,11 @@ in
 
 
       def _redraw_tab_bar(_timer_id: int) -> None:
-          tm = get_boss().active_tab_manager
-          if tm is not None:
+          global timer_id
+          timer_id = add_timer(_redraw_tab_bar, 60.0 - time() % 60.0, False)
+          for tm in get_boss().os_window_map.values():
               tm.mark_tab_bar_dirty()
+          wakeup_main_loop()
 
 
       def draw_tab(
@@ -164,7 +164,7 @@ in
       ) -> int:
           global timer_id
           if timer_id is None:
-              timer_id = add_timer(_redraw_tab_bar, 5.0, True)
+              timer_id = add_timer(_redraw_tab_bar, 60.0 - time() % 60.0, False)
           end = draw_tab_with_separator(
               draw_data, screen, tab, before, max_tab_length, index, is_last, extra_data
           )

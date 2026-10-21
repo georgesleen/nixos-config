@@ -85,11 +85,14 @@ let
     done
     ${tooltipJson} "<span color='${c.brightness}'>󰃟 $((cur * 100 / max))%</span>" "$tooltip"
   '';
+  # One PipeWire snapshot supplies both device tooltips; one jq formats all audio fields.
   audioBlock = pkgs.writeShellScript "waybar-audio" ''
     set -euo pipefail
     devices="$(${pkgs.pipewire}/bin/pw-dump)"
-    device_name() {
-      printf '%s\n' "$devices" | ${pkgs.jq}/bin/jq -r --arg key "default.audio.$1" '
+    output="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SINK@)" || output=""
+    input="$(${pkgs.wireplumber}/bin/wpctl get-volume @DEFAULT_AUDIO_SOURCE@)" || input=""
+    printf '%s\n' "$devices" | ${pkgs.jq}/bin/jq -c --arg output "$output" --arg input "$input" '
+      def device_name($key):
         . as $devices |
         ([.[] | select(.type == "PipeWire:Interface:Metadata") |
           .metadata[]? | select(.key == $key) |
@@ -104,25 +107,22 @@ let
             $device["device.product.name"]] |
           map(select(. != null and . != "")) | unique |
           if length == 0 then $name else join("\n  ") end
-        end
-      '
-    }
-    volume() {
-      local raw
-      if raw=$(${pkgs.wireplumber}/bin/wpctl get-volume "$1"); then
-        printf '%s\n' "$raw" | ${pkgs.gawk}/bin/awk \
-          '{printf "%d%%%s", $2 * 100 + 0.5, ($3 == "[MUTED]" ? " (muted)" : "")}'
-      else
-        printf 'Unavailable'
-      fi
-    }
-    output=$(volume @DEFAULT_AUDIO_SINK@)
-    input=$(volume @DEFAULT_AUDIO_SOURCE@)
-    icon="󰕾"
-    case "$output" in *muted*) icon="󰖁" ;; esac
-    tooltip="Default output: $(device_name sink)"$'\n'"Volume: $output"
-    tooltip+=$'\n\n'"Default input: $(device_name source)"$'\n'"Volume: $input"
-    ${tooltipJson} "$icon $output" "$tooltip"
+        end;
+      def volume($raw):
+        if $raw == "" then "Unavailable" else
+          ($raw | split(" ") | map(select(. != ""))) as $parts |
+          "\(($parts[1] | tonumber) * 100 + 0.5 | floor)%"
+          + (if $raw | contains("[MUTED]") then " (muted)" else "" end)
+        end;
+      volume($output) as $output_volume |
+      volume($input) as $input_volume |
+      (if $output | contains("[MUTED]") then "󰖁" else "󰕾" end) as $icon |
+      {text: ($icon + " " + $output_volume),
+       tooltip: (("Default output: " + device_name("default.audio.sink")
+         + "\nVolume: " + $output_volume
+         + "\n\nDefault input: " + device_name("default.audio.source")
+         + "\nVolume: " + $input_volume) | @html)}
+    '
   '';
   powerPolicyDetails = pkgs.writeShellScript "waybar-power-policy-details" ''
     set -euo pipefail
@@ -401,10 +401,17 @@ let
   # seasonal clock changes), so the native clock reads an hour behind.
   clockBlock = pkgs.writeShellScript "waybar-clock" ''
     set -euo pipefail
-    now="$(${pkgs.coreutils}/bin/date '+%a %b %d %I:%M %p')"
-    cal="$(${pkgs.util-linux}/bin/cal)"
-    ${pkgs.jq}/bin/jq -n -c --arg t "$now" --arg c "$cal" \
-      '{text: $t, tooltip: ("<tt>" + $c + "</tt>")}'
+    while true; do
+      next_minute=$(( (EPOCHSECONDS / 60 + 1) * 60 ))
+      now="$(${pkgs.coreutils}/bin/date '+%a %b %d %I:%M %p')"
+      cal="$(${pkgs.util-linux}/bin/cal)"
+      ${pkgs.jq}/bin/jq -n -c --arg t "$now" --arg c "$cal" \
+        '{text: $t, tooltip: ("<tt>" + $c + "</tt>")}'
+      remaining=$(( next_minute - EPOCHSECONDS ))
+      if (( remaining > 0 )); then
+        ${pkgs.coreutils}/bin/sleep "$remaining"
+      fi
+    done
   '';
   diskBlock = pkgs.writeShellScript "waybar-disk" ''
     set -euo pipefail
@@ -465,7 +472,7 @@ in
           };
           "custom/clock" = {
             exec = "${clockBlock}";
-            interval = 5;
+            restart-interval = 5;
             return-type = "json";
           };
           "custom/cpu" = {
