@@ -17,7 +17,9 @@ let
       -vf "gblur=sigma=28,eq=brightness=-0.10:saturation=0.85" \
       -frames:v 1 "$out/background.png"
   '';
-  swaylockPackage = pkgs.swaylock-effects;
+  swaylockPackage = pkgs.swaylock-effects.overrideAttrs (previous: {
+    patches = (previous.patches or [ ]) ++ [ ../../pkgs/swaylock-effects-font-scale.patch ];
+  });
   swaylockConfig = "${config.xdg.configHome}/swaylock/config";
   swaylockCmd = "${swaylockPackage}/bin/swaylock -f -C ${swaylockConfig}";
   # Every lock path starts the unit instead of running swaylock directly.
