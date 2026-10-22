@@ -97,7 +97,7 @@ let
   # rules in place so sway pulls the internal workspaces back when the lid
   # reopens; sway auto-moves eDP-1's workspaces to the external in the meantime.
   lidReconcileScript = pkgs.writeShellScript "kanshi-lid-reconcile" ''
-    ${grep} -q closed /proc/acpi/button/lid/LID/state || exit 0
+    ${grep} -qs closed /proc/acpi/button/lid/*/state || exit 0
     ${swaymsg} "output eDP-1 disable"
   '';
 

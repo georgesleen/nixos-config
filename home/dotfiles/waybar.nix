@@ -1,8 +1,8 @@
-# Status bar. Native waybar modules cover network, memory and the SNI tray
+# Status bar. Native waybar modules cover network and the SNI tray
 # (swaybar rendered tray icons as blobs). Audio uses wpctl for device tooltips.
 # Blocks with deliberate custom logic stay shell scripts: battery counts down to the
 # hibernate target not 0% (see battery-thresholds.nix), gpu reads Intel RC6, cpu
-# shows freq+temp, disk aggregates all real filesystems, brightness via
+# shows freq+temp, memory uses decimal GB, disk aggregates all real filesystems, brightness via
 # brightnessctl (waybar's native backlight module renders nothing here), clock
 # via glibc `date` (waybar's own is an hour behind, see clockBlock). Native
 # modules also cover the power profile (tlp-pd's power-profiles-daemon D-Bus
@@ -36,7 +36,7 @@ let
         i: toString (16 * nibble (lib.substring (2 * i) 1 h) + nibble (lib.substring (2 * i + 1) 1 h));
     in
     "rgba(${byte 0}, ${byte 1}, ${byte 2}, ${alpha})";
-  # Pure formatting (GHz/MHz, GiB/TiB, hours to h/m) lives in waybar-fmt.sh
+  # Pure formatting (GHz/MHz, decimal GB/TB, hours to h/m) lives in waybar-fmt.sh
   # so the rounding and unit boundaries are testable; run by `make test`.
   waybarFmt = pkgs.writeShellScript "waybar-fmt" ''
     PATH="${pkgs.gawk}/bin:$PATH"
@@ -413,6 +413,35 @@ let
       fi
     done
   '';
+  # Waybar 0.15's native memory values are fixed to GiB.
+  memoryBlock = pkgs.writeShellScript "waybar-memory" ''
+    set -euo pipefail
+    total=0 available=0 swap_total=0 swap_available=0
+    while read -r key value unit; do
+      case "$key" in
+        MemTotal:) total=$((value * 1024)) ;;
+        MemAvailable:) available=$((value * 1024)) ;;
+        SwapTotal:) swap_total=$((value * 1024)) ;;
+        SwapFree:) swap_available=$((value * 1024)) ;;
+      esac
+    done < /proc/meminfo
+    used=$((total - available))
+    swap_used=$((swap_total - swap_available))
+    percentage=$((100 * used / total))
+    swap_percentage=0
+    if [ "$swap_total" -gt 0 ]; then
+      swap_percentage=$((100 * swap_used / swap_total))
+    fi
+    label="$(${fmtBytes} "$used" "$total")"
+    swap_label="$(${fmtBytes} "$swap_used" "$swap_total")"
+    available_label="$(${fmtBytes} "$available")"
+    swap_available_label="$(${fmtBytes} "$swap_available")"
+    tooltip="RAM used: $label ($percentage%)"
+    tooltip+=$'\n'"Available: $available_label"
+    tooltip+=$'\n'"Swap used: $swap_label ($swap_percentage%)"
+    tooltip+=$'\n'"Swap available: $swap_available_label"
+    ${tooltipJson} "󰒋 $label" "$tooltip"
+  '';
   diskBlock = pkgs.writeShellScript "waybar-disk" ''
     set -euo pipefail
     PATH="${pkgs.gawk}/bin:$PATH"
@@ -427,7 +456,7 @@ let
     while read -r source used total available; do
       [ -n "$source" ] || continue
       details="$(${fmtBytes} "$used" "$total")"
-      free="$(${pkgs.coreutils}/bin/numfmt --to=iec-i --suffix=B --format=%.2f "$available")"
+      free="$(${fmtBytes} "$available")"
       tooltip+=$'\n'"$source: $details used/total; $free available"
       block_source="''${source%%\[*}"
       if [ -b "$block_source" ]; then
@@ -490,6 +519,11 @@ in
             interval = 10;
             return-type = "json";
           };
+          "custom/memory" = {
+            exec = "${memoryBlock}";
+            interval = 10;
+            return-type = "json";
+          };
           "custom/power" = {
             exec = "${powerBlock}";
             interval = 30;
@@ -497,11 +531,6 @@ in
           };
           height = 30;
           layer = "top";
-          memory = {
-            format = "󰒋 {used:0.2f}/{total:0.2f} GiB";
-            interval = 10;
-            tooltip-format = "RAM used: {used:0.2f} / {total:0.2f} GiB ({percentage}%)\nAvailable: {avail:0.2f} GiB\nSwap used: {swapUsed:0.2f} / {swapTotal:0.2f} GiB ({swapPercentage}%)\nSwap available: {swapAvail:0.2f} GiB";
-          };
           modules-center = [ ];
           modules-left = [
             "sway/workspaces"
@@ -513,7 +542,7 @@ in
             "custom/audio"
             "custom/cpu"
             "custom/gpu"
-            "memory"
+            "custom/memory"
             "custom/disk"
             "custom/battery"
             "custom/power"
@@ -553,46 +582,24 @@ in
         };
       in
       {
-        # Smaller font on the laptop panel only; external monitors keep the default.
-        laptop = bar // {
+        # One compact bar on every output.
+        mainBar = bar // {
           "custom/cpu" = bar."custom/cpu" // {
             exec = "${cpuBlock} compact";
           };
           "custom/gpu" = bar."custom/gpu" // {
             exec = "${gpuBlock} compact";
           };
-          name = "laptop";
           network = bar.network // {
             format-wifi = "󰤨 {essid}";
           };
-          output = "eDP-1";
-        };
-        mainBar = bar // {
-          output = "!eDP-1";
         };
       };
     style = ''
       * {
         font-family: "JetBrains Mono", "JetBrainsMono Nerd Font";
-        font-size: 13px;
-        min-height: 0;
-      }
-      window#waybar.laptop * {
         font-size: 11.5px;
-      }
-      window#waybar.laptop #network,
-      window#waybar.laptop #custom-brightness,
-      window#waybar.laptop #custom-audio,
-      window#waybar.laptop #custom-cpu,
-      window#waybar.laptop #custom-gpu,
-      window#waybar.laptop #memory,
-      window#waybar.laptop #custom-disk,
-      window#waybar.laptop #custom-battery,
-      window#waybar.laptop #custom-power,
-      window#waybar.laptop #power-profiles-daemon,
-      window#waybar.laptop #custom-clock {
-        margin: 4px 1px;
-        padding: 0 6px;
+        min-height: 0;
       }
       window#waybar {
         background: ${hexToRgba c.bg c.bgAlpha};
@@ -619,14 +626,14 @@ in
       #custom-audio,
       #custom-cpu,
       #custom-gpu,
-      #memory,
+      #custom-memory,
       #custom-disk,
       #custom-battery,
       #custom-power,
       #power-profiles-daemon,
       #custom-clock {
-        margin: 4px 2px;
-        padding: 0 10px;
+        margin: 4px 1px;
+        padding: 0 6px;
         background: ${hexToRgba c.pill c.pillAlpha};
         border-radius: 7px;
       }
@@ -634,7 +641,7 @@ in
       /* Native modules and audio inherit their palette colours from CSS. */
       #network     { color: ${c.network}; }
       #custom-audio { color: ${c.audio}; }
-      #memory      { color: ${c.memory}; }
+      #custom-memory { color: ${c.memory}; }
       #power-profiles-daemon { color: ${c.power}; }
       #power-profiles-daemon.performance { color: ${c.batLow}; }
       #custom-clock { color: ${c.fg}; }

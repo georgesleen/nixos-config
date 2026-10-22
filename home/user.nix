@@ -37,6 +37,7 @@
     ./dotfiles/packages.nix
     (inputs.nixos-pi4 + "/home/pi-state-backup.nix")
     ./dotfiles/rclone.nix
+    ./dotfiles/steam.nix
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
     ./dotfiles/tmux.nix
