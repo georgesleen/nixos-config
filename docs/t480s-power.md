@@ -49,8 +49,8 @@ debounce did the same when the lid closed 5 s into that bounce (09-27
 critical-battery hibernate at 05:27; the udev triggers close that gap.
 
 With the lid shut and the laptop awake undocked, kanshi's `undocked` profile
-runs `lidReconcileScript` so `eDP-1` stays off; sway's `bindswitch lid:off`
-turns it on when the lid opens.
+runs `lidScript` so `eDP-1` stays off; sway's `bindswitch lid:off` runs it
+again to restore the saved layout when the lid opens.
 
 ## Power profiles
 

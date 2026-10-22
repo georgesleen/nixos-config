@@ -1,9 +1,9 @@
 #!/bin/sh
 # Emits the swaymsg commands needed to place the external monitor, one per
-# line, reading `swaymsg -t get_outputs` JSON on stdin. Prints nothing and
-# exits 1 when no external is connected, which is how callers know to notify.
+# line, reading `swaymsg -t get_outputs` JSON on stdin. Layout actions exit 1
+# when no external is connected; lid actions also work when undocked.
 #
-# Usage: display-plan.sh <extend|external-only|mirror|swap|reconcile>
+# Usage: display-plan.sh <extend|external-only|mirror|swap|reconcile|lid-close|lid-open>
 #
 # No monitor is named here. The external is discovered at runtime because all
 # kanshi profiles use a wildcard external, so one set of modes works with any
@@ -28,6 +28,39 @@ jq_bin="${JQ:-jq}"
 drm_sys="${DRM_SYS:-/sys/class/drm}"
 
 outputs=$(cat)
+
+case "$layout" in
+  lid-close)
+    echo "output eDP-1 disable"
+    printf '%s' "$outputs" | "$jq_bin" -r '
+      [.[] | select(.active and .name != "eDP-1")]
+      | select(length == 1) | .[0]
+      | select(.rect.x != 0 or .rect.y != 0)
+      | "output \(.name | tojson) position 0 0"'
+    exit 0
+    ;;
+  lid-open)
+    printf '%s' "$outputs" | "$jq_bin" -r --argjson saved "${LID_RESTORE:-[]}" '
+      [.[] | select(.active and .name != "eDP-1")] as $external
+      | [$saved[] | select(.active and .name != "eDP-1")] as $previous
+      | $saved[] | select(.active) | . as $output
+      | if .name == "eDP-1" then
+          if ($external | length) == 0 then
+            "output eDP-1 position 0 0"
+          else
+            "output eDP-1 position \(.rect.x) \(.rect.y)"
+          end
+        else
+          (if ($external | length) == 1 and ($previous | length) == 1 then
+             $external[0].name
+           elif any($external[]; .name == $output.name) then .name
+           else empty end) as $name
+          | "output \($name | tojson) position \(.rect.x) \(.rect.y)"
+        end'
+    echo "output eDP-1 enable"
+    exit 0
+    ;;
+esac
 
 ext=$(printf '%s' "$outputs" \
   | "$jq_bin" -r '.[] | select(.active and .name != "eDP-1") | .name' \
@@ -113,7 +146,7 @@ case "$layout" in
     echo "output \"$ext\" scale $scale"
     ;;
   *)
-    echo "usage: display-plan.sh extend|external-only|mirror|swap|reconcile" >&2
+    echo "usage: display-plan.sh extend|external-only|mirror|swap|reconcile|lid-close|lid-open" >&2
     exit 2
     ;;
 esac

@@ -89,16 +89,36 @@ let
   # it once the profile has landed.
   barRefresh = "${pkgs.systemd}/bin/systemctl --user restart waybar.service";
 
-  # kanshi can't see the lid switch, so a profile applied at boot/hotplug with
-  # the lid already closed would re-enable eDP-1 onto the dark internal panel.
-  # The sway `bindswitch` only fires on lid *transitions*, not at startup, so
-  # this mirrors the bindswitch close (just disable eDP-1) when the lid is
-  # already shut. It deliberately leaves the extend profile's split assignment
-  # rules in place so sway pulls the internal workspaces back when the lid
-  # reopens; sway auto-moves eDP-1's workspaces to the external in the meantime.
-  lidReconcileScript = pkgs.writeShellScript "kanshi-lid-reconcile" ''
-    ${grep} -qs closed /proc/acpi/button/lid/*/state || exit 0
-    ${swaymsg} "output eDP-1 disable"
+  # Save the enabled layout before closing, then restore it on opening.
+  lidScript = pkgs.writeShellScript "display-lid" ''
+    set -euo pipefail
+    exec 9>"$XDG_RUNTIME_DIR/display-lid.lock"
+    ${pkgs.util-linux}/bin/flock 9
+    state="$XDG_RUNTIME_DIR/display-lid-layout.json"
+    action="''${1:-reconcile}"
+    if [ "$action" = reconcile ]; then
+      if ${grep} -qs closed /proc/acpi/button/lid/*/state; then
+        action=close
+      else
+        action=open
+      fi
+    fi
+    outputs=$(${swaymsg} -t get_outputs)
+    case "$action" in
+      close)
+        if printf '%s' "$outputs" | ${jq} -e 'any(.[]; .name == "eDP-1" and .active)' >/dev/null; then
+          printf '%s' "$outputs" >"$state"
+        fi
+        printf '%s' "$outputs" | ${displayPlan} lid-close | ${runPlan}
+        ;;
+      open)
+        [ -f "$state" ] || exit 0
+        export LID_RESTORE="$(<"$state")"
+        printf '%s' "$outputs" | ${displayPlan} lid-open | ${runPlan}
+        rm "$state"
+        ;;
+      *) echo "usage: display-lid [close|open|reconcile]" >&2; exit 2 ;;
+    esac
   '';
 
   # Docked mode profiles. All four share the same match (eDP-1 + one external
@@ -108,9 +128,8 @@ let
     profile = {
       exec = [
         mirrorStop
-        "${applyExternalScript} extend"
-        "${splitWorkspacesScript}"
-        "${lidReconcileScript}"
+        # Kanshi exec entries run concurrently; lid placement must run last.
+        "${applyExternalScript} extend && ${splitWorkspacesScript} && ${lidScript}"
         wallpaperRefresh
         barRefresh
       ];
@@ -204,8 +223,7 @@ let
     profile = {
       exec = [
         mirrorStop
-        "${allToInternalScript}"
-        "${lidReconcileScript}"
+        "${allToInternalScript} && ${lidScript}"
         wallpaperRefresh
         barRefresh
       ];
@@ -270,7 +288,6 @@ in
     ];
     systemdTarget = "sway-session.target";
   };
-
   systemd.user.services.display-mode-guard = {
     Install.WantedBy = [ "sway-session.target" ];
     Service = {
@@ -284,11 +301,14 @@ in
       PartOf = [ "sway-session.target" ];
     };
   };
-
   wayland.windowManager.sway.config.keybindings = {
     # swap which side the laptop is on (within the current docked kanshi profile).
     "${config.my.modifier}+Shift+m" = "exec ${toggleScript}";
     # Windows-style display picker (Extend / Duplicate / Internal / External).
     "${config.my.modifier}+Shift+p" = "exec ${modePickerScript}";
   };
+  wayland.windowManager.sway.extraConfig = ''
+    bindswitch --reload --locked lid:on exec ${lidScript}
+    bindswitch --reload --locked lid:off exec ${lidScript}
+  '';
 }

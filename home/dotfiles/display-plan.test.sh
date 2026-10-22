@@ -22,6 +22,14 @@ swapped='[{"name":"eDP-1","active":true,"rect":{"x":1920},"current_mode":{"heigh
 spaced='[{"name":"eDP-1","active":true,"rect":{"x":0},"current_mode":{"height":1080}},
          {"name":"Big Screen","active":true,"rect":{"x":1920},"current_mode":{"height":1080}}]'
 
+# A closed internal panel and the external left at the old extended offset.
+closed='[{"name":"eDP-1","active":false,"rect":{"x":0,"y":0}},
+         {"name":"DP-4","active":true,"rect":{"x":1920,"y":0}}]'
+opened='[{"name":"eDP-1","active":true,"rect":{"x":0,"y":0}},
+         {"name":"DP-4","active":true,"rect":{"x":1920,"y":0}}]'
+left='[{"name":"eDP-1","active":true,"rect":{"x":1920,"y":0}},
+       {"name":"DP-4","active":true,"rect":{"x":0,"y":0}}]'
+
 # Fixture DRM tree, empty unless a test writes an EDID into it, so the host's
 # real /sys/class/drm never leaks in.
 DRM_SYS=$(mktemp -d)
@@ -40,6 +48,42 @@ edid() {
 }
 
 plan() { printf '%s' "$2" | sh "$script" "$1"; }
+
+check_eq "lid close disables the panel and normalizes the remaining monitor" \
+'output eDP-1 disable
+output "DP-4" position 0 0' "$(plan lid-close "$closed")"
+
+check_eq "lid close does not move an external already at the origin" \
+'output eDP-1 disable' "$(plan lid-close "$left")"
+
+check_eq "lid close works without an external" \
+'output eDP-1 disable' "$(plan lid-close "$solo")"
+
+LID_RESTORE="$opened"
+export LID_RESTORE
+check_eq "opening the lid restores extended positions before enabling the panel" \
+'output eDP-1 position 0 0
+output "DP-4" position 1920 0
+output eDP-1 enable' "$(plan lid-open "$closed")"
+
+LID_RESTORE="$left"
+check_eq "opening the lid preserves swapped sides" \
+'output eDP-1 position 1920 0
+output "DP-4" position 0 0
+output eDP-1 enable' "$(plan lid-open "$closed")"
+
+check_eq "opening after undocking puts the internal panel at the origin" \
+'output eDP-1 position 0 0
+output eDP-1 enable' "$(plan lid-open "$solo")"
+
+LID_RESTORE="$opened"
+reconnected='[{"name":"eDP-1","active":false,"rect":{"x":0,"y":0}},
+              {"name":"DP-7","active":true,"rect":{"x":0,"y":0}}]'
+check_eq "opening handles an external reconnecting on another connector" \
+'output eDP-1 position 0 0
+output "DP-7" position 1920 0
+output eDP-1 enable' "$(plan lid-open "$reconnected")"
+unset LID_RESTORE
 
 check_eq "extend places the external to the right at scale 1" \
 "output \"DP-4\" scale 1 subpixel rgb

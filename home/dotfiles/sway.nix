@@ -242,11 +242,6 @@ in
 
         output eDP-1 subpixel rgb
 
-        # Turn off the internal panel when the lid closes (kanshi handles
-        # output enable/disable on hotplug, but cannot see the lid switch).
-        bindswitch --reload --locked lid:on  output eDP-1 disable
-        bindswitch --reload --locked lid:off output eDP-1 enable
-
         for_window [app_id=".*"] border pixel ${toString borderWidth}
         for_window [class=".*"] border pixel ${toString borderWidth}
         client.focused #b4befe #b4befe #1e1e2e #b4befe #b4befe
