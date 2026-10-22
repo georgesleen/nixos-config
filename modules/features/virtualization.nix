@@ -2,8 +2,8 @@
 
 {
   config,
-  pkgs,
   lib,
+  pkgs,
   user,
   ...
 }:
@@ -54,8 +54,23 @@ let
   '';
 in
 {
+  environment.systemPackages = with pkgs; [
+    usbredir
+    podman
+    virglrenderer
+    mesa
+  ];
+  # kvm-intel / kvm-amd are declared per host in hardware-configuration.nix.
+  # Hugepages and scheduler tuning left to runtime (libvirt hooks) to avoid
+  # pinning 2 GB of RAM when no VM is running.
+  hardware.graphics = {
+    enable = true;
+  };
+  hardware.uinput.enable = true;
+  networking.firewall.trustedInterfaces = [ "virbr0" ];
   programs.virt-manager.enable = true;
-
+  users.groups.libvirtd.members = [ user ];
+  users.users.${user}.extraGroups = [ "libvirtd" ];
   virtualisation.libvirtd = {
     enable = true;
     hooks.qemu = {
@@ -64,40 +79,16 @@ in
     qemu = {
       package = pkgs.qemu_kvm;
       swtpm.enable = true;
-      vhostUserPackages = [ pkgs.virtiofsd ];
       verbatimConfig = ''
         cputype = "host-passthrough"
       '';
+      vhostUserPackages = [ pkgs.virtiofsd ];
     };
   };
-
-  users.users.${user}.extraGroups = [ "libvirtd" ];
-  users.groups.libvirtd.members = [ user ];
-
-  # kvm-intel / kvm-amd are declared per host in hardware-configuration.nix.
-  # Hugepages and scheduler tuning left to runtime (libvirt hooks) to avoid
-  # pinning 2 GB of RAM when no VM is running.
-
-  hardware.graphics = {
-    enable = true;
-  };
-
-  environment.systemPackages = with pkgs; [
-    spice-gtk
-    usbredir
-    podman
-    virglrenderer
-    mesa
-  ];
-
-  virtualisation.podman.enable = true;
-  virtualisation.podman.dockerCompat = true;
   virtualisation.podman.defaultNetwork.settings.dns_enabled = true;
+  virtualisation.podman.dockerCompat = true;
+  virtualisation.podman.enable = true;
   virtualisation.podman.extraPackages = [ pkgs.udisks2 ];
-
-  services.udev.packages = [ pkgs.spice-gtk ];
-
-  networking.firewall.trustedInterfaces = [ "virbr0" ];
-
-  hardware.uinput.enable = true;
+  # Authorize per-device USB ACLs through SPICE's polkit-checked helper.
+  virtualisation.spiceUSBRedirection.enable = true;
 }

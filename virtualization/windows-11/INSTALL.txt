@@ -1,0 +1,76 @@
+Windows workstation: normal installation and guest setup
+======================================================
+
+Installation is intentionally interactive. No unattended answer file, Windows
+account, password, or license key is supplied. Use virt-manager's local SPICE
+console, press a key at the Windows DVD boot prompt, install onto the 128 GiB
+SATA disk, and complete Microsoft's normal Windows 11 installer and OOBE.
+Choose your account and enter your own licensing information in Windows.
+On subsequent DVD prompts, do not press a key: boot the installed system.
+
+The emulated SATA controller and Intel e1000e NIC do not need VirtIO drivers
+for installation. This VM has TPM 2.0 and Microsoft-signed UEFI Secure Boot.
+Do not disable Secure Boot or enable Windows test-signing for guest drivers.
+The SPICE/QXL display is 2D only. There is no GPU passthrough or accelerated
+CAD/gaming promise; use the existing server for those workloads.
+
+Post-installation (inside Windows)
+----------------------------------
+1. Use the administrator account created during OOBE. Connect Windows to the
+   internet so Windows Update can install the OpenSSH Server capability.
+2. Download the stable WinFsp MSI from the project's official releases page:
+   https://github.com/winfsp/winfsp/releases
+   Run its interactive installer and keep at least the Core feature enabled.
+3. Open the attached virtio-win-0.1.271 disc in Explorer. Run its root
+   virtio-win-guest-tools.exe (the filename may include a version suffix).
+   In the installation wizard install the signed Windows 11 amd64 VirtIO
+   drivers, including VirtIO-FS, the VirtIO-FS service, QEMU guest agent and
+   SPICE agent. Allow requested Windows security prompts. Reboot if asked.
+   If a component is missing, rerun the wizard's Modify option. Device Manager
+   must show the VirtIO-FS and VirtIO serial devices without errors. If needed,
+   use Update driver > Browse my computer on the unknown device and choose
+   the VirtIO disc with Include subfolders selected. Do not load test drivers.
+4. Find the additional CD labeled WORKSTATION. In an elevated Windows
+   PowerShell console, run (replace E: with that CD's actual drive letter):
+
+     powershell.exe -NoProfile -ExecutionPolicy Bypass -File E:\Setup-Workstation.ps1
+
+   Bypass applies to this process only; no persistent execution-policy change
+   is made. The script installs OpenSSH Server, enables key authentication,
+   disables SSH password authentication, merges the supplied host public keys
+   into administrators_authorized_keys and applies SYSTEM/Administrators-only
+   ACLs. It enables the inbound SSH firewall rule and starts sshd at boot.
+   The default Windows administrators Match block must remain in sshd_config.
+   Non-administrator accounts are not provisioned by this script.
+5. The script requires the installed WinFsp and upstream guest-tool services.
+   Missing prerequisites produce a terminating, actionable error, not a fake
+   shared folder. SSH setup is retained, so you can complete that prerequisite
+   and rerun the script. No third-party binaries are silently downloaded.
+6. Sharing uses the single host export tagged work, mounted globally as W:.
+   Keep W: free of unrelated disks/mappings. The script configures VirtioFsSvc
+   with the upstream MountPoint, FileSystemName and Owner registry settings.
+   Owner=1000:100 maps newly created files to the host user's UID and users GID.
+   VirtioFsSvc, QEMU-GA and vdservice start automatically. FileSystemName=NTFS is the
+   upstream setting for launching elevated executables from a share; it does
+   not convert the host filesystem. SPICE agent and its display driver enable
+   clipboard integration and window-driven resolution changes.
+
+Connect from the host using the exact Windows account name shown by the
+script (or `whoami` in Windows) and the guest's NAT address. The address is
+visible in virt-manager or `virsh -c qemu:///system net-dhcp-leases default`:
+
+  ssh -l '<Windows-account-name>' 192.168.122.x
+
+The keys on the provisioning disc are public, never private keys. Windows
+credentials are entered only in the normal Windows UI. Keep the QCOW2, NVRAM
+and TPM state together: Windows can bind encryption/recovery to the TPM.
+Export documents to W: before removing guest state. The selected shared host
+work directory and tracked VM definitions are independent of that state.
+Altium, SolidWorks and other licensed applications are not installed.
+
+Upstream procedures
+-------------------
+https://virtio-win.github.io/Knowledge-Base/Driver-installation.html
+https://virtio-win.github.io/Knowledge-Base/Virtiofs-qs.html
+https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_install_firstuse
+https://learn.microsoft.com/en-us/windows-server/administration/openssh/openssh_keymanagement

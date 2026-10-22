@@ -14,5 +14,9 @@
         "qemu+ssh://george-sleen@gs-server/system"
       ];
     };
+    "org/virt-manager/virt-manager/console" = {
+      auto-redirect = false;
+      resize-guest = 1;
+    };
   };
 }

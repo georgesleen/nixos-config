@@ -90,6 +90,72 @@ override `programs.steam.enable = lib.mkForce false`, rebuild, and remove client
 data only after preserving saves. The storage activation does not recreate the
 library while Steam is disabled.
 
+## Laptop VMs
+
+The Framework imports `virtualization/default.nix`. NixVirt manages the
+`ubuntu-tools` and `windows-workstation` domain definitions on
+`qemu:///system`; use virt-manager for their normal start, shutdown and console
+controls. Neither guest starts automatically, and a rebuild does not restart a
+running guest. Permanent domain changes belong in the Nix definitions, not the
+GUI: NixVirt's domain list is authoritative. Existing networks and storage pools
+are not adopted into its authoritative lists.
+
+| Guest | Definition | Private state | Shared work |
+| --- | --- | --- | --- |
+| Ubuntu 24.04, 4 vCPU / 6 GiB / 64 GiB disk | `virtualization/ubuntu-24-04/default.nix` | `~/Virtualization/ubuntu-24-04` | `~/Documents/VMWork/ubuntu-24-04` |
+| Windows 11, 8 vCPU / 12 GiB / 128 GiB disk | `virtualization/windows-11/default.nix` | `~/Virtualization/windows-11` | `~/Documents/VMWork/windows-11` |
+
+Private state directories are Btrfs subvolumes excluded from home snapshots.
+Their disks inherit NOCOW and grow on demand. Initialization never replaces an
+existing disk; Ubuntu's base image is copied into a standalone QCOW2, not used as
+a live backing file in the Nix store. Windows firmware variables and TPM state
+stay in its private directory. Shared work is outside the guest's private state
+and remains covered by home snapshots.
+
+Ubuntu's pinned cloud image uses a NoCloud seed to install a minimal GNOME
+desktop, SPICE/QEMU agents and SSH. Its desktop logs in automatically; SSH uses
+the public keys in `keys/authorized.nix`, with password login disabled.
+The work share appears at `~/Work`. Cloud-init provisions a fresh disk once;
+editing the seed does not reinstall or continuously reconcile an existing OS.
+Host shutdown requests a clean guest shutdown instead of saving guest RAM:
+virgl graphics and virtiofs shares do not support libvirt managed save.
+
+Windows uses the existing Windows and VirtIO ISOs in `~/Media/Disk Images`.
+Complete its normal installer, account and licensing screens in virt-manager.
+The additional `WORKSTATION` CD contains `INSTALL.txt` and
+`Setup-Workstation.ps1` for signed guest tools, key-only SSH and the work share
+at `W:`. Credentials never enter the Nix store. Its SPICE/QXL display is 2D;
+heavy CAD and Windows gaming remain on the server.
+
+```bash
+virsh -c qemu:///system start ubuntu-tools
+virsh -c qemu:///system start windows-workstation
+virsh -c qemu:///system net-dhcp-leases default
+```
+
+SSH to the guest's listed NAT address using its account name. Both consoles use
+local SPICE, not a network game stream. virt-manager resizes the guest display
+to its window and shares the clipboard once the guest agents run; Windows
+guest-tool installation is a post-install step described on its provisioning
+CD. Ubuntu's address can change between its first and later boots, so read it
+from the lease list rather than reusing an old one.
+
+USB redirection is manual: use the console's **Redirect USB device** menu only
+for the device you intend to hand to the guest. Opening a console never
+automatically captures the phone or other host USB devices. The NixOS
+`virtualisation.spiceUSBRedirection` module installs SPICE's polkit-checked
+`cap_fowner` helper to grant and revoke a per-user ACL on the selected device;
+installing `spice-gtk` or listing it as a udev package alone does not provide
+that privilege. No blanket USB mode or group permission is required.
+
+To retire a guest, export documents, shut it down, and remove its entry from
+`workspaces` in `virtualization/default.nix`. Before applying that removal,
+undefine the guest with its private disk, NVRAM and TPM cleanup through
+libvirt; do not select shared work or installation media for deletion. Remove
+only its `workspace-<domain-name>` storage pool and private state subvolume.
+Then rebuild the host so initialization no longer recreates that workspace.
+Keep the tracked definition and shared work folder for later reuse.
+
 ## Layout
 
 - `hosts/<host>/`: host-specific config: hardware, networking, boot, services,

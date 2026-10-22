@@ -99,6 +99,7 @@ in
   imports = [
     ../../modules/features/ollama.nix
     ../../modules/roles/laptop.nix
+    ../../virtualization
     inputs.nixos-hardware.nixosModules.framework-intel-core-ultra-series3
     ./fingerprint-lid.nix
     ./hardware-configuration.nix
