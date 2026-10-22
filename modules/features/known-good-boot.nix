@@ -9,15 +9,12 @@
 # Two failure modes make that recovery unavailable on a box that has not
 # rebooted in a while:
 #
-#   * `nix.gc` with `--delete-older-than 30d` deletes the generation you are
-#     running from once it ages out. Nix keeps the newest generation older than
-#     the cutoff, but that is the one active at the cutoff, not the one that is
-#     proven to boot. The store paths survive via /nix/var/nix/gcroots/
-#     booted-system, but with no profile generation the bootloader emits no
-#     menu entry for them, so they are unreachable without rescue media.
-#   * `configurationLimit` trims the menu to the newest N generations. At this
-#     repo's deploy rate that is a couple of days, so the running generation
-#     falls off the menu long before the GC would have removed it.
+#   * GC can delete non-current system generations, including the one that
+#     booted if a later switch advanced the system profile. The store paths
+#     survive via /nix/var/nix/gcroots/booted-system, but without a profile
+#     generation the bootloader emits no menu entry for them.
+#   * `configurationLimit` trims the menu to the newest N generations, so a
+#     running generation can disappear from the menu even before GC.
 #
 # So: pin the last boot that actually succeeded into its own system profile.
 # The bootloader builder enumerates /nix/var/nix/profiles/system-profiles/*
@@ -60,9 +57,10 @@ let
 
     mkdir -p "$(dirname ${profile})"
     nix-env -p ${profile} --set "$booted"
-    # Three is enough to step back through: this profile only gains a
-    # generation when a *different* system actually boots.
-    nix-env -p ${profile} --delete-generations +3
+    # Framework keeps one successful boot; other laptops retain three.
+    nix-env -p ${profile} --delete-generations ${
+      if config.networking.hostName == "gs-framework-13-pro" then "old" else "+3"
+    }
 
     # Insurance against the blessing chain not firing. Upstream clears the
     # boot counter from systemd-bless-boot.service, which is pulled in by
@@ -95,14 +93,15 @@ in
   boot.loader.systemd-boot.bootCounting.enable = true;
 
   systemd.services.pin-known-good-boot = {
-    description = "Pin the booted system as a known-good boot target";
     # No `before`/`requiredBy` on anything: this must never be able to hold up
     # a boot, and `sysinit.target` ordering loops are how gs-pi4 lost a boot.
     after = [ "multi-user.target" ];
+    description = "Pin the booted system as a known-good boot target";
     serviceConfig = {
       ExecStart = pinScript;
       RemainAfterExit = true;
-      Type = "oneshot";
+      # Complete the start job before waiting for the boot transaction to settle.
+      Type = "exec";
     };
     wantedBy = [ "multi-user.target" ];
   };

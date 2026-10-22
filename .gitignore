@@ -2,3 +2,4 @@
 result
 logs/
 .omp/
+.gcroots/

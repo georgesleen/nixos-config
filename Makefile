@@ -1,10 +1,12 @@
-# Build targets for this flake: the shell unit tests, the OpenWrt One router
-# image, and the Raspberry Pi 1 Tailscale node image.
+# Build-only host closures, OpenWrt images, and shell unit tests.
 SHELL := bash
 .ONESHELL:
 .PHONY: check-boot-order gs-openwrt-one gs-openwrt-one-flash gs-pi1-parents test
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
+NIXOS_HOSTS := gs-framework-13-pro gs-server gs-pi4
+NIXOS_BUILD_TARGETS := $(addprefix build-,$(NIXOS_HOSTS))
+.PHONY: $(NIXOS_BUILD_TARGETS)
 
 test:
 	@names=$$(nix eval --raw '$(ROOT)#checks.x86_64-linux' \
@@ -16,6 +18,12 @@ test:
 	done
 	if [ $$failed -ne 0 ]; then echo "SUITES FAILED"; exit 1; fi
 	echo "all suites passed"
+
+# Retain each host's latest successfully built runtime closure without switching.
+$(NIXOS_BUILD_TARGETS): build-%:
+	@mkdir -p "$(ROOT)/.gcroots"
+	nix build "$(ROOT)#nixosConfigurations.$*.config.system.build.toplevel" \
+	  --out-link "$(ROOT)/.gcroots/$*"
 
 # Check a live host's systemd ordering graph for cycles. Run after a `switch`
 # or `test` (which load the new units) and BEFORE rebooting: systemd breaks a
@@ -32,15 +40,17 @@ check-boot-order:
 # into the environment; --impure lets the flake read them via builtins.getEnv.
 # Long build: consider `inhibit-sleep` first. Output .bin path is printed.
 gs-openwrt-one:
-	@sops exec-env secrets/secrets.yaml \
-	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-openwrt-one" --impure'
+	@mkdir -p "$(ROOT)/.gcroots"
+	sops exec-env secrets/secrets.yaml \
+	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-openwrt-one" --impure --out-link "$(ROOT)/.gcroots/gs-openwrt-one"'
 
 # Build the Raspberry Pi 1 B+ Tailscale node image. Writes an SD-card image, not
 # a sysupgrade file: flash it once with dd, then manage the board over Tailscale
 # SSH. Needs `pi_parents_ts_authkey` in secrets/secrets.yaml.
 gs-pi1-parents:
-	@sops exec-env secrets/secrets.yaml \
-	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-pi1-parents" --impure'
+	@mkdir -p "$(ROOT)/.gcroots"
+	sops exec-env secrets/secrets.yaml \
+	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-pi1-parents" --impure --out-link "$(ROOT)/.gcroots/gs-pi1-parents"'
 
 # Build then flash the router. Nix only builds the image; this is not a NixOS
 # host, so there is no `nixos-rebuild switch` equivalent.
@@ -57,8 +67,9 @@ gs-pi1-parents:
 # leaves it on OpenWrt's default 192.168.1.1, recoverable over the wire.
 gs-openwrt-one-flash: ROUTER ?= 192.168.10.1
 gs-openwrt-one-flash:
-	@out=$$(sops exec-env secrets/secrets.yaml \
-	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-openwrt-one" --impure')
+	@mkdir -p "$(ROOT)/.gcroots"
+	out=$$(sops exec-env secrets/secrets.yaml \
+	  'nix build --print-out-paths "$(ROOT)#packages.x86_64-linux.gs-openwrt-one" --impure --out-link "$(ROOT)/.gcroots/gs-openwrt-one"') || exit $$?
 	img=$$(echo "$$out"/*-squashfs-sysupgrade.itb)
 	[ -f "$$img" ] || { echo "no sysupgrade image in $$out"; exit 1; }
 	echo "image: $$img"

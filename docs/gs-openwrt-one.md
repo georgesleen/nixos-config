@@ -169,6 +169,11 @@ Values must not contain a single quote (they land inside `uci set ... '...'`).
 make gs-openwrt-one        # sops exec-env decrypts -> nix build --impure
 ```
 
+The latest successful image is retained at `.gcroots/gs-openwrt-one` via
+`nix build --out-link`, including cached builds. Failed builds leave that link
+unchanged. `make gs-openwrt-one-flash` uses the same root, not `result`.
+This retains the image's runtime closure, not its build dependencies.
+
 `--impure` lets the flake read the secrets via `builtins.getEnv`. Without them
 (plain `nix build .#gs-openwrt-one` / `nix flake check`) the values fall back to
 `CHANGEME_*` placeholders and eval still succeeds, producing a non-secret test

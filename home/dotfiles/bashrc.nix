@@ -1,4 +1,14 @@
-{ config, pkgs, ... }:
+{
+  config,
+  lib,
+  osConfig ? null,
+  pkgs,
+  ...
+}:
+
+let
+  runtimeClosuresOnly = osConfig != null && osConfig.networking.hostName == "gs-framework-13-pro";
+in
 
 {
   programs.bash = {
@@ -58,16 +68,26 @@
   };
   programs.direnv = {
     enable = true;
-    nix-direnv.enable = true;
+    nix-direnv.enable = !runtimeClosuresOnly;
     # Activate a uv-managed venv so pylsp/jedi introspect the project's
     # packages. Usage in .envrc: layout_uv [project-subdir]
-    stdlib = ''
-      layout_uv() {
-        local venv="$PWD/''${1:-.}/.venv"
-        export VIRTUAL_ENV="$venv"
-        PATH_add "$venv/bin"
-      }
-    '';
+    stdlib =
+      lib.optionalString runtimeClosuresOnly ''
+        # Load flake shells without persistent profiles or input GC roots.
+        use_flake() {
+          watch_file flake.nix flake.lock
+          local environment
+          environment="$(nix print-dev-env "$@")" || return
+          eval "$environment"
+        }
+      ''
+      + ''
+        layout_uv() {
+          local venv="$PWD/''${1:-.}/.venv"
+          export VIRTUAL_ENV="$venv"
+          PATH_add "$venv/bin"
+        }
+      '';
   };
   # nixpkgs ships cargo's clap_complete script as
   # share/bash-completion/completions/cargo.bash with the build-time

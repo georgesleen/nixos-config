@@ -1,4 +1,5 @@
 {
+  config,
   inputs,
   pkgs,
   user,
@@ -10,6 +11,43 @@ let
   sudoAskpass = pkgs.writeShellScript "fuzzel-sudo-askpass" ''
     exec ${pkgs.fuzzel}/bin/fuzzel --dmenu --password --lines 0 --prompt "''${1:-sudo password: } " </dev/null
   '';
+  garbageCollect = pkgs.writeShellScriptBin "nix-clean" ''
+    if [ "$#" -eq 0 ]; then
+      set -- --delete-old
+    fi
+    exec ${config.nix.package}/bin/nix-collect-garbage "$@"
+  '';
+  sudoNotify = pkgs.writeShellApplication {
+    name = "sudo-notify";
+    runtimeInputs = [
+      pkgs.gnugrep
+      pkgs.libnotify
+      pkgs.mako
+    ];
+    text = ''
+      notification=
+      dismiss_notification() {
+        if [[ -n "$notification" ]]; then
+          makoctl dismiss --no-history -n "$notification"
+          notification=
+        fi
+      }
+      trap dismiss_notification EXIT
+      trap 'exit 130' INT
+      trap 'exit 143' TERM
+      trap 'exit 129' HUP
+      if ! /run/wrappers/bin/sudo -n -v 2>/dev/null; then
+        title="Authenticate with fingerprint reader"
+        if grep -qs closed /proc/acpi/button/lid/*/state; then
+          title="Authenticate with password"
+        fi
+        notification=$(notify-send --print-id --expire-time=0 "$title")
+        /run/wrappers/bin/sudo -v
+        dismiss_notification
+      fi
+      /run/wrappers/bin/sudo "$@"
+    '';
+  };
 in
 {
   # NVMe sits behind Intel VMD when the BIOS enables it; without this the
@@ -30,13 +68,8 @@ in
   boot.loader.efi.canTouchEfiVariables = true;
   # Bootloader
   boot.loader.grub.enable = false;
-  # Bounds the boot menu, not the ESP: entries are ~1 KB and kernels/initrds
-  # are shared by content across generations, so 21 entries cost 58 MB of the
-  # 2 GB here. The real cost of a limit is recoverability, since at this
-  # repo's deploy rate 20 entries is about two days of history and the
-  # generation you are actually running drops off the menu well before
-  # nix.gc's 30d window would remove it. known-good-boot.nix is what keeps a
-  # bootable escape hatch past both horizons.
+  # The known-good profile provides the recovery entry independently of the
+  # ordinary system profile, whose non-current generations GC removes.
   boot.loader.systemd-boot.configurationLimit = 20;
   boot.loader.systemd-boot.enable = true;
   # 8x16 console text is unreadable on the 2880x1920 panel (boot log, tuigreet).
@@ -54,6 +87,8 @@ in
   environment.systemPackages = with pkgs; [
     libimobiledevice
     gnome-network-displays
+    garbageCollect
+    sudoNotify
   ];
   # Xe3 iGPU VA-API decode via the iHD driver. Without it the only VA backends
   # are Gallium stubs, so Firefox (desktop.nix prefs) and the Steam Remote Play
@@ -64,6 +99,7 @@ in
     ../../modules/features/ollama.nix
     ../../modules/roles/laptop.nix
     inputs.nixos-hardware.nixosModules.framework-intel-core-ultra-series3
+    ./fingerprint-lid.nix
     ./hardware-configuration.nix
     ./power.nix
   ];
@@ -73,15 +109,17 @@ in
     "100.111.59.110" = [ "gs-server" ];
   };
   networking.networkmanager.enable = true;
+  # Keep only each profile's current generation; known-good is a separate profile.
+  nix.gc.options = "--delete-old";
   nix.settings = {
     experimental-features = [
       "nix-command"
       "flakes"
     ];
     filter-syscalls = false;
-    # Keep build deps/outputs of gcroots so GC doesn't force rebuilds.
-    keep-derivations = true;
-    keep-outputs = true;
+    # Keep rooted runtime closures without their build dependency graphs.
+    keep-derivations = false;
+    keep-outputs = false;
     # QEMU binfmt emulation (aarch64) needs these — seccomp filtering blocks QEMU
     # syscalls, and the binfmt sandbox can't create nested namespaces.
     sandbox = false;

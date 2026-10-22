@@ -91,6 +91,10 @@ Either way: fine for remote debugging, poor for streaming.
 make gs-pi1-parents        # sops injects pi_parents_ts_authkey; prints the path
 ```
 
+The latest successful image is retained at `.gcroots/gs-pi1-parents` via
+`nix build --out-link`, including cached builds. Failed builds leave that link
+unchanged. This retains the image's runtime closure, not its build dependencies.
+
 Write the **squashfs** factory image, not ext4: a read-only root plus a small
 overlay writes far less to the SD card, which matters for an unattended board.
 

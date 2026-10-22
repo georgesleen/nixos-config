@@ -1,7 +1,10 @@
 { config, pkgs, ... }:
 
 {
-  home.packages = with pkgs; [ playerctl ];
+  home.packages = with pkgs; [
+    git-filter-repo
+    playerctl
+  ];
   home.sessionVariables = {
     EDITOR = "hx";
     # btrfs reflinks for uv venvs, dedups against ~/.cache/uv.
