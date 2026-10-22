@@ -6,10 +6,11 @@
   ...
 }:
 let
+  sudoPasswordTimeout = "60s";
   # Masked password prompt on the sway session for when sudo has no tty (Claude
   # Code Bash); sudo auto-uses it via /etc/sudo.conf only in the no-terminal case.
   sudoAskpass = pkgs.writeShellScript "fuzzel-sudo-askpass" ''
-    exec ${pkgs.fuzzel}/bin/fuzzel --dmenu --password --lines 0 --prompt "''${1:-sudo password: } " </dev/null
+    exec ${pkgs.coreutils}/bin/timeout --foreground ${sudoPasswordTimeout} ${pkgs.fuzzel}/bin/fuzzel --dmenu --password --lines 0 --prompt "''${1:-sudo password: } " </dev/null
   '';
   garbageCollect = pkgs.writeShellScriptBin "nix-clean" ''
     if [ "$#" -eq 0 ]; then

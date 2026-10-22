@@ -60,9 +60,11 @@ through unchanged, so `sudo nix-clean --dry-run` does not prune profile
 generations. Its distinct name avoids being shadowed by Nix development shells.
 
 For non-interactive commands, `sudo-notify <command> [arguments...]` displays
-`Authenticate with fingerprint reader` only when authentication is required.
-It dismisses that notification after `sudo -v` succeeds, before starting the
-command, and on failure or cancellation.
+`Authenticate with fingerprint reader`, or `Authenticate with password` with
+the lid closed, only while authentication is pending. It dismisses its own
+notification after authentication, before starting the command, and on failure
+or cancellation. The fuzzel password dialog cancels after 60 seconds without a
+submission; this timeout does not limit the authenticated command's runtime.
 
 GC does not remove project build directories, personal files, VM disks or Btrfs
 snapshots. Runtime references held by running processes remain live until those
