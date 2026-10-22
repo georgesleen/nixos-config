@@ -1,0 +1,22 @@
+#!/bin/sh
+# CAKE on the Wi-Fi uplink, below the measured ~37/6 Mbit/s ceiling.
+# Rates leave headroom for the upstream queue; re-tune if the uplink changes.
+
+uci -q delete sqm.wwan
+uci -q batch <<'EOF'
+set sqm.wwan=queue
+set sqm.wwan.enabled='1'
+set sqm.wwan.interface='phy1-sta0'
+set sqm.wwan.download='32000'
+set sqm.wwan.upload='5000'
+set sqm.wwan.qdisc='cake'
+set sqm.wwan.script='piece_of_cake.qos'
+set sqm.wwan.linklayer='none'
+set sqm.wwan.qdisc_advanced='1'
+set sqm.wwan.qdisc_really_really_advanced='1'
+set sqm.wwan.iqdisc_opts='nat dual-dsthost ingress'
+set sqm.wwan.eqdisc_opts='nat dual-srchost'
+EOF
+
+uci commit sqm
+exit 0

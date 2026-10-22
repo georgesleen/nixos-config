@@ -27,11 +27,9 @@ delete network.wan
 delete network.wan6
 add_list network.@device[0].ports='eth0'
 
-# NAT flow offloading (software + hardware PPE on filogic): cuts per-packet CPU
-# cost and leaves headroom for faster uplinks. Verified stable with the Wi-Fi
-# uplink on this unit.
-set firewall.@defaults[0].flow_offloading='1'
-set firewall.@defaults[0].flow_offloading_hw='1'
+# Keep routed traffic on the kernel path for SQM shaping (60-sqm).
+set firewall.@defaults[0].flow_offloading='0'
+set firewall.@defaults[0].flow_offloading_hw='0'
 EOF
 
 # Treat the Wi-Fi uplink as WAN: add wwan to the 'wan' firewall zone (inherits

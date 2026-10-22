@@ -28,7 +28,7 @@ let
     "sha256-5rkxNdgfQ2IUESSe5EepqWrOPLAVYiX6S2MsmLfLZPM=" =
       "sha256-Q5uLMEqdvkzh6OwmBrUQotQ/oGaPHwDVluvnJH7J2HE=";
     "sha256-8kxQjOEnrcnRV8p4tZkDTZtCk6foNzWRP/pYwe/MFXE=" =
-      "sha256-5sKSdLR7y5Mk2g9azsxWrF2o+HpFaZY1qKqvJpTlThQ=";
+      "sha256-Amjf5Li9Ovfe7U6nQE7HjTJ1OuxFnPxsQDwzZ/ng+aU=";
     # base/packages.adb
     "sha256-IHRKrNsMoJ+jqrd8kqq6KuotxdfdHPiAOsakV/nJH+Q=" =
       "sha256-AW83oJVu3ituBAlSEcGWMoqmcW0mgnKynf72wPPVaVk=";
@@ -36,21 +36,21 @@ let
     "sha256-LxQKYJRKCAA8/mG6jedNUjuac8VvrJdwcOagCO7j76I=" =
       "sha256-YWpG0HCCzpnUy739B0uAaQK3nRbNxqmrK1ZtSKvJDLs=";
     "sha256-NBcmKXnHGqi3eX25i7w5CbmhsJ0h9PB642NRUnAsZTc=" =
-      "sha256-+vZzLxbxcWpQii2yBIlFMp4q3APK6cLz0wyE/a0yN1U=";
+      "sha256-fe1TsL0oblQtDjdwnddaLPAZLmF855txHQIdYMku5EQ=";
     # routing/packages.adb
     "sha256-O/W9OMfGgyKRKincjsLtltYt3kCJuWMIyEd9ndZXJuQ=" =
       "sha256-blpIsyVqhE69QX6R/xm2WCqxenWPsKTGzhAKHYS0K9E=";
     "sha256-PjfEgiCUl/mj7vS9x2FJ2hezPNnX4fmFTxBsPkKwuEk=" =
-      "sha256-qd/g9WK42Led3F+UgmPIxkJm1wz93CPWgnNyrxLn49o=";
+      "sha256-f/uam2YQC6Y9KZCG12Dp1uUhgTAhXsnM4F1paMA3i4E=";
     "sha256-Tp/TDCmvS6YXliemMF0KNVc66H6tAvPRH21PERh1cbI=" =
-      "sha256-4+ipgpPjsT2LtDKcYLlWfhOldyMdHnGWyDAyspij6Bs=";
+      "sha256-TGOc7MzOpayTM/U98shor4Y2rtQzAmQk0aCtK3k34tw=";
     # aarch64_cortex-a53/sha256sums
     "sha256-XQlZwVdJOEA32yygfBhJtLNiXvXYPW/uSLJf6KtouAs=" =
       "sha256-Jtf/cZmIYbn1aDlxzTXWfK7mqBGBD7t3zURGmHoIJL8=";
     "sha256-p0TOVWQtrU0pMD64vUTBWIuEgtZGlHNsiCGxXRN5NXs=" =
-      "sha256-Y/FzOTQrvpl4PSRzD2XeyVa56BQ5IEiT7vuNzCM4jxw=";
+      "sha256-rykPUy9FOAphu+8y45tYIJ9McpO7kIPH0ILxUpdNdao=";
     "sha256-q2FjxGwePvgs0oNIUITegAHcgp9bwEdjhlbRWC5Jg4A=" =
-      "sha256-aeYGEHALVplGPrPaEZM4OzdFo469ZEWOWZxgcLTN1mk=";
+      "sha256-rq+FtA/51nnpWqTKSJYlTCdC0qMjlPf0Cc1MLLKVZUo=";
   };
 
   cachePath = pkgs.runCommand "openwrt-${release}-cache-fresh" { } (
@@ -114,7 +114,8 @@ let
     substitute ${./files/uci-defaults/50-tailscale.in} \
       $out/etc/uci-defaults/50-tailscale \
       --subst-var-by TS_AUTHKEY ${lib.escapeShellArg tsAuthkey}
-    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns $out/etc/uci-defaults/50-tailscale
+    cp ${./files/uci-defaults/60-sqm} $out/etc/uci-defaults/60-sqm
+    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns $out/etc/uci-defaults/50-tailscale $out/etc/uci-defaults/60-sqm
     # Root's authorized SSH public keys; 30-ssh then disables password auth.
     mkdir -p $out/etc/dropbear
     cp ${authorizedKeys} $out/etc/dropbear/authorized_keys
@@ -139,6 +140,9 @@ openwrt-imagebuilder.lib.build (
       "luci"
       # Tailscale (pulls kmod-tun); node joins on first boot via 50-tailscale.
       "tailscale"
+      # Smart queue management on the uplink (configured by 60-sqm).
+      "sqm-scripts"
+      "luci-app-sqm"
     ];
   }
 )

@@ -9,12 +9,13 @@ builder (same constraint as `gs-pi4`).
 Config lives in `hosts/gs-openwrt-one/`:
 
 - `default.nix` - image definition: profile `openwrt_one` (target
-  `mediatek/filogic`), release pinned to `24.10.8`, packages, and the
+  `mediatek/filogic`), release pinned to `25.12.5`, packages, and the
   `/etc/uci-defaults` files.
 - `files/uci-defaults/10-wisp` - non-secret structure (wwan uplink interface,
   wan firewall zone membership, hostname).
 - `files/uci-defaults/20-wisp-wireless.in` - wireless template; `@WWAN_*@` /
   `@AP_*@` are substituted at build time from sops secrets.
+- `files/uci-defaults/60-sqm` - CAKE shaping on the Wi-Fi uplink.
 
 `uci-defaults` scripts run once on first boot of a fresh flash and then delete
 themselves, so a reflash re-asserts exactly this state. They merge with the
@@ -34,24 +35,59 @@ ethernet ports are LAN. This unit feeds a downstream switch off the 2.5G port.
 
 ## Performance
 
-- Uplink STA on **5GHz** (radio1, ch157): PHY negotiates ~700 Mbit/s up and
-  ~866 down at -58 dBm.
+- Uplink STA on **5GHz** (radio1, follows the upstream channel): PHY negotiated
+  780 Mbit/s up and 866 down at -56 dBm on ch161 (2026-10-21).
 - Local APs on **both** bands, same SSID. The 5GHz AP shares the STA's channel,
-  so internet traffic crosses that radio twice and the uplink halves; at a
-  35 Mbit plan against a 700+ Mbit link that costs nothing, and traffic to a
-  wired LAN host is not repeated at all.
+  so internet traffic crosses that radio twice and shares its airtime. The
+  measured ~37 Mbit/s uplink is well below the negotiated radio rates;
+  traffic to a wired LAN host is not repeated.
 - 2.4GHz AP is **pinned to ch11**, not `auto`. ACS picked ch8, which overlaps
   the ch6 and ch11 groups without being able to decode either, so CSMA never
   defers and frames collide. Clients ran 12-17% tx failure at -50 dBm. 83 APs
   are audible here: 38 on ch1 (9 above -80 dBm), 28 on ch6, and 13 on ch11 that
   all sit at -94 dBm or below.
 - **Set `country`.** Both radios carry `country='CA'`. See Troubleshooting.
-- **Flow offloading** (software + hardware) enabled in `10-wisp`.
-- Measured throughput is **~35 Mbit down / ~6 Mbit up, ~10ms** (2026-08). That's
-  the upstream PCVirus/VMedia plan, not the router or Wi-Fi: the 5GHz flip did
-  not change it (35 Mbit fits inside 2.4GHz too), but 5GHz stays for cleaner
-  airtime and headroom. Test servers vary wildly (a browser run at
-  speed.cloudflare.com gives the real plan number).
+- **Flow offloading is disabled**, software and hardware, so all routed traffic
+  traverses the kernel shaping path.
+- Without SQM, aggregate upstream traffic reached **~37 Mbit/s down / ~6 up**
+  (2026-10-21). This is not proof of the subscribed plan: the PCVirus gateway
+  could also impose a limit. Distinguishing those needs a direct upstream test
+  or the account's plan details.
+
+### Smart queue management
+
+`60-sqm` enables `sqm-scripts` with CAKE (`piece_of_cake.qos`) on `phy1-sta0`,
+the Wi-Fi uplink, at **32000 kbit/s download / 5000 kbit/s upload**. Download
+shaping uses `ifb4phy1-sta0`. NAT-aware `dual-dsthost` / `dual-srchost` options
+configure per-LAN-host fairness rather than letting many connections from one
+host dominate. Both IPv4 and IPv6 packets traverse the shaper.
+
+The lower rates leave headroom below the observed upstream ceiling to keep
+queues here rather than at the upstream gateway. This trades some bulk
+throughput for responsiveness; it does not increase the ISP's capacity. Re-tune
+these rates after changing upstream network or service plan.
+
+Live full-duplex smoke (four concurrent HTTPS downloads plus one upload,
+60 pings to `1.1.1.1` during load, 2026-10-21):
+
+| Configuration | Loaded average RTT | Loaded maximum RTT |
+| --- | ---: | ---: |
+| SQM off | 74 ms | 222 ms |
+| CAKE 32/5 Mbit/s | 12 ms | 39 ms |
+| SQM stopped again (offload still disabled) | 81 ms | 208 ms |
+| CAKE restored | 12 ms | 25 ms |
+
+The stopped-again run lost 3 of 60 pings; both shaped runs lost none. Each
+probe deliberately stopped its transfers after 30 seconds.
+
+The live router has the same configuration and packages installed without a
+reflash. SQM is enabled at boot. Inspect or tune it in LuCI under
+**Network > SQM QoS**, or with `uci show sqm`; keep rate changes in `60-sqm` too
+so a clean reflash preserves them. For runtime inspection:
+
+```sh
+ssh root@192.168.10.1 'tc -s qdisc show dev phy1-sta0; tc -s qdisc show dev ifb4phy1-sta0'
+```
 
 ## Troubleshooting: the 5GHz AP never starts
 
