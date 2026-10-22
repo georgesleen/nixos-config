@@ -28,7 +28,7 @@ let
     "sha256-5rkxNdgfQ2IUESSe5EepqWrOPLAVYiX6S2MsmLfLZPM=" =
       "sha256-Q5uLMEqdvkzh6OwmBrUQotQ/oGaPHwDVluvnJH7J2HE=";
     "sha256-8kxQjOEnrcnRV8p4tZkDTZtCk6foNzWRP/pYwe/MFXE=" =
-      "sha256-fIA9Tvtv3W4DbzIbbf7XZkitAodSPWMtK2Za6CwIeYo=";
+      "sha256-5sKSdLR7y5Mk2g9azsxWrF2o+HpFaZY1qKqvJpTlThQ=";
     # base/packages.adb
     "sha256-IHRKrNsMoJ+jqrd8kqq6KuotxdfdHPiAOsakV/nJH+Q=" =
       "sha256-AW83oJVu3ituBAlSEcGWMoqmcW0mgnKynf72wPPVaVk=";
@@ -36,21 +36,21 @@ let
     "sha256-LxQKYJRKCAA8/mG6jedNUjuac8VvrJdwcOagCO7j76I=" =
       "sha256-YWpG0HCCzpnUy739B0uAaQK3nRbNxqmrK1ZtSKvJDLs=";
     "sha256-NBcmKXnHGqi3eX25i7w5CbmhsJ0h9PB642NRUnAsZTc=" =
-      "sha256-tszeX7YiOzlunIaUjs0krtxcuA2q+4Kji4IhpH08Ybw=";
+      "sha256-+vZzLxbxcWpQii2yBIlFMp4q3APK6cLz0wyE/a0yN1U=";
     # routing/packages.adb
     "sha256-O/W9OMfGgyKRKincjsLtltYt3kCJuWMIyEd9ndZXJuQ=" =
       "sha256-blpIsyVqhE69QX6R/xm2WCqxenWPsKTGzhAKHYS0K9E=";
     "sha256-PjfEgiCUl/mj7vS9x2FJ2hezPNnX4fmFTxBsPkKwuEk=" =
-      "sha256-6w0bwi/nd7ECAQvsaKkcarcHE8aImKlRsQk+wIlCof8=";
+      "sha256-qd/g9WK42Led3F+UgmPIxkJm1wz93CPWgnNyrxLn49o=";
     "sha256-Tp/TDCmvS6YXliemMF0KNVc66H6tAvPRH21PERh1cbI=" =
-      "sha256-DedG5gvRDCzOihNVDx4vAIB/FNiaVNWS0SXXXrAGz2E=";
+      "sha256-4+ipgpPjsT2LtDKcYLlWfhOldyMdHnGWyDAyspij6Bs=";
     # aarch64_cortex-a53/sha256sums
     "sha256-XQlZwVdJOEA32yygfBhJtLNiXvXYPW/uSLJf6KtouAs=" =
       "sha256-Jtf/cZmIYbn1aDlxzTXWfK7mqBGBD7t3zURGmHoIJL8=";
     "sha256-p0TOVWQtrU0pMD64vUTBWIuEgtZGlHNsiCGxXRN5NXs=" =
-      "sha256-X3nyFrjHUNVQFS9bJ+O5/C5/nxFUNx6D4FHGYEjZ3os=";
+      "sha256-Y/FzOTQrvpl4PSRzD2XeyVa56BQ5IEiT7vuNzCM4jxw=";
     "sha256-q2FjxGwePvgs0oNIUITegAHcgp9bwEdjhlbRWC5Jg4A=" =
-      "sha256-xiMFZVja48d9ziFoTHAo47lDlvDfKNR2ub55w53U0O0=";
+      "sha256-aeYGEHALVplGPrPaEZM4OzdFo469ZEWOWZxgcLTN1mk=";
   };
 
   cachePath = pkgs.runCommand "openwrt-${release}-cache-fresh" { } (

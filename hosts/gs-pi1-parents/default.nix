@@ -22,23 +22,23 @@ let
   # with `nix store prefetch-file --json <url>` when a mismatch appears.
   freshHashes = {
     # luci/packages.adb
-    "sha256-NSdbTxGqSaLHpRPWt5+KmNcLIYTyIhozmVBf6jfHb5M=" =
-      "sha256-fu0JV8GTFWa3dszOEipZgImfNKR/Wxk4C6TSUsUQM3A=";
+    "sha256-+b3KDU6xCvUs9v12nbIyyRwR7TP2+wS1JkhIzRxIkhI=" =
+      "sha256-5MIh9GFAf9n9CqkJHbma/sHpfix6a3yKuCq9cOWcC0k=";
     # routing/packages.adb
-    "sha256-Nxenp25GBHrCsr9oTfdHToVoFxzX8aAg/YlsRmlUFAA=" =
-      "sha256-QkrzbG0grCFdBkLesKAB+RgmPngypm3ygPxcUnsbsZ0=";
-    # telephony/packages.adb
-    "sha256-TKjFKuvuRhJ0e7gQvNnpPDr1IlLNz3ByuAm54yAp74I=" =
-      "sha256-RbJxEYTr2rr7LGGICfLlOLVqYfkOcP/2JFdNcKwZP2A=";
-    # base/packages.adb
-    "sha256-pVrvLsJt1O9C30gUDmwtIaeJitRSq1AxhMEBp1wJBAw=" =
-      "sha256-X+HpO7jZuj7EtU0vx2d+2ov1QbU9nfei15agzHEylmE=";
+    "sha256-A/wuKSr4DGE3bLxoZ2JWaGMXJCt7ReZXU4+cVNjNGJA=" =
+      "sha256-DGYlvFXDcNmFOydrD9XnJNrSuaSIqlKjd7FFGPb62Ws=";
     # packages/packages.adb
-    "sha256-rSzKBIeJ2oPSc35Bkg0sfZVRllo/v1gKKx+pSeH1em4=" =
-      "sha256-aqhXXm901jshNfwUqsCrgTKNXXXKykzMyMIiJLmkWt4=";
+    "sha256-HpmU6Ky1GAFWr8EvPrfOUtrVkUWYpDdVV4bhm00TQzI=" =
+      "sha256-knqtabU2udVHH5Q7oJ220h1MkfvJua1xb18hwJFsu/0=";
     # sha256sums
-    "sha256-wKhO7ObUHWh78udtXwgJsGFgnTV09j0z7kdcxdgq8Vc=" =
-      "sha256-oC/SQHEXXYJBrxJvB8JSPaE+ZU1HNzwXJk62Y9wKRtc=";
+    "sha256-QaoOtxfG3hRQ/zjZa1OTOCzipKfkc4TeIo/UK6QdZYc=" =
+      "sha256-4lJZAqw8v8NBTrsc5AOuaeUl+GtIOIntUpChyHcl9Mc=";
+    # telephony/packages.adb
+    "sha256-ecACA/OKmFWph4hAoQ7ixaa+OjR8pGMz6UjV2C2r34M=" =
+      "sha256-sTgKWJVqlG+HvL0Ttt2uRXGCAr+vXkb/C77FX18eAS4=";
+    # base/packages.adb
+    "sha256-zjD8Xld5Yd06qLIPa3Zm7hDALDbHHr4gmMNxZz6Vs6c=" =
+      "sha256-f85wV9lAT26L/15Svf4mpEZmfn4rIM9FJS3PQJJlOOY=";
   };
 
   cachePath = pkgs.runCommand "openwrt-${release}-cache-fresh-armv6" { } (
