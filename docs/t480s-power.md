@@ -48,9 +48,9 @@ debounce did the same when the lid closed 5 s into that bounce (09-27
 09-26 23:45 an unplugged HDMI left the laptop awake on battery until the
 critical-battery hibernate at 05:27; the udev triggers close that gap.
 
-With the lid shut and the laptop awake undocked, kanshi's `undocked` profile
-runs `lidScript` so `eDP-1` stays off; sway's `bindswitch lid:off` runs it
-again to restore the saved layout when the lid opens.
+With the lid shut and the laptop awake undocked, way-displays sees the lid
+through libinput and keeps `eDP-1` off; it re-enables the panel when the lid
+opens.
 
 ## Power profiles
 

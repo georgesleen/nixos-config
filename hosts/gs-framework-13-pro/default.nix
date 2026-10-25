@@ -6,7 +6,7 @@
   ...
 }:
 let
-  sudoPasswordTimeout = "60s";
+  sudoPasswordTimeout = "5m";
   # Masked password prompt on the sway session for when sudo has no tty (Claude
   # Code Bash); sudo auto-uses it via /etc/sudo.conf only in the no-terminal case.
   sudoAskpass = pkgs.writeShellScript "fuzzel-sudo-askpass" ''
@@ -73,10 +73,10 @@ in
   # ordinary system profile, whose non-current generations GC removes.
   boot.loader.systemd-boot.configurationLimit = 20;
   boot.loader.systemd-boot.enable = true;
-  # 8x16 console text is unreadable on the 2880x1920 panel (boot log, tuigreet).
+  # Compact console text for both the internal panel and docked displays.
   console = {
     earlySetup = true;
-    font = "ter-v32n";
+    font = "ter-v16n";
     packages = [ pkgs.terminus_font ];
   };
   # Point sudo at the fuzzel askpass so ttyless invocations (Claude Code Bash)

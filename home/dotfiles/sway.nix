@@ -240,7 +240,7 @@ in
       extraConfig = ''
         workspace 1
 
-        output eDP-1 subpixel rgb
+        output * subpixel rgb
 
         for_window [app_id=".*"] border pixel ${toString borderWidth}
         for_window [class=".*"] border pixel ${toString borderWidth}

@@ -29,7 +29,6 @@
     ./dotfiles/git.nix
     ./dotfiles/gtk.nix
     ./dotfiles/helix.nix
-    ./dotfiles/kanshi.nix
     ./dotfiles/kitty.nix
     ./dotfiles/librepods.nix
     ./dotfiles/mako.nix
@@ -45,5 +44,6 @@
     ./dotfiles/wallpaper.nix
     ./dotfiles/waybar.nix
     ./dotfiles/xresources.nix
+    ./dotfiles/way-displays.nix
   ];
 }

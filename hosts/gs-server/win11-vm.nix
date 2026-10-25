@@ -46,22 +46,22 @@ let
 in
 {
   imports = [ inputs.NixVirt.nixosModules.default ];
-
-  virtualisation.libvirt.enable = true;
   virtualisation.libvirt.connections."qemu:///system" = {
     domains = [
       {
-        definition = ./win11.xml;
         active = null;
+        definition = ./win11.xml;
       }
     ];
     networks = [
       {
-        definition = ./virbr0.xml;
         active = true;
+        definition = ./virbr0.xml;
       }
     ];
   };
-
+  virtualisation.libvirt.enable = true;
   virtualisation.libvirtd.hooks.qemu."60-win11-network" = "${netHook}";
+  # Managed save cannot snapshot a VFIO GPU, so "suspend" ends in a SIGKILL that corrupts the qcow2.
+  virtualisation.libvirtd.onShutdown = "shutdown";
 }

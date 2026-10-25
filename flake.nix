@@ -212,7 +212,7 @@
             battery-level = ./home/dotfiles/battery-level;
             claude-review-trigger = ./home/dotfiles/claude-review-trigger;
             cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
-            display-plan = ./home/dotfiles/display-plan;
+            display-mode = ./home/dotfiles/display-mode;
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
             gpu-busy = ./home/dotfiles/gpu-busy;
             jellyfin-bg-pause = inputs.nixos-pi4 + "/gs-pi4/jellyfin-bg-pause";
