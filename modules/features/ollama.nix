@@ -2,8 +2,8 @@
 # own (implicit `ollama` provider at 127.0.0.1:11434), so nothing on the omp
 # side needs configuring beyond the context length in home/dotfiles/omp.nix.
 #
-# Sized for the T480s: 16 GB shared RAM, about 8 GB of it taken by the desktop.
-# gemma4:e4b-it-qat is 6.1 GB; the 26B/31B variants do not fit.
+# Sized for the Framework: 32 GB shared RAM, about 8 GB of it taken by the
+# desktop. The 26B-A4B MoE (4B active) fits; the dense 31B is too slow.
 
 { ... }:
 
@@ -24,7 +24,11 @@
     # Ollama drops integrated GPUs unless OLLAMA_IGPU_ENABLE=1, and with it set
     # llama.cpp's Vulkan backend died mid-prompt with vk::DeviceLostError.
     # QAT: Google's quantization-aware-trained Q4, better than plain Q4 at the
-    # same size.
-    loadModels = [ "gemma4:e4b-it-qat" ];
+    # same size. The abliterated build is a plain Q4_K (18 GB); only one model
+    # is resident at a time (OLLAMA_MAX_LOADED_MODELS).
+    loadModels = [
+      "gemma4:26b-a4b-it-qat"
+      "huihui_ai/gemma-4-abliterated:26b"
+    ];
   };
 }
