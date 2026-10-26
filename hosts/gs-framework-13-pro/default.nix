@@ -7,10 +7,9 @@
 }:
 let
   sudoPasswordTimeout = "5m";
-  # Masked password prompt on the sway session for when sudo has no tty (Claude
-  # Code Bash); sudo auto-uses it via /etc/sudo.conf only in the no-terminal case.
-  sudoAskpass = pkgs.writeShellScript "fuzzel-sudo-askpass" ''
-    exec ${pkgs.coreutils}/bin/timeout --foreground ${sudoPasswordTimeout} ${pkgs.fuzzel}/bin/fuzzel --dmenu --password --lines 0 --prompt "''${1:-sudo password: } " </dev/null
+  # GTK password dialog for sudo without a controlling terminal.
+  sudoAskpass = pkgs.writeShellScript "gtk-sudo-askpass" ''
+    exec ${pkgs.coreutils}/bin/timeout --foreground ${sudoPasswordTimeout} ${pkgs.zenity}/bin/zenity --password --title="sudo authentication" --text="''${1:-Authentication is required.}" </dev/null
   '';
   garbageCollect = pkgs.writeShellScriptBin "nix-clean" ''
     if [ "$#" -eq 0 ]; then
@@ -79,8 +78,7 @@ in
     font = "ter-v16n";
     packages = [ pkgs.terminus_font ];
   };
-  # Point sudo at the fuzzel askpass so ttyless invocations (Claude Code Bash)
-  # prompt on-screen instead of failing "a terminal is required".
+  # Terminal sudo keeps its normal prompt; ttyless sudo uses the GTK dialog.
   environment.etc."sudo.conf".text = ''
     Path askpass ${sudoAskpass}
   '';
@@ -88,6 +86,7 @@ in
   environment.systemPackages = with pkgs; [
     libimobiledevice
     gnome-network-displays
+    vulkan-tools
     garbageCollect
     sudoNotify
   ];
@@ -156,6 +155,14 @@ in
   };
   # Both USB4 domains are at security level `user`, so docks need boltd to authorize.
   services.hardware.bolt.enable = true;
+  services.ollama = {
+    environmentVariables = {
+      # Select one B390 device rather than duplicate Vulkan ICD entries.
+      GGML_VK_VISIBLE_DEVICES = "0";
+      OLLAMA_IGPU_ENABLE = "1";
+    };
+    package = pkgs.ollama-vulkan;
+  };
   services.openssh.enable = true;
   # Services
   services.printing.enable = true;

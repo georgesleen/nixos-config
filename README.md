@@ -63,8 +63,11 @@ For non-interactive commands, `sudo-notify <command> [arguments...]` displays
 `Authenticate with fingerprint reader`, or `Authenticate with password` with
 the lid closed, only while authentication is pending. It dismisses its own
 notification after authentication, before starting the command, and on failure
-or cancellation. The fuzzel password dialog cancels after 60 seconds without a
-submission; this timeout does not limit the authenticated command's runtime.
+or cancellation. Sudo without a terminal uses a masked GTK password dialog
+instead of fuzzel; terminal sudo keeps its normal prompt. On the Framework,
+the password dialog cancels after five minutes without a submission; this
+timeout does not limit the authenticated command's runtime. Polkit actions
+use the separate GNOME authentication agent.
 
 GC does not remove project build directories, personal files, VM disks or Btrfs
 snapshots. Runtime references held by running processes remain live until those

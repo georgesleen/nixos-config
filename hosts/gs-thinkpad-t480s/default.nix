@@ -5,10 +5,9 @@
   ...
 }:
 let
-  # Masked password prompt on the sway session for when sudo has no tty (Claude
-  # Code Bash); sudo auto-uses it via /etc/sudo.conf only in the no-terminal case.
-  sudoAskpass = pkgs.writeShellScript "fuzzel-sudo-askpass" ''
-    exec ${pkgs.fuzzel}/bin/fuzzel --dmenu --password --lines 0 --prompt "''${1:-sudo password: } " </dev/null
+  # GTK password dialog for sudo without a controlling terminal.
+  sudoAskpass = pkgs.writeShellScript "gtk-sudo-askpass" ''
+    exec ${pkgs.zenity}/bin/zenity --password --title="sudo authentication" --text="''${1:-Authentication is required.}" </dev/null
   '';
 in
 {
@@ -50,8 +49,7 @@ in
   # bootable escape hatch past both horizons.
   boot.loader.systemd-boot.configurationLimit = 20;
   boot.loader.systemd-boot.enable = true;
-  # Point sudo at the fuzzel askpass so ttyless invocations (Claude Code Bash)
-  # prompt on-screen instead of failing "a terminal is required".
+  # Terminal sudo keeps its normal prompt; ttyless sudo uses the GTK dialog.
   environment.etc."sudo.conf".text = ''
     Path askpass ${sudoAskpass}
   '';

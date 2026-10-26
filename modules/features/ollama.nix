@@ -20,9 +20,7 @@
       OLLAMA_KV_CACHE_TYPE = "q8_0";
       OLLAMA_MAX_LOADED_MODELS = "1";
     };
-    # Default package, CPU-only. Vulkan was tried on the UHD 620 (2026-10-12):
-    # Ollama drops integrated GPUs unless OLLAMA_IGPU_ENABLE=1, and with it set
-    # llama.cpp's Vulkan backend died mid-prompt with vk::DeviceLostError.
+    # Hosts select the inference backend; the default package is CPU-only.
     # QAT: Google's quantization-aware-trained Q4, better than plain Q4 at the
     # same size. The abliterated build is a plain Q4_K (18 GB); only one model
     # is resident at a time (OLLAMA_MAX_LOADED_MODELS).
