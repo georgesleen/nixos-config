@@ -15,7 +15,6 @@ Config lives in `hosts/gs-openwrt-one/`:
   wan firewall zone membership, hostname).
 - `files/uci-defaults/20-wisp-wireless.in` - wireless template; `@WWAN_*@` /
   `@AP_*@` are substituted at build time from sops secrets.
-- `files/uci-defaults/60-sqm` - CAKE shaping on the Wi-Fi uplink.
 
 `uci-defaults` scripts run once on first boot of a fresh flash and then delete
 themselves, so a reflash re-asserts exactly this state. They merge with the
@@ -47,46 +46,27 @@ ethernet ports are LAN. This unit feeds a downstream switch off the 2.5G port.
   are audible here: 38 on ch1 (9 above -80 dBm), 28 on ch6, and 13 on ch11 that
   all sit at -94 dBm or below.
 - **Set `country`.** Both radios carry `country='CA'`. See Troubleshooting.
-- **Flow offloading is disabled**, software and hardware, so all routed traffic
-  traverses the kernel shaping path.
+- **Software and hardware NAT flow offloading are enabled.** SQM is disabled;
+  there is no configured 32/5 Mbit/s uplink shaping cap.
 - Without SQM, aggregate upstream traffic reached **~37 Mbit/s down / ~6 up**
   (2026-10-21). This is not proof of the subscribed plan: the PCVirus gateway
   could also impose a limit. Distinguishing those needs a direct upstream test
   or the account's plan details.
 
-### Smart queue management
+### Queue management
 
-`60-sqm` enables `sqm-scripts` with CAKE (`piece_of_cake.qos`) on `phy1-sta0`,
-the Wi-Fi uplink, at **32000 kbit/s download / 5000 kbit/s upload**. Download
-shaping uses `ifb4phy1-sta0`. NAT-aware `dual-dsthost` / `dual-srchost` options
-configure per-LAN-host fairness rather than letting many connections from one
-host dominate. Both IPv4 and IPv6 packets traverse the shaper.
+The router uses the default queueing configuration with flow offloading, not
+CAKE/SQM. Bulk transfers can therefore increase latency when the upstream link
+is saturated. The previous SQM configuration imposed a fixed 32 Mbit/s download
+and 5 Mbit/s upload limit; it was removed at George's request after reported
+slow throughput. That rollback does not establish the cause of the slowdown.
 
-The lower rates leave headroom below the observed upstream ceiling to keep
-queues here rather than at the upstream gateway. This trades some bulk
-throughput for responsiveness; it does not increase the ISP's capacity. Re-tune
-these rates after changing upstream network or service plan.
-
-Live full-duplex smoke (four concurrent HTTPS downloads plus one upload,
-60 pings to `1.1.1.1` during load, 2026-10-21):
-
-| Configuration | Loaded average RTT | Loaded maximum RTT |
-| --- | ---: | ---: |
-| SQM off | 74 ms | 222 ms |
-| CAKE 32/5 Mbit/s | 12 ms | 39 ms |
-| SQM stopped again (offload still disabled) | 81 ms | 208 ms |
-| CAKE restored | 12 ms | 25 ms |
-
-The stopped-again run lost 3 of 60 pings; both shaped runs lost none. Each
-probe deliberately stopped its transfers after 30 seconds.
-
-The live router has the same configuration and packages installed without a
-reflash. SQM is enabled at boot. Inspect or tune it in LuCI under
-**Network > SQM QoS**, or with `uci show sqm`; keep rate changes in `60-sqm` too
-so a clean reflash preserves them. For runtime inspection:
+The live SQM service is stopped and disabled, and its `wwan` queue is removed.
+Future images omit the SQM packages and setup script. Inspect live offload and
+queueing state with:
 
 ```sh
-ssh root@192.168.10.1 'tc -s qdisc show dev phy1-sta0; tc -s qdisc show dev ifb4phy1-sta0'
+ssh root@192.168.10.1 'uci get firewall.@defaults[0].flow_offloading; uci get firewall.@defaults[0].flow_offloading_hw; tc qdisc show dev phy1-sta0'
 ```
 
 ## Troubleshooting: the 5GHz AP never starts

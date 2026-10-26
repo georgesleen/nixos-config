@@ -114,8 +114,7 @@ let
     substitute ${./files/uci-defaults/50-tailscale.in} \
       $out/etc/uci-defaults/50-tailscale \
       --subst-var-by TS_AUTHKEY ${lib.escapeShellArg tsAuthkey}
-    cp ${./files/uci-defaults/60-sqm} $out/etc/uci-defaults/60-sqm
-    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns $out/etc/uci-defaults/50-tailscale $out/etc/uci-defaults/60-sqm
+    chmod +x $out/etc/uci-defaults/10-wisp $out/etc/uci-defaults/20-wisp-wireless $out/etc/uci-defaults/30-ssh $out/etc/uci-defaults/40-adblock-dns $out/etc/uci-defaults/50-tailscale
     # Root's authorized SSH public keys; 30-ssh then disables password auth.
     mkdir -p $out/etc/dropbear
     cp ${authorizedKeys} $out/etc/dropbear/authorized_keys
@@ -140,9 +139,6 @@ openwrt-imagebuilder.lib.build (
       "luci"
       # Tailscale (pulls kmod-tun); node joins on first boot via 50-tailscale.
       "tailscale"
-      # Smart queue management on the uplink (configured by 60-sqm).
-      "sqm-scripts"
-      "luci-app-sqm"
     ];
   }
 )
