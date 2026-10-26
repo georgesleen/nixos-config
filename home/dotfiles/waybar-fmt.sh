@@ -1,7 +1,7 @@
 #!/bin/sh
 # Pure formatters for the waybar blocks. Subcommands:
 #   freq  <mhz>            -> "3.60 GHz" or "800 MHz"
-#   bytes <used> [total]   -> "1.50/2.00 TB", "12.00/50.00 GB", or "12.00 GB"
+#   bytes <used> [total]   -> "1.50/2.00 TiB", "12.00/50.00 GiB", or "12.00 GiB"
 #   time  <hours-float>    -> "2h30m", "45m", or empty for no estimate
 
 case "${1-}" in
@@ -15,9 +15,9 @@ case "${1-}" in
     ;;
   bytes)
     awk -v u="${2-0}" -v t="${3-}" 'BEGIN{
-      gb=1000000000; tb=1000000000000
-      divisor=(t == "" ? u : t) >= tb ? tb : gb
-      unit=divisor == tb ? "TB" : "GB"
+      gib=1073741824; tib=1099511627776
+      divisor=(t == "" ? u : t) >= tib ? tib : gib
+      unit=divisor == tib ? "TiB" : "GiB"
       if (t == "") { printf "%.2f %s", u/divisor, unit }
       else         { printf "%.2f/%.2f %s", u/divisor, t/divisor, unit }
     }'

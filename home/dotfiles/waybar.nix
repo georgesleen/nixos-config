@@ -2,7 +2,7 @@
 # (swaybar rendered tray icons as blobs). Audio uses wpctl for device tooltips.
 # Blocks with deliberate custom logic stay shell scripts: battery counts down to the
 # hibernate target not 0% (see battery-thresholds.nix), gpu reads Intel RC6, cpu
-# shows freq+temp, memory uses decimal GB, disk aggregates all real filesystems, brightness via
+# shows freq+temp, memory uses binary GiB, disk aggregates all real filesystems, brightness via
 # brightnessctl (waybar's native backlight module renders nothing here), clock
 # via glibc `date` (waybar's own is an hour behind, see clockBlock). Native
 # modules also cover the power profile (tlp-pd's power-profiles-daemon D-Bus
@@ -36,7 +36,7 @@ let
         i: toString (16 * nibble (lib.substring (2 * i) 1 h) + nibble (lib.substring (2 * i + 1) 1 h));
     in
     "rgba(${byte 0}, ${byte 1}, ${byte 2}, ${alpha})";
-  # Pure formatting (GHz/MHz, decimal GB/TB, hours to h/m) lives in waybar-fmt.sh
+  # Pure formatting (GHz/MHz, binary GiB/TiB, hours to h/m) lives in waybar-fmt.sh
   # so the rounding and unit boundaries are testable; run by `make test`.
   waybarFmt = pkgs.writeShellScript "waybar-fmt" ''
     PATH="${pkgs.gawk}/bin:$PATH"
@@ -413,7 +413,7 @@ let
       fi
     done
   '';
-  # Waybar 0.15's native memory values are fixed to GiB.
+  # RAM and swap used/available in one block and hover.
   memoryBlock = pkgs.writeShellScript "waybar-memory" ''
     set -euo pipefail
     total=0 available=0 swap_total=0 swap_available=0
