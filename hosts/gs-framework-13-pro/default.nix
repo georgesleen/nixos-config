@@ -163,6 +163,21 @@ in
     };
     package = pkgs.ollama-vulkan;
   };
+  services.open-webui = {
+    enable = true;
+    environment = {
+      ANONYMIZED_TELEMETRY = "False";
+      DO_NOT_TRACK = "True";
+      # Seeds the first-run config only; later changes live in Admin Settings.
+      ENABLE_WEB_SEARCH = "True";
+      OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+      SCARF_NO_ANALYTICS = "True";
+      WEB_SEARCH_ENGINE = "duckduckgo";
+    };
+    host = "127.0.0.1";
+    openFirewall = false;
+    port = 18080;
+  };
   services.openssh.enable = true;
   # Services
   services.printing.enable = true;
