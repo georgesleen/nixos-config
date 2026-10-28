@@ -16,6 +16,27 @@ nix flake check           # validate outputs
 nix develop               # default dev shell
 ```
 
+### Package updates
+
+A package update includes synchronizing the maintained forks with their upstreams,
+then updating their flake inputs or source pins:
+
+- `georgesleen/helix`, `steel-event-system-output`, from
+  `mattwparas/helix`'s `steel-event-system` branch, not `master`.
+- `georgesleen/kitty_grab_helix`, `main`, from `yurikhan/kitty_grab`'s `master`.
+- `georgesleen/pi-automode`, the branch consumed by `pkgs/pi-automode.nix`,
+  from `czottmann/pi-automode`'s `main`.
+
+Also check manually pinned desktop tools and Open WebUI's official OCI image.
+Advance the WebUI release tag and immutable digest together; its persistent state
+must be backed up before starting a release that can migrate the database.
+
+Preserve fork-specific behavior, check whether upstream has absorbed patches,
+and preserve uncommitted local work. After updating the inputs, run `make test`,
+build the local host with its retained-build target, activate it, and check
+service health and the systemd ordering graph. Updating the shared lock file
+does not deploy remote hosts or flash router images.
+
 ### Retained builds
 
 Build without activating or flashing:
@@ -92,6 +113,12 @@ library contents. To remove Steam itself on the Framework,
 override `programs.steam.enable = lib.mkForce false`, rebuild, and remove client
 data only after preserving saves. The storage activation does not recreate the
 library while Steam is disabled.
+
+## Block diagrams
+
+Desktop hosts include D2 for text-based diagrams with automatic layout.
+Run `d2 --watch diagram.d2 diagram.svg` for live preview; the generated SVG
+can be embedded in Typst with `#image("diagram.svg")`.
 
 ## Laptop VMs
 

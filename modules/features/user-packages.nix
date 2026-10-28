@@ -21,6 +21,7 @@ in
     moonlight-qt # Game stream client for Sunshine on the win11 VM
     kdePackages.okular # PDF viewer
     inkscape # vector graphics editor
+    d2 # text-based block diagrams
     openscad # parametric 3D CAD
     kicad # schematic capture and PCB design
     ngspice # circuit simulator used with KiCad
