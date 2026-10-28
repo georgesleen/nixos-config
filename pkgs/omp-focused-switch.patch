@@ -1,69 +1,46 @@
+diff --git a/docs/agent-hub.md b/docs/agent-hub.md
+index b1214e7..82038ad 100644
 --- a/docs/agent-hub.md
 +++ b/docs/agent-hub.md
-@@ -78,6 +78,8 @@
+@@ -79,6 +79,8 @@ For a normal local subagent, `Enter` or click focuses the main TUI on that agent
  
  Steering uses the normal prompt path, so the message and response are written to the subagent's persisted session history. While a subagent is focused, `Esc` returns to the main session; it does not interrupt the subagent.
  
-+`/switch [model]` and the session-only model picker change the focused agent's model without changing the main session or model-role settings. The picker keeps its original target if focus changes. Streaming, retrying, or compacting agents refuse the switch: wait until idle, or stop an interruptible streaming turn with `Enter` in an empty editor before `/switch`. A smaller context window compacts that agent first; cancellation or failure keeps its model.
++The session-only picker keeps its original target if focus changes. Streaming, retrying, or compacting agents refuse a model switch. A smaller context window compacts that agent first; cancellation or failure keeps its model.
 +
- Contexts without a local focusable session use the Hub's full-screen transcript viewer instead. This includes collab guests, advisor rows, and aborted agents; advisor and aborted transcripts are read-only. The viewer incrementally tails the file-backed transcript and provides an input line only when the selected agent can be messaged. Sending there has the same semantics: revive if parked, steer if running, and prompt if idle.
+ Contexts without a local focusable session use the Hub's full-screen transcript viewer instead. This includes collab guests and advisor rows; advisor transcripts are read-only. The viewer incrementally tails the file-backed transcript and provides an input line only when the selected agent can be messaged. Sending there has the same semantics: revive if parked or killed, steer if running, and prompt if idle.
  
  ## Pinned jump list and click to focus
+diff --git a/packages/coding-agent/src/modes/controllers/input-controller.ts b/packages/coding-agent/src/modes/controllers/input-controller.ts
+index d82d09e..9e0cf96 100644
 --- a/packages/coding-agent/src/modes/controllers/input-controller.ts
 +++ b/packages/coding-agent/src/modes/controllers/input-controller.ts
-@@ -167,6 +167,7 @@
-  */
- const FOCUSED_VIEW_COMMANDS: Record<string, (args: string) => boolean> = {
- 	btw: () => true,
-+	switch: () => true,
- 	export: () => true,
- 	usage: args => {
- 		const { verb, rest } = parseSubcommand(args);
-@@ -1427,7 +1428,7 @@
- 		this.ctx.session.maybeStartTitleGeneration(text);
+@@ -1523,7 +1523,7 @@ export class InputController {
+ 		);
  	}
  
 -	/** Submit editor text to the focused subagent session (chat and continue shortcuts only). */
 +	/** Submit editor text and viewer-scoped commands to the focused subagent session. */
  	async #submitToFocusedSession(text: string, streamingBehavior: "steer" | "followUp"): Promise<void> {
  		const target = this.ctx.viewSession;
- 		const images = this.ctx.editor.pendingImages.length > 0 ? [...this.ctx.editor.pendingImages] : undefined;
-@@ -1445,8 +1446,7 @@
- 		if (text?.startsWith("/")) {
- 			const parsed = parseSlashCommand(text);
- 			if (parsed && FOCUSED_VIEW_COMMANDS[parsed.name]?.(parsed.args)) {
--				// Viewer-scoped commands: /btw asks about the focused transcript, /export
--				// writes it (with its own subagents), /usage reports account-wide limits.
-+				// Viewer-scoped commands use the focused transcript or session.
- 				this.#recordSlashCommandUsage(text);
- 				if ((await executeBuiltinSlashCommand(text, { ctx: this.ctx })) === true) {
- 					if (!shouldSkipHistory(text)) this.ctx.editor.addToHistory(text);
---- a/packages/coding-agent/src/slash-commands/builtin-modes.ts
-+++ b/packages/coding-agent/src/slash-commands/builtin-modes.ts
-@@ -536,7 +536,7 @@
- 				runtime.ctx.showModelSelector({ temporaryOnly: true });
- 				return;
- 			}
--			const resolved = resolveSessionModelSelector(selector, runtime.ctx.session, runtime.ctx.settings);
-+			const resolved = resolveSessionModelSelector(selector, runtime.ctx.viewSession, runtime.ctx.settings);
- 			if (!resolved.model) {
- 				runtime.ctx.showError(`Unknown model: ${selector}`);
- 				return;
+ 		const draftText = this.ctx.editor.getText();
+diff --git a/packages/coding-agent/src/modes/controllers/selector-controller.ts b/packages/coding-agent/src/modes/controllers/selector-controller.ts
+index 9a1177c..877c2fb 100644
 --- a/packages/coding-agent/src/modes/controllers/selector-controller.ts
 +++ b/packages/coding-agent/src/modes/controllers/selector-controller.ts
-@@ -50,6 +50,7 @@
- } from "../../extensibility/plugins/marketplace";
- import { getAvailableThemes, getSymbolTheme, previewTheme, theme } from "@oh-my-pi/pi-tui/theme";
- import type { AgentHubOpenOptions, InteractiveModeContext } from "../../modes/types";
+@@ -59,6 +59,7 @@ import type {
+ 	SelectOnlyModelSelectorOptions,
+ 	SessionPickHandler,
+ } from "../../modes/types";
 +import type { AgentSession } from "../../session/agent-session";
  import type { SessionOAuthAccountList } from "../../session/agent-session-types";
  import type { ResetCreditAccountStatus, ResetCreditRedeemOutcome } from "../../session/auth-storage";
  import {
-@@ -637,11 +638,12 @@
- 	 * picker. Failures surface as status errors.
+@@ -740,11 +741,12 @@ export class SelectorController {
+ 	 * pick in the alt+p picker. Failures surface as status errors.
  	 */
  	async switchSessionModel(model: Model, thinkingLevel?: ConfiguredThinkingLevel): Promise<void> {
--		const contextTokens = this.ctx.session.getContextUsage()?.tokens ?? 0;
+-		const contextTokens = this.ctx.viewSession.getContextUsage()?.tokens ?? 0;
 +		const target = this.ctx.viewSession;
 +		const contextTokens = target.getContextUsage()?.tokens ?? 0;
  		const contextWindow = model.contextWindow ?? 0;
@@ -74,8 +51,14 @@
  		} catch (error) {
  			this.ctx.showError(error instanceof Error ? error.message : String(error));
  		}
-@@ -657,14 +659,31 @@
- 	 * compaction keeps the current model.
+@@ -757,21 +759,35 @@ export class SelectorController {
+ 	 * runs in the before-flush hook so any prompt queued during compaction
+ 	 * executes on the target model, and the idempotent post-return call covers
+ 	 * the early "nothing to compact" return that skips the hook. A cancelled or
+-	 * failed compaction keeps the current model. A focused subagent switches
+-	 * directly: `/compact` drives the main session, and the agent's own context
+-	 * maintenance recovers an oversized transcript on its next turn.
++	 * failed compaction keeps the current model.
  	 */
  	async #applySessionModel(
 +		target: AgentSession,
@@ -84,10 +67,11 @@
  		thinkingLevel: ConfiguredThinkingLevel | undefined,
  		compactFirst: boolean,
  	): Promise<void> {
+-		const target = this.ctx.viewSession;
+-		const focusedAgentId = this.ctx.focusedAgentId;
 -		const apply = async () => {
--			const level = thinkingLevel ?? this.ctx.session.resolveTemporaryModelThinkingLevel(model);
--			await this.ctx.session.setModelTemporary(model, level);
 +		const focused = target !== this.ctx.session;
++		const focusedAgentId = focused ? this.ctx.focusedAgentId : undefined;
 +		const refuseBusy = (ownCompaction = false) => {
 +			if (focused && (target.isStreaming || target.isRetrying || (!ownCompaction && target.isCompacting))) {
 +				throw new Error(
@@ -100,7 +84,8 @@
 +			throw new Error(`No API key for ${model.provider}/${model.id}`);
 +		}
 +		const apply = async (ownCompaction = false) => {
-+			const level = thinkingLevel ?? target.resolveTemporaryModelThinkingLevel(model);
+ 			const level = thinkingLevel ?? target.resolveTemporaryModelThinkingLevel(model);
+-			await target.setModelTemporary(model, level);
 +			await target.setModelTemporary(
 +				model,
 +				level,
@@ -108,13 +93,16 @@
 +			);
  			this.ctx.statusLine.invalidate();
  			this.ctx.updateEditorBorderColor();
+ 			if (focusedAgentId) {
+@@ -781,10 +797,22 @@ export class SelectorController {
  			const roleSelectorHint = appKey(this.ctx.keybindings, "app.model.select") || formatKeyHint("alt+m");
-@@ -672,6 +691,18 @@
+ 			this.ctx.showStatus(`Session-only model: ${selector}. Use ${roleSelectorHint} or /model for roles.`);
  		};
- 		if (!compactFirst) {
+-		if (!compactFirst || focusedAgentId) {
++		if (!compactFirst) {
  			await apply();
-+			return;
-+		}
+ 			return;
+ 		}
 +		if (focused) {
 +			this.ctx.showStatus("Compacting focused agent before switching model...");
 +			let switched = false;
@@ -125,55 +113,50 @@
 +			};
 +			await target.compact(undefined, undefined, applyOnce);
 +			await applyOnce();
- 			return;
- 		}
++			return;
++		}
  		let switched = false;
-@@ -690,11 +721,13 @@
- 	 * highlighted and preselected; a leading `@` searches ctrl+p quick roles.
- 	 */
- 	#showModelPicker(): void {
-+		const target = this.ctx.viewSession;
-+		const focused = target !== this.ctx.session;
- 		const { ModelPickerComponent } = loadModelOverlayComponents();
--		const currentContextTokens = this.ctx.session.getContextUsage()?.tokens ?? 0;
--		const current = this.ctx.session.model;
-+		const currentContextTokens = target.getContextUsage()?.tokens ?? 0;
-+		const current = target.model;
+ 		const switchAfterCompaction = async (outcome: CompactionOutcome) => {
+ 			if (switched || outcome !== "ok") return;
+@@ -817,6 +845,7 @@ export class SelectorController {
+ 			if (this.#focusOpenMenu("model-picker")) return;
+ 		}
+ 		const viewed = this.ctx.viewSession;
++		const focused = viewed !== this.ctx.session;
+ 		const currentContextTokens = viewed.getContextUsage()?.tokens ?? 0;
+ 		const current = viewed.model;
  		const quickRoleOrder = cfgCycleOrder.get(this.ctx.settings);
--		const quickRoleCycle = this.ctx.session.getRoleModelCycle(quickRoleOrder);
-+		const quickRoleCycle = target.getRoleModelCycle(quickRoleOrder);
- 		const currentSelector = current ? `${current.provider}/${current.id}` : undefined;
- 		// Preselect the effective Task model in task mode: the configured override,
- 		// else the session model (the bundled task agent inherits it by default).
-@@ -711,15 +744,15 @@
+@@ -842,8 +871,8 @@ export class SelectorController {
  		const picker = new ModelPickerComponent(
  			this.ctx.ui,
- 			createModelBrowserSource(this.ctx.settings),
+ 			createModelBrowserSource(this.ctx.settings, model => viewed.effectiveServiceTier(model)),
 -			this.ctx.session.modelRegistry,
 -			this.ctx.session.scopedModels,
-+			target.modelRegistry,
-+			target.scopedModels,
++			viewed.modelRegistry,
++			viewed.scopedModels,
  			{
  				onPick: async (model, selector, { overContext }) => {
- 					try {
+ 					if (!isCurrent()) return;
+@@ -860,7 +889,7 @@ export class SelectorController {
  						// Over-context pick: close the picker first so the compaction
  						// loader is visible.
  						if (overContext) done();
 -						await this.#applySessionModel(model, selector, undefined, overContext);
-+						await this.#applySessionModel(target, model, selector, undefined, overContext);
++						await this.#applySessionModel(viewed, model, selector, undefined, overContext);
  						if (!overContext) done();
  					} catch (error) {
  						this.ctx.showError(error instanceof Error ? error.message : String(error));
-@@ -727,6 +760,20 @@
- 				},
+@@ -869,7 +898,21 @@ export class SelectorController {
  				onPickRole: async entry => {
+ 					if (!isCurrent() || selectOnly) return;
  					try {
+-						await this.ctx.viewSession.applyRoleModel(entry);
 +						if (focused) {
 +							const contextWindow = entry.model.contextWindow ?? 0;
 +							const overContext = contextWindow > 0 && currentContextTokens > contextWindow;
 +							if (overContext) done();
 +							await this.#applySessionModel(
-+								target,
++								viewed,
 +								entry.model,
 +								`${entry.model.provider}/${entry.model.id}`,
 +								entry.thinkingLevel,
@@ -182,13 +165,14 @@
 +							done();
 +							return;
 +						}
- 						await this.ctx.session.applyRoleModel(entry);
++						await viewed.applyRoleModel(entry);
  						this.ctx.statusLine.invalidate();
  						this.ctx.updateEditorBorderColor();
-@@ -740,6 +787,10 @@
- 					}
+ 						this.ctx.showModelCycleTrack(
+@@ -883,6 +926,10 @@ export class SelectorController {
  				},
  				onPickTask: (_model, selector) => {
+ 					if (!isCurrent() || selectOnly) return;
 +					if (focused) {
 +						this.ctx.showError("Task model overrides are only available from the main session.");
 +						return;
@@ -196,7 +180,7 @@
  					// Session-only: layer the Task override onto the runtime settings
  					// layer so it is never persisted, mirroring the session-model pick.
  					cfgTaskAgentModelOverrides.override(this.ctx.settings, {
-@@ -754,7 +805,7 @@
+@@ -897,7 +944,7 @@ export class SelectorController {
  			{
  				currentContextTokens,
  				currentSelector,
@@ -205,9 +189,11 @@
  				taskSelector,
  				quickRoles: quickRoleCycle?.models,
  				quickRoleOrder,
+diff --git a/packages/coding-agent/src/session/agent-session.ts b/packages/coding-agent/src/session/agent-session.ts
+index cd35ccf..f11b308 100644
 --- a/packages/coding-agent/src/session/agent-session.ts
 +++ b/packages/coding-agent/src/session/agent-session.ts
-@@ -6227,9 +6227,13 @@
+@@ -7090,9 +7090,13 @@ export class AgentSession implements SettingsScope {
  		return this.#maintenance.shake(mode, opts);
  	}
  
@@ -224,7 +210,7 @@
  	}
  
  	/** Cancel active manual, automatic, and handoff maintenance, preserving an optional source reason. */
-@@ -9615,7 +9619,7 @@
+@@ -11216,7 +11220,7 @@ export class AgentSession implements SettingsScope {
  	setModelTemporary(
  		model: Model,
  		thinkingLevel?: ConfiguredThinkingLevel,
@@ -233,18 +219,20 @@
  	): Promise<void> {
  		return this.#models.setModelTemporary(model, thinkingLevel, options);
  	}
+diff --git a/packages/coding-agent/src/session/model-controls.ts b/packages/coding-agent/src/session/model-controls.ts
+index 239a415..8ba28fc 100644
 --- a/packages/coding-agent/src/session/model-controls.ts
 +++ b/packages/coding-agent/src/session/model-controls.ts
-@@ -274,7 +274,7 @@
+@@ -282,7 +282,7 @@ export class ModelControls {
  	async setModelTemporary(
  		model: Model,
  		thinkingLevel?: ConfiguredThinkingLevel,
 -		options?: { ephemeral?: boolean },
 +		options?: { ephemeral?: boolean; beforeApply?: () => void },
+ 		selection: "explicit" | "automatic" = "explicit",
  	): Promise<void> {
  		const previousEditMode = this.#host.resolveActiveEditMode();
- 		if (!this.#host.modelRegistry.hasConfiguredAuth(model)) {
-@@ -282,6 +282,7 @@
+@@ -291,6 +291,7 @@ export class ModelControls {
  		}
  
  		const targetModel = await this.#host.modelRegistry.refreshSelectedModelMetadata(model);
@@ -252,9 +240,11 @@
  
  		this.#host.modelRegistry.clearSuppressedSelector(formatModelStringWithRouting(targetModel));
  		this.#host.clearActiveRetryFallback();
+diff --git a/packages/coding-agent/src/session/session-maintenance.ts b/packages/coding-agent/src/session/session-maintenance.ts
+index c9f38d4..1ed8386 100644
 --- a/packages/coding-agent/src/session/session-maintenance.ts
 +++ b/packages/coding-agent/src/session/session-maintenance.ts
-@@ -1070,6 +1070,7 @@
+@@ -1130,6 +1130,7 @@ export class SessionMaintenance {
  		methodOffset = 0,
  		retryController?: AbortController,
  		onCommitted?: () => void,
@@ -262,7 +252,7 @@
  	): Promise<CompactionResult> {
  		const ownsCompactionController = retryController === undefined;
  		if (
-@@ -1095,6 +1096,7 @@
+@@ -1155,6 +1156,7 @@ export class SessionMaintenance {
  		let methods: CompactionMethod[] = [];
  		let selectedMethodIndex = -1;
  		let compactionCommitted = false;
@@ -270,7 +260,7 @@
  		const markCommitted = (): void => {
  			compactionCommitted = true;
  			onCommitted?.();
-@@ -1164,6 +1166,7 @@
+@@ -1224,6 +1226,7 @@ export class SessionMaintenance {
  					markCommitted,
  				);
  				options?.onComplete?.(result);
@@ -278,7 +268,7 @@
  				return result;
  			}
  
-@@ -1219,13 +1222,15 @@
+@@ -1279,13 +1282,15 @@ export class SessionMaintenance {
  				);
  				// The nested call runs on this controller, so it never owns the resume;
  				// it reports its commit back here instead.
@@ -295,15 +285,15 @@
  			}
  			const pathEntries = this.#host.sessionManager.getBranch();
  			const preparation = prepareCompaction(pathEntries, effectiveSettings, activeModel, this.#tokenizer);
-@@ -1498,6 +1503,7 @@
- 				preserveData: snapcompact.stripPreservedArchive(preserveData),
+@@ -1565,6 +1570,7 @@ export class SessionMaintenance {
+ 				...(providerReplayThroughEntryId ? { providerReplayThroughEntryId } : {}),
  			};
  			options?.onComplete?.(compactionResult);
 +			compactionSucceeded = true;
  			return compactionResult;
  		} catch (error) {
  			const err = error instanceof Error ? error : new Error(String(error));
-@@ -1515,45 +1521,51 @@
+@@ -1582,45 +1588,51 @@ export class SessionMaintenance {
  					`${methods[selectedMethodIndex]} compaction failed; trying the next preferred method`,
  					"compaction",
  				);
@@ -383,6 +373,22 @@
  					}
  				}
  			}
+diff --git a/packages/coding-agent/src/slash-commands/builtin-modes.ts b/packages/coding-agent/src/slash-commands/builtin-modes.ts
+index 2515f30..be0a5a0 100644
+--- a/packages/coding-agent/src/slash-commands/builtin-modes.ts
++++ b/packages/coding-agent/src/slash-commands/builtin-modes.ts
+@@ -495,7 +495,7 @@ export const BUILTIN_MODE_SLASH_COMMANDS: ReadonlyArray<SlashCommandSpec> = [
+ 				runtime.ctx.showModelSelector({ temporaryOnly: true });
+ 				return;
+ 			}
+-			const resolved = resolveSessionModelSelector(selector, runtime.ctx.session, runtime.ctx.settings);
++			const resolved = resolveSessionModelSelector(selector, runtime.ctx.viewSession, runtime.ctx.settings);
+ 			if (!resolved.model) {
+ 				runtime.ctx.showError(`Unknown model: ${selector}`);
+ 				return;
+diff --git a/packages/coding-agent/test/input-controller-focused-switch.test.ts b/packages/coding-agent/test/input-controller-focused-switch.test.ts
+new file mode 100644
+index 0000000..b5cf29f
 --- /dev/null
 +++ b/packages/coding-agent/test/input-controller-focused-switch.test.ts
 @@ -0,0 +1,427 @@

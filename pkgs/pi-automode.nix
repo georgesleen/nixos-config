@@ -29,7 +29,7 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     platforms = lib.platforms.all;
   };
   pname = "pi-automode";
-  # Fork, not upstream v1.16.0, carrying three changes. `classifierModelByProvider`
+  # Fork of upstream v1.17.0, carrying three changes. `classifierModelByProvider`
   # (branch feature/classifier-model-routing): upstream's `classifierModel` is
   # one fixed spec, so a Codex session classified every tool call through the
   # Anthropic account and one provider's rate limit fail-closed the whole
@@ -46,10 +46,10 @@ stdenvNoCC.mkDerivation (finalAttrs: {
   # session model, instead of failing closed. Drop the fork for the upstream
   # tag once all merge.
   src = fetchFromGitHub {
-    hash = "sha256-vAd1ipKt7JRAmKQv6W6yFKxtZ+1FGnKeAmy8VFQpdls=";
+    hash = "sha256-mWUR3AsLARi+gU+rlGtJOpfnTYhyRBhUvnlq6Wo9bwY=";
     owner = "georgesleen";
     repo = "pi-automode";
-    rev = "94b8c02adfc4e5e8601bf8015714ddf22e615826";
+    rev = "a3c384b2d36dc6471d62d11081b1a65999c0731e";
   };
   # Sole runtime dependency. bun resolves node_modules by walking up from the
   # importing file, so one at the package root covers extensions/auto-mode.ts.
@@ -57,5 +57,5 @@ stdenvNoCC.mkDerivation (finalAttrs: {
     hash = "sha256-T9c9xXUJLOGRKOT+eDbGcLeSSW+ywNIVXlkormCArL4=";
     url = "https://registry.npmjs.org/unbash/-/unbash-4.0.10.tgz";
   };
-  version = "1.16.0";
+  version = "1.17.0";
 })

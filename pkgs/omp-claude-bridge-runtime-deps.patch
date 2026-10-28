@@ -1,0 +1,20 @@
+--- a/package.json
++++ b/package.json
+@@ -47,6 +47,7 @@
+ 	"dependencies": {
+ 		"@anthropic-ai/claude-agent-sdk": "^0.3.310",
+ 		"@anthropic-ai/sdk": "^0.73.0",
++		"@modelcontextprotocol/sdk": "1.29.0",
+ 		"cc-session-io": "^0.3.1",
+ 		"change-case": "^5.4.4",
+ 		"typebox": "^1.3.0"
+--- a/bun.lock
++++ b/bun.lock
+@@ -7,6 +7,7 @@
+       "dependencies": {
+         "@anthropic-ai/claude-agent-sdk": "^0.3.310",
+         "@anthropic-ai/sdk": "^0.73.0",
++        "@modelcontextprotocol/sdk": "1.29.0",
+         "cc-session-io": "^0.3.1",
+         "change-case": "^5.4.4",
+         "typebox": "^1.3.0",

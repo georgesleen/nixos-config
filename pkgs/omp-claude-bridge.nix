@@ -26,19 +26,18 @@
 }:
 
 let
-  version = "0.9.9";
-  # esp3tek's fork of DevVig/omp-claude-bridge, itself an omp port of
-  # elidickinson/pi-claude-bridge. Chosen as the only port tracking current
-  # omp: its 2026-09-30 head fixes startup on omp 18.4, which dropped the
-  # keybinding-hints module the extension imported eagerly.
+  version = "0.9.17";
+  # The bridge imports MCP directly; omitting omp's peer packages must not omit it.
+  patches = [ ./omp-claude-bridge-runtime-deps.patch ];
+  # esp3tek's omp-compatible port; peer packages resolve through omp's runtime.
   src = fetchFromGitHub {
-    hash = "sha256-GEJ2s3nhploj1A7FRFzT1RVDRnlFAdYqv2Q8Vrcz54g=";
+    hash = "sha256-zh4i4zJ7eTyu2KK0gh10nQLzDT88jRyWJ+bEAW+br0U=";
     owner = "esp3tek";
     repo = "omp-claude-bridge";
-    rev = "79b5999282e96c889cb310704b6c026d04ef4744";
+    rev = "4bdf09db372787e7f6e52367f6a2be83d4950c69";
   };
   nodeModules = stdenvNoCC.mkDerivation {
-    inherit src version;
+    inherit src version patches;
     buildPhase = ''
       runHook preBuild
       export HOME=$TMPDIR
@@ -61,14 +60,14 @@ let
       bun
       cacert
     ];
-    outputHash = "sha256-9qLBmxx/xeHYFhNEf31Tnddlenk/5orfA1RDD8qZ/+E=";
+    outputHash = "sha256-qi87lPY8xLvAzDyssYpHCYPsxtE0iANNP3+pCwChdEc=";
     outputHashAlgo = "sha256";
     outputHashMode = "recursive";
     pname = "omp-claude-bridge-node-modules";
   };
 in
 stdenvNoCC.mkDerivation {
-  inherit src version;
+  inherit src version patches;
   dontBuild = true;
   dontConfigure = true;
   installPhase = ''
