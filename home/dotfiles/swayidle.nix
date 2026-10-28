@@ -7,23 +7,11 @@
 }:
 
 let
-  swayBg = builtins.path {
-    name = "background.png";
-    path = ../../assets/wallpapers/background.png;
+  lockAssets = import ./lock-screen-assets.nix {
+    inherit pkgs;
+    bar = config.programs.waybar.settings.mainBar;
   };
-  swaylockBg = pkgs.runCommand "swaylock-background" { } ''
-    mkdir -p "$out"
-    ${pkgs.ffmpeg}/bin/ffmpeg -loglevel error -y -i ${swayBg} \
-      -vf "gblur=sigma=28,eq=brightness=-0.10:saturation=0.85" \
-      -frames:v 1 "$out/background.png"
-  '';
-  swaylockPackage = pkgs.swaylock-effects.overrideAttrs (previous: {
-    patches = (previous.patches or [ ]) ++ [ ../../pkgs/swaylock-effects-font-scale.patch ];
-  });
-  swaylockConfig = "${config.xdg.configHome}/swaylock/config";
-  swaylockCmd = "${swaylockPackage}/bin/swaylock -f -C ${swaylockConfig}";
-  # Every lock path starts the unit instead of running swaylock directly.
-  lockCmd = "${pkgs.systemd}/bin/systemctl --user start swaylock.service";
+  lockCmd = "${pkgs.systemd}/bin/systemctl --user start screen-lock.service";
   dpmsOffCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms off\"";
   dpmsOnCmd = "${pkgs.sway}/bin/swaymsg \"output * dpms on\"";
   batteryIdleEnabled = osConfig.networking.hostName == "gs-framework-13-pro";
@@ -98,24 +86,18 @@ in
       PartOf = [ "sway-session.target" ];
     };
   };
-  systemd.user.services.swayidle.Service = lib.mkIf batteryIdleEnabled {
-    ExecStartPre = restoreBattery;
-    ExecStopPost = restoreBattery;
-  };
-  # swaylock as a unit, not a bare command: swayidle fires both `lock` and
-  # `before-sleep` for one sleep, and systemd keeps that to one instance. A
-  # lock client that dies leaves sway locked with no lock surface, which
-  # paints every output solid red and accepts no password; the restart
-  # re-attaches to that orphaned lock. Type=forking because `-f` daemonizes
-  # only after the lock is taken, so a returning `start` means locked, which
-  # is what before-sleep needs.
-  systemd.user.services.swaylock = {
+  # Suspend waits for the compositor's locked event, not just process startup.
+  systemd.user.services.screen-lock = {
     Service = {
       Environment = "WAYLAND_DISPLAY=wayland-1";
-      ExecStart = swaylockCmd;
+      ExecStart = "${osConfig.programs.hyprlock.package}/bin/hyprlock --config %t/screen-lock/hyprlock.conf";
+      ExecStartPre = "${lockAssets}/bin/lock-screen-assets ${config.xdg.configHome}/hypr/hyprlock.conf %t/screen-lock";
+      NotifyAccess = "main";
       Restart = "on-failure";
       RestartSec = 1;
-      Type = "forking";
+      RuntimeDirectory = "screen-lock";
+      TimeoutStartSec = 30;
+      Type = "notify";
     };
     Unit = {
       Description = "Screen lock";
@@ -124,43 +106,63 @@ in
       StartLimitIntervalSec = 60;
     };
   };
-  xdg.configFile."swaylock/config".text = ''
-    image=${swaylockBg}/background.png
-    scaling=fill
-    indicator
-    indicator-idle-visible
-    clock
-    timestr=%H:%M
-    datestr=%a, %b %d
-    show-failed-attempts
-    font=JetBrains Mono
-    font-size=24
-    indicator-radius=130
-    indicator-thickness=10
-    effect-vignette=0.35:0.35
-    inside-color=00000066
-    inside-clear-color=1f7a8c88
-    inside-caps-lock-color=b0896888
-    inside-ver-color=58815788
-    inside-wrong-color=bc474988
-    ring-color=f2efe9aa
-    ring-clear-color=1f7a8cff
-    ring-caps-lock-color=b08968ff
-    ring-ver-color=588157ff
-    ring-wrong-color=bc4749ff
-    key-hl-color=4ea8deff
-    bs-hl-color=bc4749ff
-    caps-lock-key-hl-color=4ea8deff
-    caps-lock-bs-hl-color=4ea8deff
-    line-uses-ring
-    separator-color=0b132bff
-    layout-bg-color=00000066
-    layout-border-color=00000000
-    layout-text-color=f8f5f0ff
-    text-color=f8f5f0ff
-    text-clear-color=f8f5f0ff
-    text-caps-lock-color=f8f5f0ff
-    text-ver-color=f8f5f0ff
-    text-wrong-color=f8f5f0ff
+  systemd.user.services.swayidle.Service = lib.mkIf batteryIdleEnabled {
+    ExecStartPre = restoreBattery;
+    ExecStopPost = restoreBattery;
+  };
+  xdg.configFile."hypr/hyprlock.conf".text = ''
+    general {
+        hide_cursor = false
+    }
+    auth {
+        pam {
+            enabled = true
+            module = hyprlock
+        }
+        fingerprint {
+            enabled = true
+            ready_message = Touch the fingerprint reader to unlock
+            present_message = Scanning fingerprint...
+            retry_delay = 500
+        }
+    }
+    animations {
+        enabled = false
+    }
+    label {
+        monitor =
+        text = cmd[update:10000] ${pkgs.coreutils}/bin/date '+%I:%M %p'
+        font_family = JetBrains Mono
+        font_size = 56
+        position = 0, 140
+        halign = center
+        valign = center
+    }
+    label {
+        monitor =
+        text = cmd[update:60000] ${pkgs.coreutils}/bin/date '+%A, %B %d'
+        font_family = Sans
+        font_size = 20
+        position = 0, 75
+        halign = center
+        valign = center
+    }
+    input-field {
+        monitor =
+        size = 350, 60
+        outline_thickness = 2
+        inner_color = rgba(111827dd)
+        outer_color = rgb(4ea8de)
+        font_color = rgb(f8f5f0)
+        font_family = Sans
+        fade_on_empty = false
+        rounding = 12
+        placeholder_text =
+        fail_text = $PAMFAIL$FPRINTFAIL
+        check_text = Checking password...
+        position = 0, 0
+        halign = center
+        valign = center
+    }
   '';
 }

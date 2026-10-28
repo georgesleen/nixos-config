@@ -7,9 +7,7 @@
 # via glibc `date` (waybar's own is an hour behind, see clockBlock). Native
 # modules also cover the power profile (tlp-pd's power-profiles-daemon D-Bus
 # API); clicking the pill cycles profiles.
-# Palette: one named colourway from ./waybar-themes.nix, chosen by `theme`
-# below. Default nightfox, matching the helix theme; its accent is the same
-# lavender omp's dark-mix theme uses, so bar and agent share one accent hue.
+# Palette and compact geometry are shared with the lock-screen status bar.
 
 {
   lib,
@@ -21,9 +19,8 @@
 let
   thresh = import ./battery-thresholds.nix;
 
-  # The one knob: any attr name in ./waybar-themes.nix reskins the whole bar.
-  theme = "lavender-mono";
-  c = (import ./waybar-themes.nix).${theme};
+  statusStyle = import ./status-style.nix;
+  c = statusStyle.palette;
 
   # GTK CSS wants decimal rgba(); the palette stores hex, so a theme never has
   # to write a colour twice in two notations.
@@ -262,14 +259,59 @@ let
     ${tooltipJson} "<span color='$color'>$icon $label</span>" "$tooltip"
   '';
   cpuBlock = pkgs.writeShellScript "waybar-cpu" ''
+    cpu_in_list() {
+      local cpu=$1 ranges=$2 range first last
+      for range in ''${ranges//,/ }; do
+        first=''${range%-*}
+        last=''${range#*-}
+        [ "$cpu" -ge "$first" ] && [ "$cpu" -le "$last" ] && return 0
+      done
+      return 1
+    }
+
     cpu_freq() {
-      local sum=0 count=0 f val
+      local sum=0 count=0 f val cpu group base name online
+      local performance="" efficiency=""
+      local -A group_count=() group_sum=()
+      [ ! -r /sys/bus/event_source/devices/cpu_core/cpus ] ||
+        read -r performance < /sys/bus/event_source/devices/cpu_core/cpus
+      [ ! -r /sys/bus/event_source/devices/cpu_atom/cpus ] ||
+        read -r efficiency < /sys/bus/event_source/devices/cpu_atom/cpus
       for f in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_cur_freq; do
         read -r val < "$f" 2>/dev/null || continue
+        cpu=''${f#/sys/devices/system/cpu/cpu}
+        cpu=''${cpu%%/*}
+        if [ -r "/sys/devices/system/cpu/cpu$cpu/online" ]; then
+          read -r online < "/sys/devices/system/cpu/cpu$cpu/online"
+          [ "$online" != 0 ] || continue
+        fi
         sum=$(( sum + val ))
         count=$(( count + 1 ))
+        if cpu_in_list "$cpu" "$performance"; then group=P
+        elif cpu_in_list "$cpu" "$efficiency"; then
+          group=E
+          # LP-E shares the Atom PMU; nominal base frequency survives turbo/driver switches.
+          base=0
+          read -r base < "''${f%/*}/base_frequency" 2>/dev/null || base=0
+          if [[ "$model" == *"Ultra X7 358H"* && "$base" == 1500000 ]]; then group=LP-E; fi
+        else continue
+        fi
+        group_count[$group]=$(( ''${group_count[$group]:-0} + 1 ))
+        group_sum[$group]=$(( ''${group_sum[$group]:-0} + val ))
       done
-      [ "$count" -gt 0 ] && echo $(( sum / count / 1000 )) || echo 0
+      freq=0
+      [ "$count" -eq 0 ] || freq=$(( sum / count / 1000 ))
+      coreTooltip=""
+      for group in P E LP-E; do
+        count=''${group_count[$group]:-0}
+        [ "$count" -gt 0 ] || continue
+        case "$group" in
+          P) name="Performance (P)" ;;
+          E) name="Efficiency (E)" ;;
+          LP-E) name="Low-power efficiency (LP-E)" ;;
+        esac
+        coreTooltip+=$'\n'"$name: $count logical CPUs, average $(${fmtFreq} "$(( group_sum[$group] / count / 1000 ))")"
+      done
     }
 
     cpu_temp() {
@@ -287,7 +329,11 @@ let
 
     read -r load _ < /proc/loadavg
     cores=$(${pkgs.coreutils}/bin/nproc)
-    freq=$(cpu_freq)
+    model=""
+    while IFS=: read -r key value; do
+      case "$key" in "model name"*) model="''${value# }"; break ;; esac
+    done < /proc/cpuinfo
+    cpu_freq
     temp=$(cpu_temp)
 
     # Normalise load to 0-100 for colour thresholds
@@ -299,11 +345,8 @@ let
 
     label="$load/''${cores}c"
     tooltip="CPU load (1 minute): $load / $cores logical CPUs"
-    model=""
-    while IFS=: read -r key value; do
-      case "$key" in "model name"*) model="''${value# }"; break ;; esac
-    done < /proc/cpuinfo
     [ -z "$model" ] || tooltip="CPU: $model"$'\n'"$tooltip"
+    tooltip+="$coreTooltip"
     tooltip+=$'\n'"Average frequency: $(${fmtFreq} "$freq")"
     [ -z "$temp" ] || tooltip+=$'\n'"CPU temperature (hottest core/package): $temp °C"
     if [ "''${1:-}" != compact ]; then
@@ -403,7 +446,7 @@ let
     set -euo pipefail
     while true; do
       next_minute=$(( (EPOCHSECONDS / 60 + 1) * 60 ))
-      now="$(${pkgs.coreutils}/bin/date '+%a %b %d %I:%M %p')"
+      now="$(${pkgs.coreutils}/bin/date '${statusStyle.clockFormat}')"
       cal="$(${pkgs.util-linux}/bin/cal)"
       ${pkgs.jq}/bin/jq -n -c --arg t "$now" --arg c "$cal" \
         '{text: $t, tooltip: ("<tt>" + $c + "</tt>")}'
@@ -529,7 +572,7 @@ in
             interval = 30;
             return-type = "json";
           };
-          height = 30;
+          height = statusStyle.height;
           layer = "top";
           modules-center = [ ];
           modules-left = [
@@ -572,7 +615,7 @@ in
             };
             tooltip-format = "Power profile: {profile}\nDriver: {driver}\nClick to cycle profiles.\nActual firmware, CPU and GPU policies: hover the watts pill.";
           };
-          spacing = 4;
+          spacing = statusStyle.spacing;
           "sway/mode".format = "<span style=\"italic\">{}</span>";
           "sway/workspaces".format = "{name}";
           tray = {
@@ -597,8 +640,8 @@ in
       };
     style = ''
       * {
-        font-family: "JetBrains Mono", "JetBrainsMono Nerd Font";
-        font-size: 11.5px;
+        font-family: ${lib.concatMapStringsSep ", " (family: "\"${family}\"") statusStyle.fontFamilies};
+        font-size: ${toString statusStyle.fontSize}px;
         min-height: 0;
       }
       window#waybar {
@@ -632,10 +675,10 @@ in
       #custom-power,
       #power-profiles-daemon,
       #custom-clock {
-        margin: 4px 1px;
-        padding: 0 6px;
+        margin: ${toString statusStyle.marginVertical}px ${toString statusStyle.marginHorizontal}px;
+        padding: 0 ${toString statusStyle.paddingHorizontal}px;
         background: ${hexToRgba c.pill c.pillAlpha};
-        border-radius: 7px;
+        border-radius: ${toString statusStyle.radius}px;
       }
       #tray { margin-right: 6px; }
       /* Native modules and audio inherit their palette colours from CSS. */

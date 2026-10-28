@@ -1,0 +1,35 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -89,7 +89,8 @@ pkg_check_modules(
+   gbm
+   hyprutils>=0.11.0
+   sdbus-c++>=2.0.0
+-  hyprgraphics>=0.1.6)
++  hyprgraphics>=0.1.6
++  libsystemd)
+ find_library(PAM_FOUND NAMES pam libpam)
+ if(PAM_FOUND)
+   set(PAM_LIB ${PAM_FOUND})
+diff --git a/src/core/hyprlock.cpp b/src/core/hyprlock.cpp
+--- a/src/core/hyprlock.cpp
++++ b/src/core/hyprlock.cpp
+@@ -23,6 +23,7 @@
+ #include <sdbus-c++/sdbus-c++.h>
+ #include <hyprutils/os/Process.hpp>
+ #include <malloc.h>
++#include <systemd/sd-daemon.h>
+ 
+ using namespace Hyprutils::OS;
+ 
+@@ -829,6 +830,10 @@ void CHyprlock::onLockLocked() {
+     Log::logger->log(Log::INFO, "onLockLocked called");
+ 
+     m_sLockState.locked = true;
++    const int result   = sd_notify(0, "READY=1");
++    if (result < 0)
++        Log::logger->log(Log::ERR, "Failed to notify systemd that the session is locked: {}", strerror(-result));
++
+ }
+ 
+ void CHyprlock::onLockFinished() {

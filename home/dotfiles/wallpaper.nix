@@ -88,6 +88,7 @@ let
     runtimeInputs = [
       pkgs.awww
       pkgs.darkman
+      pkgs.imagemagick
     ];
     text = ''
       light=(${lightList})
@@ -111,7 +112,8 @@ let
         img="''${dark[$index]}"
       fi
 
-      awww img "$img" --transition-type fade --transition-duration 2
+      padding=$(magick "$img" -colorspace sRGB -alpha off -depth 8 -format '%[hex:p{0,0}]' info:)
+      awww img "$img" --resize fit --fill-color "$padding" --transition-type fade --transition-duration 2
       printf '%d' "$index" > "$state"
     '';
   };

@@ -47,8 +47,8 @@ let
       xkb_geometry { include "pc(pc104)" };
     };
   '';
-  # Unit, not the binary: see the swaylock service in swayidle.nix.
-  lockCmd = "${pkgs.systemd}/bin/systemctl --user start swaylock.service";
+  # All lock paths share the readiness-tracked service in swayidle.nix.
+  lockCmd = "${pkgs.systemd}/bin/systemctl --user start screen-lock.service";
 
   # Volume/brightness step, in percent. Presses snap to the next multiple of
   # this, so levels always land on multiples of 5 (45, 50, 55...) not 49, 54.

@@ -1,0 +1,48 @@
+diff -r a/src/core/LockSurface.cpp b/src/core/LockSurface.cpp
+--- a/src/core/LockSurface.cpp	2026-10-28 05:54:13.535392875 -0700
++++ b/src/core/LockSurface.cpp	2026-10-28 05:54:13.564546088 -0700
+@@ -178,3 +178,8 @@
+ SP<CCWlSurface> CSessionLockSurface::getWlSurface() {
+     return surface;
+ }
++
++double CSessionLockSurface::getScale() const {
++    const auto output = m_outputRef.lock();
++    return fractional ? fractionalScale : (output ? output->scale : 1.0);
++}
+diff -r a/src/core/LockSurface.hpp b/src/core/LockSurface.hpp
+--- a/src/core/LockSurface.hpp	2026-10-28 05:54:13.535392875 -0700
++++ b/src/core/LockSurface.hpp	2026-10-28 05:54:18.715367174 -0700
+@@ -27,6 +27,7 @@
+     void            onCallback();
+     void            onScaleUpdate();
+     SP<CCWlSurface> getWlSurface();
++    double          getScale() const;
+ 
+   private:
+     WP<COutput>                   m_outputRef;
+diff -r a/src/renderer/widgets/Image.cpp b/src/renderer/widgets/Image.cpp
+--- a/src/renderer/widgets/Image.cpp	2026-10-28 05:54:13.536392870 -0700
++++ b/src/renderer/widgets/Image.cpp	2026-10-28 05:54:13.564698628 -0700
+@@ -84,7 +84,8 @@
+     shadow.configure(m_self, props, viewport);
+ 
+     try {
+-        size      = std::any_cast<Hyprlang::INT>(props.at("size"));
++        const double outputScale = pOutput->m_sessionLockSurface ? pOutput->m_sessionLockSurface->getScale() : pOutput->scale;
++        size      = std::any_cast<Hyprlang::INT>(props.at("size")) * outputScale;
+         rounding  = std::any_cast<Hyprlang::INT>(props.at("rounding"));
+         border    = std::any_cast<Hyprlang::INT>(props.at("border_size"));
+         color     = *CGradientValueData::fromAnyPv(props.at("border_color"));
+diff -r a/src/renderer/widgets/Image.hpp b/src/renderer/widgets/Image.hpp
+--- a/src/renderer/widgets/Image.hpp	2026-10-28 05:54:13.536392870 -0700
++++ b/src/renderer/widgets/Image.hpp	2026-10-28 05:54:13.564823483 -0700
+@@ -41,7 +41,7 @@
+ 
+     CFramebuffer                    imageFB;
+ 
+-    int                             size     = 0;
++    double                          size     = 0;
+     int                             rounding = 0;
+     double                          border   = 0;
+     double                          angle    = 0;

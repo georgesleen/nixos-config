@@ -1,6 +1,5 @@
-# Waybar colourways. One attr per theme; `waybar.nix` picks one by name (its
-# `theme` binding) and reads these slots straight out, so a new colourway is a
-# new attr here and nothing else.
+# Status colourways. `status-style.nix` selects one palette for Waybar and
+# the lock-screen bar.
 #
 # Slots are named for what they mean, not for a hue, because a monochrome theme
 # has to be able to say "cpu and gpu are the same colour as everything else"
