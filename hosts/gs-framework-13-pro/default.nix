@@ -163,21 +163,6 @@ in
     };
     package = pkgs.ollama-vulkan;
   };
-  services.open-webui = {
-    enable = true;
-    environment = {
-      ANONYMIZED_TELEMETRY = "False";
-      DO_NOT_TRACK = "True";
-      # Seeds the first-run config only; later changes live in Admin Settings.
-      ENABLE_WEB_SEARCH = "True";
-      OLLAMA_BASE_URL = "http://127.0.0.1:11434";
-      SCARF_NO_ANALYTICS = "True";
-      WEB_SEARCH_ENGINE = "duckduckgo";
-    };
-    host = "127.0.0.1";
-    openFirewall = false;
-    port = 18080;
-  };
   services.openssh.enable = true;
   # Services
   services.printing.enable = true;
@@ -217,5 +202,43 @@ in
       "podman"
     ];
     isNormalUser = true;
+  };
+  virtualisation.oci-containers = {
+    backend = "podman";
+    containers.open-webui = {
+      environment = {
+        ANONYMIZED_TELEMETRY = "False";
+        DATA_DIR = "/var/lib/open-webui/data";
+        DO_NOT_TRACK = "True";
+        # Seeds the first-run config only; later changes live in Admin Settings.
+        ENABLE_WEB_SEARCH = "True";
+        HF_HOME = "/var/lib/open-webui/hf_home";
+        HOME = "/var/lib/open-webui";
+        HOST = "127.0.0.1";
+        OLLAMA_BASE_URL = "http://127.0.0.1:11434";
+        PORT = "18080";
+        SCARF_NO_ANALYTICS = "True";
+        SENTENCE_TRANSFORMERS_HOME = "/var/lib/open-webui/transformers_home";
+        STATIC_DIR = "/var/lib/open-webui/static";
+        TIKTOKEN_CACHE_DIR = "/var/lib/open-webui/data/cache/tiktoken";
+        WEBUI_SECRET_KEY_FILE = "/app/backend/.webui_secret_key";
+        WEBUI_URL = "http://localhost:18080";
+        WEB_SEARCH_ENGINE = "duckduckgo";
+        WHISPER_MODEL_DIR = "/var/lib/open-webui/data/cache/whisper/models";
+      };
+      extraOptions = [
+        # Share Ollama's loopback without publishing WebUI on the LAN.
+        "--network=host"
+        "--cap-drop=ALL"
+        "--mount=type=bind,source=/var/lib/private/open-webui/.webui_secret_key,target=/app/backend/.webui_secret_key,readonly"
+        # Retain access to DynamicUser-owned state without changing its ownership.
+        "--cap-add=DAC_OVERRIDE"
+        "--security-opt=no-new-privileges"
+      ];
+      image = "ghcr.io/open-webui/open-webui:v0.12.4@sha256:a5b9e403d19154796850679c8c5d1295301cee954be8b84ddd62af92426558f7";
+      volumes = [
+        "/var/lib/private/open-webui:/var/lib/open-webui"
+      ];
+    };
   };
 }
