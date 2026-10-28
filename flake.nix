@@ -56,10 +56,6 @@
       url = "git+file:///home/george-sleen/Documents/projects/nixos-pi4";
     };
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
-    # Last-good nixpkgs pin for packages temporarily broken on unstable
-    # (jetbrains-mono source build). See pinnedOverlay; drop it once upstream
-    # catches up.
-    nixpkgs-lastgood.url = "github:nixos/nixpkgs/e73de5be04e0eff4190a1432b946d469c794e7b4";
     # omp (oh-my-pi): coding agent with LSP, DAP and subagents wired in. Its
     # inputs are deliberately left unfollowed. The flake pins a rust-overlay
     # toolchain and a bun2nix lock that its source build is tested against, and
@@ -109,28 +105,19 @@
       # Our Steel Helix fork, including the native coloured-output API, for
       # native x86_64 hosts. gs-pi4 keeps the cross build of upstream master.
       helixOverlay = final: _prev: {
-        helix = helix-steel.packages.${final.stdenv.hostPlatform.system}.default.override {
-          grammarOverlays = [ perlGrammarOverlay ];
-        };
+        helix =
+          (helix-steel.packages.${final.stdenv.hostPlatform.system}.default.override {
+            grammarOverlays = [ perlGrammarOverlay ];
+          }).overrideAttrs
+            (_: {
+              cargoBuildFeatures = [ "steel" ];
+            });
       };
 
       # Cross-compiled helix + pedantix for gs-pi4 (see overlays file).
       crossOverlay = import ./overlays/cross-compilation.nix {
         inherit nixpkgs helix pedantix;
         helixCargoHash = "sha256-iFuGPTsEDH4PbRrdxjhFWS+j+MMldGvT9eltXuZPzho=";
-      };
-
-      # Packages broken on current unstable. Remove entries as upstream catches
-      # up, then drop the nixpkgs-lastgood input.
-      pinnedOverlay = final: prev: {
-        inherit (inputs.nixpkgs-lastgood.legacyPackages.${final.stdenv.hostPlatform.system})
-          jetbrains-mono
-          ;
-        # moonlight-qt 6.1.0 does not compile against ffmpeg 8 (AVCodec.pix_fmts
-        # removed). Built against ffmpeg 7 from current nixpkgs, not taken whole
-        # from the last-good pin: that pin links libva 2.23, which cannot open
-        # this system's intel-media-driver, so hardware decode was dead.
-        moonlight-qt = prev.moonlight-qt.override { ffmpeg_8 = final.ffmpeg_7; };
       };
 
       # omp from its own flake, plus the extensions it loads by absolute path
@@ -180,10 +167,21 @@
                 helixOverlay
                 localOverlay
                 ompOverlay
-                pinnedOverlay
               ];
             }
             waveforms.nixosModule
+            {
+              nixpkgs.overlays = nixpkgs.lib.mkAfter [
+                (_final: previous: {
+                  adept2-runtime = previous.adept2-runtime.overrideAttrs (old: {
+                    # The vendor's udev helper lives outside its Adept library directory.
+                    postInstall = (old.postInstall or "") + ''
+                      install -Dm755 usr/lib/udev/dftdrvdtch "$out/lib/udev/dftdrvdtch"
+                    '';
+                  });
+                })
+              ];
+            }
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
             (hmConfig hmHome)
