@@ -30,9 +30,18 @@ in
     ${pkgs.systemd}/bin/systemctl try-restart dnscrypt-proxy.service
     ${pkgs.systemd}/bin/systemctl try-restart NetworkManager.service
   '';
+  # Lid closed on AC locks instead of suspending, so builds/downloads keep running.
+  services.logind.settings.Login.HandleLidSwitchExternalPower = "lock";
   # Battery: firmware low-power profile and deepest PCIe link power (measured
   # 8.3 W -> 6.9 W idle). AC keeps TLP's performance profile and default ASPM.
   services.tlp.settings = {
+    # Battery saver: passive intel_pstate + schedutil enables energy-aware scheduling.
+    CPU_DRIVER_OPMODE_ON_AC = "active";
+    CPU_DRIVER_OPMODE_ON_BAT = "active";
+    CPU_DRIVER_OPMODE_ON_SAV = "passive";
+    CPU_SCALING_GOVERNOR_ON_AC = "powersave";
+    CPU_SCALING_GOVERNOR_ON_BAT = "powersave";
+    CPU_SCALING_GOVERNOR_ON_SAV = "schedutil";
     PCIE_ASPM_ON_BAT = "powersupersave";
     PCIE_ASPM_ON_SAV = "powersupersave";
     PLATFORM_PROFILE_ON_AC = "performance";

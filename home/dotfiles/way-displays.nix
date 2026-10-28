@@ -98,7 +98,7 @@ in
     settings = {
       ALIGN = "TOP";
       ARRANGE = "ROW";
-      # Externals scale by DPI; the panel and the Samsung TV are pinned to 2.
+      # Externals scale by DPI; the panel is pinned to 1.75 and the Samsung TV to 2.
       AUTO_SCALE = true;
       AUTO_SCALE_MIN = 1.0;
       CALLBACK_CMD = "${callback}";
@@ -118,7 +118,7 @@ in
       SCALE = [
         {
           NAME_DESC = "eDP-1";
-          SCALE = 2;
+          SCALE = 1.75;
         }
         {
           NAME_DESC = "!^Samsung";
