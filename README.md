@@ -114,6 +114,41 @@ override `programs.steam.enable = lib.mkForce false`, rebuild, and remove client
 data only after preserving saves. The storage activation does not recreate the
 library while Steam is disabled.
 
+## Claude Code providers
+
+Plain `claude` uses the normal Anthropic subscription login and defaults to
+Opus 5.5. Alternative providers run in separate sessions:
+
+```bash
+claude-proxy-login          # one-time ChatGPT OAuth login for the local gateway
+claude-codex                # GPT 6.1 Sol through the ChatGPT subscription
+claude-ollama               # local Gemma 4 26B QAT
+claude-ollama-abliterated   # local abliterated Gemma 4 26B
+```
+
+The launchers start `claude-proxy.service` on `127.0.0.1:8317`. Its `/model`
+menu lists the gateway's Codex and Ollama models, not native Claude models.
+These processes use a private local bearer token; upstream OAuth credentials
+stay in `~/.local/state/claude-proxy/auth`, never in the Nix store.
+
+Proxy sessions use Codex for the native auto-mode classifier, even when Ollama
+is the coding model, so auto mode still needs ChatGPT quota. Native Anthropic
+sessions keep their normal classifier. Named Claude background reviewers in a
+proxy session route to Codex too. No Claude subscription token is given to the
+proxy. The API-billing label and dollar estimates in Claude Code are not bills
+from the local gateway; Codex uses its subscription and Ollama runs locally.
+
+The Codex launcher selects the gateway's Claude-compatible discovery ID with
+`[1m]`, giving Claude Code a 1M context budget. This is a client setting, not a
+verified million-token upstream request; the gateway advertises 272k input.
+Do not replace that ID with raw `gpt-6.1-sol`: Claude Code treats the latter as
+a separate custom-model entry instead of the discovered GPT 6.1 Sol row.
+Ollama launchers budget for the
+server's 32k context window. Start a fresh local session rather than switching
+a long Codex conversation to a local model.
+Home Manager owns `~/.claude/settings.json`; press `s` in `/model` to switch
+for this session without attempting to overwrite that read-only file.
+
 ## Block diagrams
 
 Desktop hosts include D2 for text-based diagrams with automatic layout.

@@ -204,7 +204,6 @@
             av-step = ./home/dotfiles/av-step;
             battery-idle = ./home/dotfiles/battery-idle;
             battery-level = ./home/dotfiles/battery-level;
-            claude-review-trigger = ./home/dotfiles/claude-review-trigger;
             cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
             display-mode = ./home/dotfiles/display-mode;
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
