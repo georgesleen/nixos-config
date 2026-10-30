@@ -132,7 +132,10 @@
       };
 
       # Packages defined in this repo that are not tied to another tool.
-      localOverlay = final: _prev: {
+      localOverlay = final: prev: {
+        awww = prev.awww.overrideAttrs (old: {
+          patches = (old.patches or [ ]) ++ [ ./pkgs/awww-fit-padding.patch ];
+        });
         diff-review = final.callPackage ./pkgs/diff-review.nix { };
         difit = final.callPackage ./pkgs/difit.nix { };
         md-photo-import = final.callPackage ./pkgs/md-photo-import.nix { };
