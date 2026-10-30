@@ -66,8 +66,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:astro/nix-openwrt-imagebuilder";
     };
-    # Pedantic Nix formatter (wraps nixfmt + adds attribute ordering)
-    pedantix.url = "github:Swarsel/pedantix";
     # Secrets management
     sops-nix = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -88,7 +86,6 @@
       helix-steel,
       home-manager,
       nixpkgs,
-      pedantix,
       sops-nix,
       waveforms,
       ...
@@ -114,9 +111,9 @@
             });
       };
 
-      # Cross-compiled helix + pedantix for gs-pi4 (see overlays file).
+      # Cross-compiled helix for gs-pi4 (see overlays file).
       crossOverlay = import ./overlays/cross-compilation.nix {
-        inherit nixpkgs helix pedantix;
+        inherit nixpkgs helix;
         helixCargoHash = "sha256-iFuGPTsEDH4PbRrdxjhFWS+j+MMldGvT9eltXuZPzho=";
       };
 
@@ -151,10 +148,6 @@
       hmConfig = hmHome: {
         home-manager.backupFileExtension = "hm-backup";
         home-manager.extraSpecialArgs = { inherit user inputs; };
-        home-manager.sharedModules = [
-          pedantix.homeModules.default
-          { programs.pedantix.enable = true; }
-        ];
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
         home-manager.users.${user} = import hmHome;

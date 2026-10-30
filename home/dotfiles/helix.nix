@@ -50,10 +50,7 @@ in
     languages = {
       language = [
         {
-          formatter = {
-            args = [ "-" ];
-            command = "pedantix";
-          };
+          formatter.command = "${pkgs.nixfmt}/bin/nixfmt";
           language-servers = [
             "nil"
             "harper"

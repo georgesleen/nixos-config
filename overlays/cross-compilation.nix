@@ -4,7 +4,6 @@
   helix,
   helixCargoHash,
   nixpkgs,
-  pedantix,
 }:
 let
   pkgsCross = nixpkgs.legacyPackages.x86_64-linux.pkgsCross.aarch64-multiplatform;
@@ -20,7 +19,4 @@ _final: _prev: {
     };
     src = helix;
   });
-
-  # Not in nixpkgs yet; build from its own overlay against the cross set.
-  pedantix-wrapped = (pkgsCross.extend pedantix.overlays.default).pedantix-wrapped;
 }
