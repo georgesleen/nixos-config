@@ -104,7 +104,7 @@ the unit exited early on every plug and silently no-opped for its whole life.
 
 Current suites: `arr-season-plan`, `av-step`, `battery-idle`, `battery-level`,
 `claude-review-trigger`, `cwa-ingest-sweep`, `display-mode`, `epub-normalize`,
-`gpu-busy`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
+`gpu-busy`, `helix-open-cmd`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
 `library-guard`, `librepods-watch`, `lid-decision`, `media-free`, `media-health`,
 `pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
 `systemd-order-cycles`, `ts-route`, `usb-wedge`, `waybar-fmt`,
@@ -189,6 +189,7 @@ or `hosts/gs-thinkpad-t480s/power.nix`.
 - `hosts/gs-framework-13-pro/default.nix` console font: `ter-v16n` replaces the forced 32-pixel font for compact boot text on docked displays. `earlySetup` includes it in the initrd. Actual boot-time clipping must be checked on the physical display; a successful build does not prove console geometry.
 - `home/dotfiles/way-displays.nix` `display-changed.service`: way-displays' `CALLBACK_CMD` fires after most events, often several times per change, so the callback only starts this oneshot (systemd coalesces the starts). It re-pins workspaces from `display-mode.sh layout`, then pokes `wallpaper-refresh.service` because awww resets a re-added output to black.
 - `home/dotfiles/wallpaper.nix`: nixpkgs renamed `swww` to `awww` (`pkgs.awww`; binaries `awww-daemon` / `awww img`).
+- `home/dotfiles/yazi-sidebar.nix` `hx-sidebar` sets the sidebar width with `launch --bias`, computed from the helix pane's columns: a later `resize-window` in the splits layout moved the outer split and took columns from the neighbouring pane, not from helix.
 - `modules/features/desktop.nix` Firefox VA-API prefs: set explicitly because Firefox keeps VA-API opt-in upstream even when system VA-API works.
 - `home/dotfiles/waybar.nix` `clockBlock`: the clock is a custom `date` block, not waybar's native module, because libstdc++'s `std::chrono` tzdb drops the DST offset on a zone line whose RULES column holds a literal amount instead of a rule name. tzdata 2026c gives `America/Vancouver` exactly that (`-8 1 PDT 2026 N 1 2`, BC ending seasonal clock changes), so waybar read an hour behind from 2026-03-09; glibc is correct, and only Vancouver is affected (LA/Edmonton/Toronto use named rules and render fine). Setting waybar's `timezone` option does not help, `locate_zone` is equally wrong. Self-clears 2026-11-01 when the zone moves to the permanent `-7 - MST` line; revisit then or when GCC fixes it.
 - `home/dotfiles/way-displays.nix` `display-changed.service` restarts waybar, because waybar disables `sway/workspaces` permanently (no retry) if an IPC subscribe loses the race with output churn. Symptom is a bar with every module except the workspace numbers after a dock/resume; the external can also come back on a different connector (DP-3 to DP-4), which widens the race.

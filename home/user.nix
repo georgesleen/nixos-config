@@ -43,6 +43,7 @@
     ./dotfiles/vscode.nix
     ./dotfiles/wallpaper.nix
     ./dotfiles/waybar.nix
+    ./dotfiles/yazi-sidebar.nix
     ./dotfiles/xresources.nix
     ./dotfiles/way-displays.nix
   ];

@@ -213,6 +213,7 @@
             display-mode = ./home/dotfiles/display-mode;
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
             gpu-busy = ./home/dotfiles/gpu-busy;
+            helix-open-cmd = ./home/dotfiles/helix-open-cmd;
             jellyfin-bg-pause = inputs.nixos-pi4 + "/gs-pi4/jellyfin-bg-pause";
             known-good-boot = ./modules/features/known-good-boot;
             lazylibrarian-reap = inputs.nixos-pi4 + "/gs-pi4/lazylibrarian-reap";

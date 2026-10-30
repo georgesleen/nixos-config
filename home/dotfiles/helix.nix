@@ -433,7 +433,8 @@ in
       photo-insert-next
       open-helix-scm
       open-init-scm
-      diff-review)
+      diff-review
+      explorer)
 
     ;;@doc
     ;; Open the helix.scm file
@@ -445,17 +446,16 @@ in
     (define (open-init-scm)
       (helix.open (helix.static.get-init-scm-path)))
 
-    ;;@doc
-    ;; Review the focused document's repository in difit (browser).
-    ;; diff-review detaches difit and prints one status line, so waiting on it
-    ;; cannot stall the editor. A scratch buffer falls back to the editor's
-    ;; cwd. Hosts without the launcher (gs-server) get the failure status.
-    (define (diff-review)
-      (let* ((doc (ed.editor->doc-id (ed.editor-focus)))
-             (path (and doc (ed.editor-document->path doc)))
-             (spawned (spawn-process
-                       (set-stdout-piped!
-                        (command "diff-review" (if path (list path) '())))))
+    ;; Path of the focused document, or #f for a scratch buffer.
+    (define (focused-path)
+      (let ((doc (ed.editor->doc-id (ed.editor-focus))))
+        (and doc (ed.editor-document->path doc))))
+
+    ;; Run program with args and show its one-line stdout as the status,
+    ;; or failure when it prints nothing.
+    (define (run-for-status program args failure)
+      (let* ((spawned (spawn-process
+                       (set-stdout-piped! (command program args))))
              (output (if (Err? spawned)
                          #f
                          (let ((finished (wait->stdout (Ok->value spawned))))
@@ -463,7 +463,25 @@ in
         (misc.set-status!
          (if (and (string? output) (not (equal? "" output)))
              output
-             "diff-review: could not open difit; run `diff-review` in a shell for the reason"))))
+             failure))))
+
+    ;;@doc
+    ;; Review the focused document's repository in difit (browser).
+    ;; diff-review detaches difit and prints one status line, so waiting on it
+    ;; cannot stall the editor. A scratch buffer falls back to the editor's
+    ;; cwd. Hosts without the launcher (gs-server) get the failure status.
+    (define (diff-review)
+      (let ((path (focused-path)))
+        (run-for-status "diff-review" (if path (list path) '())
+                        "diff-review: could not open difit; run `diff-review` in a shell for the reason")))
+
+    ;;@doc
+    ;; Toggle a yazi file explorer in a kitty split left of this editor.
+    ;; It opens on the focused document; Enter on a file opens it here.
+    (define (explorer)
+      (let ((path (focused-path)))
+        (run-for-status "hx-sidebar" (if path (list path) '())
+                        "explorer: could not start; run `hx-sidebar` in a shell for the reason")))
   '';
   xdg.configFile."helix/init.scm".text = ''
     (require "cogs/session.scm")
@@ -533,6 +551,13 @@ in
      (hash "normal"
            (hash "space"
                  (hash "v" ":diff-review"))))
+
+    ;; space e: toggle the yazi sidebar. This replaces helix's own file
+    ;; explorer picker on e; space E still opens that picker.
+    (add-global-keybinding
+     (hash "normal"
+           (hash "space"
+                 (hash "e" ":explorer"))))
   '';
   xdg.configFile."helix/runtime/grammars/d2.so".source = "${d2Grammar}/parser";
   xdg.configFile."helix/runtime/queries/d2".source = "${d2GrammarSrc}/queries";
