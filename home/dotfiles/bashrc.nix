@@ -50,7 +50,7 @@ in
         kill "$(cat "$pidfile")" && rm "$pidfile" && echo "Sleep resumed"
       }
       # cd the shell to yazi's last dir on quit.
-      yazi() {
+      y() {
         local tmp; tmp="$(mktemp -t yazi-cwd.XXXXXX)"
         command yazi "$@" --cwd-file="$tmp"
         local cwd; cwd="$(command cat -- "$tmp")"

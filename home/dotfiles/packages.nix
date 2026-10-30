@@ -31,6 +31,18 @@
       name = "Sound";
       terminal = false;
     };
+    # Replaces yazi's own entry: xdg-open ignores its Terminal=true.
+    yazi = {
+      categories = [
+        "System"
+        "FileManager"
+      ];
+      exec = "kitty -e yazi %f";
+      icon = "yazi";
+      mimeType = [ "inode/directory" ];
+      name = "Yazi";
+      terminal = false;
+    };
   };
   xdg.mimeApps = {
     defaultApplications = {
@@ -42,6 +54,8 @@
       "image/png" = "imv.desktop";
       "image/tiff" = "imv.desktop";
       "image/webp" = "imv.desktop";
+      # Directories open in yazi, not VS Code.
+      "inode/directory" = "yazi.desktop";
       "text/html" = "firefox.desktop";
       "x-scheme-handler/about" = "firefox.desktop";
       "x-scheme-handler/http" = "firefox.desktop";
