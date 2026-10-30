@@ -7,6 +7,38 @@
 let
   helixDapVars = inputs.helix-test-debug.packages.${pkgs.stdenv.hostPlatform.system}.helix-dap-vars;
   steelwool = inputs.steelwool.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  # Helix ships no d2 grammar. The main-helix branch is the ABI 14 build
+  # with Helix capture names, kept by upstream for ravsii/tree-sitter-d2#102.
+  d2GrammarSrc = pkgs.fetchFromGitHub {
+    hash = "sha256-ZoMM8zZLayJLeR9hF1nAdzmq7BX6tUF6a1DXuL5qYTY=";
+    owner = "ravsii";
+    repo = "tree-sitter-d2";
+    rev = "fa10588301700cddc563a631eca490bb4567387d";
+  };
+  d2Grammar = pkgs.tree-sitter.buildGrammar {
+    language = "d2";
+    src = d2GrammarSrc;
+    version = "0.6.0-main-helix";
+  };
+  # d2 has no language server; efm reports `d2 validate` errors as diagnostics.
+  d2Efm = (pkgs.formats.yaml { }).generate "efm-d2.yaml" {
+    languages.d2 = [
+      {
+        # efm skips the first lint on open unless asked, and warns on every
+        # clean exit unless the exit code is ignored.
+        lint-after-open = true;
+        lint-command = "${pkgs.d2}/bin/d2 validate -";
+        lint-formats = [
+          "err: %l:%c: %m"
+          "err: %*[^ ] %l:%c: %m"
+        ];
+        lint-ignore-exit-code = true;
+        lint-source = "d2";
+        lint-stdin = true;
+      }
+    ];
+    version = 2;
+  };
 in
 {
   home.packages = [
@@ -262,9 +294,38 @@ in
           ];
           name = "scheme";
         }
+        {
+          block-comment-tokens = {
+            end = ''"""'';
+            start = ''"""'';
+          };
+          comment-token = "#";
+          file-types = [ "d2" ];
+          formatter = {
+            args = [
+              "fmt"
+              "-"
+            ];
+            command = "${pkgs.d2}/bin/d2";
+          };
+          indent = {
+            tab-width = 2;
+            unit = "  ";
+          };
+          language-servers = [ "efm-d2" ];
+          name = "d2";
+          scope = "source.d2";
+        }
       ];
 
       language-server = {
+        efm-d2 = {
+          args = [
+            "-c"
+            "${d2Efm}"
+          ];
+          command = "${pkgs.efm-langserver}/bin/efm-langserver";
+        };
         harper = {
           args = [ "--stdio" ];
           command = "harper-ls";
@@ -473,6 +534,8 @@ in
            (hash "space"
                  (hash "v" ":diff-review"))))
   '';
+  xdg.configFile."helix/runtime/grammars/d2.so".source = "${d2Grammar}/parser";
+  xdg.configFile."helix/runtime/queries/d2".source = "${d2GrammarSrc}/queries";
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80
     wrap_comments = true
