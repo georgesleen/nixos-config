@@ -2,10 +2,6 @@
 
 { pkgs, ... }:
 
-let
-  libreoffice = pkgs."libreoffice-fresh";
-in
-
 {
   environment.systemPackages = with pkgs; [
     libreoffice # office suite

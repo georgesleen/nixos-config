@@ -1,4 +1,4 @@
-{ config, pkgs, ... }:
+{ pkgs, ... }:
 
 {
   gtk = {
@@ -7,7 +7,8 @@
       name = "Inter";
       size = 11;
     };
-    gtk4.theme = config.gtk.theme;
+    # GTK 4 ships Adwaita built in; gnome-themes-extra has no gtk-4.0 theme.
+    gtk4.theme = null;
     iconTheme = {
       name = "Adwaita";
       package = pkgs.adwaita-icon-theme;

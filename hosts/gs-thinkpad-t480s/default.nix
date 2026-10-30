@@ -7,6 +7,8 @@
 let
   # GTK password dialog for sudo without a controlling terminal.
   sudoAskpass = pkgs.writeShellScript "gtk-sudo-askpass" ''
+    # sway's portal config disables Inhibit, which GTK 4 probes and warns about.
+    export GDK_DEBUG=no-portals
     exec ${pkgs.zenity}/bin/zenity --password --title="sudo authentication" --text="''${1:-Authentication is required.}" </dev/null
   '';
 in
