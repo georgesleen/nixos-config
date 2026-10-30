@@ -354,11 +354,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1791263705,
-        "narHash": "sha256-k8z5Gq8IZQSWuCTZyhWLkEht2Viaa546wbCRIKVD2Cg=",
+        "lastModified": 1793370695,
+        "narHash": "sha256-ZY7OAdDRTRTOOfKsf5nb6d6TCW2EgkAmRBuBo/K4Wds=",
         "ref": "refs/heads/main",
-        "rev": "577ebab7945ea067bd52af9a3ab51527d10f29c7",
-        "revCount": 159,
+        "rev": "d7a68c5042a597e074bced87dd16b46d583d8697",
+        "revCount": 160,
         "type": "git",
         "url": "file:///home/george-sleen/Documents/projects/nixos-pi4"
       },
@@ -393,6 +393,22 @@
         "owner": "NixOS",
         "ref": "nixpkgs-26.05-darwin",
         "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
+    "nixpkgs-lastgood": {
+      "locked": {
+        "lastModified": 1782467914,
+        "narHash": "sha256-pGvFkM8N0xEkIIXDe5YYfbEAvHrk4IxBrjB/x8OomhE=",
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "e73de5be04e0eff4190a1432b946d469c794e7b4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nixos",
+        "repo": "nixpkgs",
+        "rev": "e73de5be04e0eff4190a1432b946d469c794e7b4",
         "type": "github"
       }
     },
@@ -499,6 +515,7 @@
         "nixos-hardware": "nixos-hardware",
         "nixos-pi4": "nixos-pi4",
         "nixpkgs": "nixpkgs_2",
+        "nixpkgs-lastgood": "nixpkgs-lastgood",
         "oh-my-pi": "oh-my-pi",
         "openwrt-imagebuilder": "openwrt-imagebuilder",
         "sops-nix": "sops-nix",

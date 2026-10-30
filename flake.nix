@@ -56,6 +56,8 @@
       url = "git+file:///home/george-sleen/Documents/projects/nixos-pi4";
     };
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
+    # Last-good nixpkgs pin for Jellyfin 10.11 on gs-pi4 (hosts/gs-pi4/default.nix).
+    nixpkgs-lastgood.url = "github:nixos/nixpkgs/e73de5be04e0eff4190a1432b946d469c794e7b4";
     # omp (oh-my-pi): coding agent with LSP, DAP and subagents wired in. Its
     # inputs are deliberately left unfollowed. The flake pins a rust-overlay
     # toolchain and a bun2nix lock that its source build is tested against, and
