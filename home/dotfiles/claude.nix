@@ -225,6 +225,8 @@ in
         }
       ];
     };
+    # Tokens; compaction fires a summary buffer below this.
+    autoCompactWindow = 400000;
     # Shared with omp, which reads the same set from its own file.
     mcpServers = import ./mcp-servers.nix { inherit pkgs; };
     model = "claude-opus-5-5";
