@@ -68,5 +68,7 @@
   services.udev.packages = [
     pkgs.stlink
     pkgs.platformio-core.udev
+    pkgs.picotool
+    pkgs.probe-rs-tools
   ];
 }
