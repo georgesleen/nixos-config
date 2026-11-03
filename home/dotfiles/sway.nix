@@ -251,6 +251,10 @@ in
         for_window [app_id="kitty"] opacity ${config.my.opacity}
         exec_always swaymsg "[app_id=\"kitty\"] opacity ${config.my.opacity}"
 
+        # Fullscreen Steam games and Big Picture inhibit idle.
+        for_window [class="^steam_app_"] inhibit_idle fullscreen
+        for_window [class="^steam$"] inhibit_idle fullscreen
+
         # Region screenshot on Shift + the physical Escape key only.
         # Capslock is remapped to the Escape keysym too (see customKeymap),
         # so bindsym can't tell them apart; bindcode targets the raw X11
