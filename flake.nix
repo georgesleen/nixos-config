@@ -116,7 +116,6 @@
       # Cross-compiled helix for gs-pi4 (see overlays file).
       crossOverlay = import ./overlays/cross-compilation.nix {
         inherit nixpkgs helix;
-        helixCargoHash = "sha256-kJP6LMcx5z91XzO4PNbNvSSWOjVvJW35O7Z4uW9J+m8=";
       };
 
       # omp from its own flake, plus the extensions it loads by absolute path

@@ -2,21 +2,17 @@
 # builds. Injected as a nixpkgs overlay on the Pi.
 {
   helix,
-  helixCargoHash,
   nixpkgs,
 }:
 let
   pkgsCross = nixpkgs.legacyPackages.x86_64-linux.pkgsCross.aarch64-multiplatform;
 in
 _final: _prev: {
-  # Git helix: keep nixpkgs' build, swap in the flake source + vendored deps.
-  # Refresh helixCargoHash on a helix bump via nixpkgs.lib.fakeHash.
-  helix = pkgsCross.helix.overrideAttrs (old: {
-    cargoDeps = pkgsCross.rustPlatform.fetchCargoVendor {
-      inherit (old) pname;
-      hash = helixCargoHash;
-      src = helix;
+  # Git helix: keep nixpkgs' build, swap in the flake source and its lockfile.
+  helix = pkgsCross.helix.overrideAttrs {
+    cargoDeps = pkgsCross.rustPlatform.importCargoLock {
+      lockFile = "${helix}/Cargo.lock";
     };
     src = helix;
-  });
+  };
 }
