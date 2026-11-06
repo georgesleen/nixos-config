@@ -16,7 +16,7 @@
     ruff
     black
     pyright
-    python3Packages.python-lsp-server
+    # pylsp is in the dev.nix interpreter, so it can resolve those packages.
 
     # javascript/typescript
     typescript

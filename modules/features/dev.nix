@@ -36,6 +36,16 @@
         ipykernel
         seaborn
         scikit-learn
+        marimo
+        ipython
+        pytest
+        tqdm
+        rich
+        requests
+        pyyaml
+        pyserial
+        pillow
+        python-lsp-server
       ]
     ))
 
