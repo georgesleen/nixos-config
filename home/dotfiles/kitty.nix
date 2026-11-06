@@ -51,13 +51,11 @@ in
         "ctrl+space>o" = "next_window";
         "ctrl+space>p" = "previous_tab";
         # tmux-style panes under a ctrl+space leader (kitty replaces tmux here).
-        # s = horizontal split, v = vertical split, matching tmux; h/j/k/l navigate; z zooms; x closes.
-        "ctrl+space>s" = "kitten ${./kitty-split.py} hsplit";
+        # s and v split (yazi-sidebar.nix), matching tmux; h/j/k/l navigate; z zooms; x closes.
         "ctrl+space>shift+h" = "resize_window narrower 2";
         "ctrl+space>shift+j" = "resize_window taller 2";
         "ctrl+space>shift+k" = "resize_window shorter 2";
         "ctrl+space>shift+l" = "resize_window wider 2";
-        "ctrl+space>v" = "kitten ${./kitty-split.py} vsplit";
         "ctrl+space>x" = "close_window";
         "ctrl+space>z" = "toggle_layout stack";
         # Rotate the active pane backward/forward, like tmux swap-pane -U/-D.

@@ -211,6 +211,7 @@
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
             gpu-busy = ./home/dotfiles/gpu-busy;
             helix-open-cmd = ./home/dotfiles/helix-open-cmd;
+            hx-split = ./home/dotfiles/hx-split;
             jellyfin-bg-pause = inputs.nixos-pi4 + "/gs-pi4/jellyfin-bg-pause";
             known-good-boot = ./modules/features/known-good-boot;
             lazylibrarian-reap = inputs.nixos-pi4 + "/gs-pi4/lazylibrarian-reap";
@@ -249,16 +250,6 @@
         in
         builtins.mapAttrs shellTest suites
         // {
-          kitty-split =
-            pkgs.runCommand "test-kitty-split"
-              {
-                nativeBuildInputs = [ pkgs.kitty ];
-              }
-              ''
-                set -o pipefail
-                export HOME=$TMPDIR
-                kitty +launch ${./home/dotfiles/kitty-split.test.py} ${./home/dotfiles/kitty-split.py} 2>&1 | tee "$out"
-              '';
           librepods-watch =
             pkgs.runCommand "test-librepods-watch"
               {

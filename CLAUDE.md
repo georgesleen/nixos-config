@@ -104,13 +104,13 @@ the unit exited early on every plug and silently no-opped for its whole life.
 
 Current suites: `arr-season-plan`, `av-step`, `battery-idle`, `battery-level`,
 `cwa-ingest-sweep`, `display-mode`, `epub-normalize`,
-`gpu-busy`, `helix-open-cmd`, `jellyfin-bg-pause`, `kitty-split`, `known-good-boot`, `lazylibrarian-reap`,
+`gpu-busy`, `helix-open-cmd`, `hx-split`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
 `library-guard`, `librepods-watch`, `lid-decision`, `media-free`, `media-health`,
 `pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
 `systemd-order-cycles`, `ts-route`, `usb-wedge`, `waybar-fmt`,
 `win11-forward`, `workspace-plan`.
 
-`librepods-watch` is a Python unittest check for the paired/connected AirPods predicate, and `kitty-split` is a Python unittest check that runs under `kitty +launch` for kitty's own `Pair`; the other suites use the shell harness above.
+`librepods-watch` is a Python unittest check for the paired/connected AirPods predicate; the other suites use the shell harness above.
 
 ## Workarounds
 
@@ -192,7 +192,8 @@ or `hosts/gs-thinkpad-t480s/power.nix`.
 - `home/dotfiles/wallpaper.nix`: nixpkgs renamed `swww` to `awww` (`pkgs.awww`; binaries `awww-daemon` / `awww img`).
 - `home/dotfiles/packages.nix` `yazi` desktop entry: replaces yazi's packaged entry, whose `Terminal=true` xdg-open ignores: xdg-open runs `Exec` as is, so yazi got no terminal of its own.
 - `home/dotfiles/yazi-sidebar.nix` `hx-sidebar` sets the sidebar width with `launch --bias`, computed from the helix pane's columns: a later `resize-window` in the splits layout moved the outer split and took columns from the neighbouring pane, not from helix.
-- `home/dotfiles/kitty-split.py` (`ctrl+space s`/`v`): a kitten replaces plain `launch`, for two reasons. kitty keeps a redundant pair's bias, so after the hx-sidebar closes the next split reuses the sidebar's ratio unless `--bias=50` is passed. kitty also splits only a leaf window, so a split beside the sidebar nests inside the sidebar's pair; the kitten rewrites that pair through kitty's private `Pair` API, so the sidebar and editor stay one side of the split. It doubles the sidebar's bias on a same-axis split to keep its width, so closing the split leaves the sidebar twice as wide until `space e` reopens it.
+- `home/dotfiles/yazi-sidebar.nix` `hx-split` (`ctrl+space s`/`v`): kitty keeps a redundant pair's bias, so after the sidebar closes the next split reuses the sidebar's ratio unless `--bias=50` is passed. kitty also splits only a leaf window, so a split beside the sidebar nests inside the sidebar's pair. To split the editor and sidebar as one pane using only public commands, `hx-split` quits yazi through `ya emit-to`, splits the editor and reopens yazi on the directory from `--cwd-file`, because yazi's process cwd does not follow navigation. The sidebar's ratio survives closing the split, so it stays wide until `space e` reopens it.
+- `home/dotfiles/yazi-sidebar.nix` kitty remote control: `launch --match` selects a tab, so a window target needs `--next-to`. A `--type=background` process needs `--allow-remote-control`; without it `KITTY_LISTEN_ON` is whatever kitty itself inherited. A test kitty started from inside kitty therefore needs every `KITTY_*` variable unset, or background commands reach the outer kitty.
 - `pkgs/awww-fit-padding.patch`, applied by `flake.nix`: awww 0.12.1 adds `img_w % 2` to right padding even when the destination width is odd. At 1.75×, the panel's computed image width is 2879, so fit rendering adds one unwanted pixel per row and diagonally wraps the penguin. Compute right padding as destination minus image minus left padding. An isolated 2880×1920/1.75× compositor reproduced the corruption; the patched client rendered correctly, and switching back produced a byte-identical corrupted screenshot.
 - `modules/features/desktop.nix` Firefox VA-API prefs: set explicitly because Firefox keeps VA-API opt-in upstream even when system VA-API works.
 - `home/dotfiles/waybar.nix` `clockBlock`: the clock is a custom `date` block, not waybar's native module, because libstdc++'s `std::chrono` tzdb drops the DST offset on a zone line whose RULES column holds a literal amount instead of a rule name. tzdata 2026c gives `America/Vancouver` exactly that (`-8 1 PDT 2026 N 1 2`, BC ending seasonal clock changes), so waybar read an hour behind from 2026-03-09; glibc is correct, and only Vancouver is affected (LA/Edmonton/Toronto use named rules and render fine). Setting waybar's `timezone` option does not help, `locate_zone` is equally wrong. Self-clears 2026-11-01 when the zone moves to the permanent `-7 - MST` line; revisit then or when GCC fixes it.
