@@ -64,6 +64,9 @@ in
     "net.ipv4.conf.default.arp_ignore" = 1;
   };
   boot.kernelPackages = pkgs.linuxPackages_latest;
+  # Limits the TTM pool to 512 MiB. Pooled pages count as used in Vulkan's free
+  # memory, so Ollama would otherwise split later model loads onto the CPU.
+  boot.kernelParams = [ "ttm.page_pool_size=131072" ];
   # This host starts with no NVRAM boot entry, so the first boot comes up via
   # the firmware's removable-media fallback `\EFI\BOOT\BOOTX64.EFI`. Run
   # `sudo NIXOS_INSTALL_BOOTLOADER=1 nixos-rebuild switch` once to write it.
