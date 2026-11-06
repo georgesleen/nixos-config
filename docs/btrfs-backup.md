@@ -1,96 +1,62 @@
-# Btrfs backup (send/receive)
+# Btrfs backup (btrbk)
 
-Snapshots live at `/home/.snapshots/<n>/snapshot`. The backup disk must be
-btrfs, labeled `BACKUP`, and mounted at `/mnt/backup`.
+`modules/features/home-backup.nix` sends `/home` from a laptop to gs-pi4 every
+six hours. The timer is `btrbk-home.timer`. A run starts only on AC power.
 
-## Format and label the backup disk (one-time)
+| Location | Path | Kept |
+| --- | --- | --- |
+| Laptop snapshots | `/home/.btrbk-snapshots/home.<timestamp>` | 2 days |
+| gs-pi4 backups | `/mnt/backup/laptop/home.<timestamp>` | 14 daily, 8 weekly, 6 monthly |
 
-```bash
-sudo mkfs.btrfs -L BACKUP /dev/sdX   # replace sdX with your disk's partition
-```
+The first send is full. Later sends are incremental, and btrbk chooses the
+parent. Do not delete the newest snapshot that exists on both sides, because
+the next send then has to be full.
 
-## Mount
+## Set up a laptop (one-time)
 
-```bash
-sudo mount /dev/disk/by-label/BACKUP /mnt/backup
-```
+1. Create the machine-local key:
 
-## List snapshots
+   ```bash
+   sudo -u btrbk mkdir -p /var/lib/btrbk/.ssh
+   sudo -u btrbk ssh-keygen -t ed25519 -N '' -f /var/lib/btrbk/.ssh/id_ed25519
+   ```
 
-```bash
-sudo snapper -c home list
-```
+2. Add the public key to `services.btrbk.sshAccess` in
+   `hosts/gs-pi4/default.nix`, then deploy gs-pi4.
+3. Create the target on gs-pi4 if it does not exist:
 
-## First (full) send
+   ```bash
+   ssh gs-pi4 'sudo mkdir -p /mnt/backup/laptop'
+   ```
 
-```bash
-sudo btrfs send /home/.snapshots/<n>/snapshot | pv | sudo btrfs receive /mnt/backup
-```
-
-## Mark the backup read-only
-
-Required to use it as a parent for future incrementals.
-
-```bash
-sudo btrfs property set /mnt/backup/snapshot ro true
-```
-
-## Verify
+## Check
 
 ```bash
-sudo btrfs scrub start -B /mnt/backup
+systemctl list-timers btrbk-home.timer
+systemctl status btrbk-home.service
+sudo -u btrbk btrbk -c /etc/btrbk/home.conf -n -v run
+ssh gs-pi4 'sudo btrfs subvolume list /mnt/backup | grep laptop'
 ```
 
-## Incremental sends
+A `!!!` line in the dry run marks an incomplete subvolume on gs-pi4. This is
+normal while a send runs. After a failed send, remove it with
+`btrbk clean gs-pi4:/mnt/backup/laptop`.
 
-`<new>` is the highest number from `snapper list`. To find `<last>`, check
-what's on the backup disk and match it to a local snapshot by UUID:
+## Run now
 
 ```bash
-sudo btrfs subvolume show /mnt/backup/snapshot   # note the UUID
-sudo btrfs subvolume show /home/.snapshots/<n>/snapshot  # find the match locally
+sudo systemctl start --no-block btrbk-home.service
 ```
-
-Use the last-sent snapshot as `-p`, the newest local snapshot as the target:
-
-```bash
-sudo btrfs send -p /home/.snapshots/<last>/snapshot \
-                   /home/.snapshots/<new>/snapshot \
-  | pv | sudo btrfs receive /mnt/backup
-sudo btrfs property set /mnt/backup/snapshot ro true
-```
-
-> `btrfs receive` always names the subvolume after the source, so the path is always `/mnt/backup/snapshot`.
-
-Advance `<last>` each time.
-
-> The local `<last>` snapshot must still exist when you run the next incremental. Pin it so snapper doesn't prune it:
-> ```bash
-> sudo snapper -c home modify -c "" <last>
-> ```
-> Once the next incremental is done, restore it to the timeline cleanup policy:
-> ```bash
-> sudo snapper -c home modify -c "timeline" <last>
-> ```
-
-## Unmount
-
-```bash
-sudo umount /mnt/backup
-```
-
-## Verify transfer
-
-```bash
-sudo btrfs subvolume list /mnt/backup
-```
-
-> For a full data integrity check, `sudo btrfs scrub start -B /mnt/backup` verifies all block checksums. To diff against the source: `sudo diff -r /home/.snapshots/<n>/snapshot /mnt/backup/snapshot`.
 
 ## Restore
 
+Send a backup back to the laptop, then make a writable copy:
+
 ```bash
-sudo btrfs subvolume snapshot /mnt/backup/snapshot /home
+ssh gs-pi4 'sudo btrfs send /mnt/backup/laptop/home.<timestamp>' \
+  | sudo btrfs receive /home/.restore/
+sudo btrfs subvolume snapshot /home/.restore/home.<timestamp> /home/.restore/home
 ```
 
-Or point a live install's `@home` mount at the restored subvolume directly.
+To recover files, copy them from `/home/.restore/home`. To replace all of
+`/home`, point the `@home` mount at the restored subvolume from a live install.
