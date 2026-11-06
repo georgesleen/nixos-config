@@ -169,6 +169,17 @@ in
   nixpkgs.config.allowUnfree = true;
   nixpkgs.hostPlatform = "aarch64-linux";
   security.sudo.wheelNeedsPassword = false;
+  # Receives the laptop's /home; see modules/features/home-backup.nix.
+  services.btrbk.sshAccess = [
+    {
+      key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMhDb8pIXDe6VuEYWyczd25jYB7v0gE8uG7rJiO6NYTd btrbk@gs-framework-13-pro";
+      roles = [
+        "delete"
+        "info"
+        "target"
+      ];
+    }
+  ];
   # Cap the journal so it can't balloon on the SD (had grown past 400 MB).
   services.journald.settings.Journal.SystemMaxUse = "200M";
   services.openssh = {
