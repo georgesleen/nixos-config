@@ -201,6 +201,7 @@ in
       "swift-lsp@claude-plugins-official" = true;
       "typescript-lsp@claude-plugins-official" = true;
     };
+    env.CLAUDE_CODE_SCROLL_SPEED = "4";
     hooks = {
       PostToolUse = [
         {
