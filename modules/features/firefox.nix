@@ -15,7 +15,6 @@ let
     "uBlock0@raymondhill.net" = "ublock-origin";
     "{34daeb50-c2d2-4f14-886a-7160b24d66a4}" = "youtube-shorts-block";
     "{446900e4-71c2-419f-a6a7-df9c091e268b}" = "bitwarden-password-manager";
-    "{74145f27-f039-47ce-a470-a662b129930a}" = "clearurls";
     "{d7742d87-e61d-4b78-b8a1-b469842139fa}" = "vimium-ff";
   };
 in
