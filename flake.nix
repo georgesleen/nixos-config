@@ -249,6 +249,16 @@
         in
         builtins.mapAttrs shellTest suites
         // {
+          kitty-split =
+            pkgs.runCommand "test-kitty-split"
+              {
+                nativeBuildInputs = [ pkgs.kitty ];
+              }
+              ''
+                set -o pipefail
+                export HOME=$TMPDIR
+                kitty +launch ${./home/dotfiles/kitty-split.test.py} ${./home/dotfiles/kitty-split.py} 2>&1 | tee "$out"
+              '';
           librepods-watch =
             pkgs.runCommand "test-librepods-watch"
               {
