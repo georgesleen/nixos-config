@@ -561,6 +561,47 @@ in
   '';
   xdg.configFile."helix/runtime/grammars/d2.so".source = "${d2Grammar}/parser";
   xdg.configFile."helix/runtime/queries/d2".source = "${d2GrammarSrc}/queries";
+  # The stock query without block scopes. Helix's containment engine ignores
+  # @extend at the end of a block, so Enter there drops to column 0.
+  xdg.configFile."helix/runtime/queries/python/indents.scm".text = ''
+    [
+      (list)
+      (tuple)
+      (dictionary)
+      (set)
+      (import_from_statement)
+
+      (parenthesized_expression)
+      (generator_expression)
+      (list_comprehension)
+      (set_comprehension)
+      (dictionary_comprehension)
+
+      (tuple_pattern)
+      (list_pattern)
+      (argument_list)
+      (parameters)
+      (binary_operator)
+    ] @indent
+
+    [
+      ")"
+      "]"
+      "}"
+    ] @outdent
+
+    (parameters
+      .
+      (identifier) @anchor
+      ) @align
+    (argument_list
+      .
+      (_) @anchor
+      ) @align
+
+    ; String bodies (triple-quoted strings span lines) are literal content.
+    (string) @opaque
+  '';
   xdg.configFile."rustfmt/rustfmt.toml".text = ''
     max_width = 80
     wrap_comments = true
