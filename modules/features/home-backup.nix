@@ -17,7 +17,7 @@
         ssh_identity = "/var/lib/btrbk/.ssh/id_ed25519";
         ssh_user = "btrbk";
         target_preserve = "14d 8w 6m";
-        target_preserve_min = "no";
+        target_preserve_min = "1d";
         volume."/home" = {
           snapshot_dir = ".btrbk-snapshots";
           subvolume."." = {

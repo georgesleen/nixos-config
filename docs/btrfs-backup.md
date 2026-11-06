@@ -6,7 +6,7 @@ six hours. The timer is `btrbk-home.timer`. A run starts only on AC power.
 | Location | Path | Kept |
 | --- | --- | --- |
 | Laptop snapshots | `/home/.btrbk-snapshots/home.<timestamp>` | 2 days |
-| gs-pi4 backups | `/mnt/backup/laptop/home.<timestamp>` | 14 daily, 8 weekly, 6 monthly |
+| gs-pi4 backups | `/mnt/backup/laptop/home.<timestamp>` | All for 1 day, then 14 daily, 8 weekly, 6 monthly |
 
 The first send is full. Later sends are incremental, and btrbk chooses the
 parent. Do not delete the newest snapshot that exists on both sides, because
