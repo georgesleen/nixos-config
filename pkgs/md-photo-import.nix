@@ -38,7 +38,7 @@ writeShellApplication {
       exit 2
     }
 
-    inbox="''${HOME}/Media/Pictures/Taildrop"
+    inbox="''${HOME}/Media/Taildrop"
     file=""
     name=""
     buffer=""

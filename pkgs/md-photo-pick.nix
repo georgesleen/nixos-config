@@ -42,7 +42,7 @@ writeShellApplication {
       exit 2
     }
 
-    inbox="''${HOME}/Media/Pictures/Taildrop"
+    inbox="''${HOME}/Media/Taildrop"
     dir=""
     start_inbox=0
     next=0
