@@ -6,7 +6,12 @@
 }:
 let
   helixDapVars = inputs.helix-test-debug.packages.${pkgs.stdenv.hostPlatform.system}.helix-dap-vars;
-  steelwool = inputs.steelwool.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  steelwoolPackage = inputs.steelwool.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  steelwool =
+    if pkgs.stdenv.hostPlatform.isAarch64 then
+      steelwoolPackage.overrideAttrs { doCheck = false; }
+    else
+      steelwoolPackage;
   # Helix ships no d2 grammar. The main-helix branch is the ABI 14 build
   # with Helix capture names, kept by upstream for ravsii/tree-sitter-d2#102.
   d2GrammarSrc = pkgs.fetchFromGitHub {

@@ -335,6 +335,7 @@ touching the arrs, Jellyfin, qBittorrent or the quality guards.
 
 ### Helix
 
+- `home/dotfiles/helix.nix:12` `doCheck = false` on aarch64: the steelwool property tests exhaust the builder's memory under `qemu-aarch64`, but use a few MiB natively on x86_64.
 - `home/dotfiles/helix.nix:566` Python `indents.scm` override: the containment indent engine (upstream `3013c107d`) ignores `@extend`, because a scope only contains the new line if the node ends past the cursor. Enter after the last statement of a block therefore drops to column 0. The override removes the block scopes, so the hybrid heuristic keeps the previous line's indent. Remove it when upstream fixes the engine.
 
 ### nixpkgs / packaging

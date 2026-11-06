@@ -354,11 +354,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1793962817,
-        "narHash": "sha256-v+ofxwx05BbG4dX5vD1lDhIruce9n5qguUv//b9yNu4=",
+        "lastModified": 1793964603,
+        "narHash": "sha256-+7/KnCSPDPql1CYPh2ciDmh/Nt39KpC/tAIz8YRqx5s=",
         "ref": "refs/heads/main",
-        "rev": "0637608d45d1654bb79f28c737a10ae0d9b16547",
-        "revCount": 161,
+        "rev": "5009d55d4177294c119fbd07f882490ddf11478a",
+        "revCount": 162,
         "type": "git",
         "url": "file:///home/george-sleen/Documents/projects/nixos-pi4"
       },
