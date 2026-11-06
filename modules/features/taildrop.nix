@@ -1,4 +1,4 @@
-# Taildrop receive: files sent from the phone land in ~/Pictures/taildrop.
+# Taildrop receive: files sent from the phone land in ~/Media/Pictures/Taildrop.
 #
 # Taildrop rides the tailnet, so it works from any network (DERP relays when
 # there is no direct path) and needs nothing on the LAN. The iOS share sheet
@@ -27,7 +27,7 @@
 }:
 
 let
-  inbox = "Pictures/taildrop";
+  inbox = "Media/Pictures/Taildrop";
 in
 {
   # The import half of the workflow; the Helix cog in home/dotfiles calls both.
