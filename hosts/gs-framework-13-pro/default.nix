@@ -64,9 +64,14 @@ in
     "net.ipv4.conf.default.arp_ignore" = 1;
   };
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  # Limits the TTM pool to 512 MiB. Pooled pages count as used in Vulkan's free
-  # memory, so Ollama would otherwise split later model loads onto the CPU.
-  boot.kernelParams = [ "ttm.page_pool_size=131072" ];
+  boot.kernelParams = [
+    # xe takes over the console after vconsole setup and resets its font to the
+    # kernel's 16x32 default, so the size must be set in the kernel.
+    "fbcon=font:VGA8x16"
+    # Limits the TTM pool to 512 MiB. Pooled pages count as used in Vulkan's free
+    # memory, so Ollama would otherwise split later model loads onto the CPU.
+    "ttm.page_pool_size=131072"
+  ];
   # This host starts with no NVRAM boot entry, so the first boot comes up via
   # the firmware's removable-media fallback `\EFI\BOOT\BOOTX64.EFI`. Run
   # `sudo NIXOS_INSTALL_BOOTLOADER=1 nixos-rebuild switch` once to write it.
