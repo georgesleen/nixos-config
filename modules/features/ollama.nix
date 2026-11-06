@@ -16,6 +16,7 @@
       # the two must agree or omp overruns the window without noticing.
       OLLAMA_CONTEXT_LENGTH = "32768";
       OLLAMA_FLASH_ATTENTION = "1";
+      OLLAMA_KEEP_ALIVE = "30m";
       # Roughly halves KV-cache memory at a negligible quality cost.
       OLLAMA_KV_CACHE_TYPE = "q8_0";
       OLLAMA_MAX_LOADED_MODELS = "1";
