@@ -37,6 +37,7 @@
         seaborn
         scikit-learn
         marimo
+        openai
         ipython
         pytest
         tqdm
