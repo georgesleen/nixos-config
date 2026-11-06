@@ -108,7 +108,7 @@ let
       coreutils
     ];
     text = ''
-      dir="${config.home.homeDirectory}/Screenshots"
+      dir="${config.home.homeDirectory}/Media/Screenshots"
       mkdir -p "$dir"
       f="$dir/$(date +%F_%H-%M-%S).png"
       case "''${1:-full}" in
