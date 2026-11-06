@@ -116,6 +116,20 @@ in
       "x-systemd.device-timeout=90s"
     ];
   };
+  # Podman images, on the drive because they do not fit beside two system
+  # closures on the SD card. Podman records this path in its database.
+  fileSystems."/var/lib/containers" = {
+    device = "/dev/mapper/backup";
+    fsType = "btrfs";
+    options = [
+      "subvol=containers"
+      "noatime"
+      "compress=zstd:1"
+      "nofail"
+      "x-systemd.automount"
+      "x-systemd.device-timeout=90s"
+    ];
+  };
   # Immich's photo/video library. Own sibling subvolume (not "media"): photos
   # are originals, not re-downloadable like the arr library, so their growth
   # shouldn't compete with it for the same quota.
@@ -257,7 +271,7 @@ in
       ];
       # No `before` on the mounts, for the same cycle reason as
       # cryptsetup-backup above.
-      description = "Ensure the media/state/immich/snapshot subvolumes and quotas exist";
+      description = "Ensure the media/state/immich/snapshot/containers subvolumes and quotas exist";
       path = with pkgs; [
         btrfs-progs
         coreutils
@@ -268,7 +282,7 @@ in
         top=$(mktemp -d)
         trap 'umount "$top" 2>/dev/null || true; rmdir "$top" 2>/dev/null || true' EXIT
         mount -o subvolid=5 /dev/mapper/backup "$top"
-        for sub in media state immich snapshot; do
+        for sub in media state immich snapshot containers; do
           if [ ! -e "$top/$sub" ]; then
             btrfs subvolume create "$top/$sub"
           fi
