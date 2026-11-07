@@ -162,6 +162,10 @@ in
   };
   nixpkgs.config.allowUnfree = true;
   programs.dconf.enable = true;
+  programs.ssh.knownHosts.gs-pi4-fizzbot = {
+    extraHostNames = [ "gs-pi4-fizzbot.tail9e6fba.ts.net" ];
+    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPbq/QM8lNp2qn4Gv9EyQcM3s8NA5f96wCyHwAjhkcjI";
+  };
   security.pam.services.greetd.enableGnomeKeyring = true;
   security.pam.services.login.enableGnomeKeyring = true;
   # Scope sudo credential cache to parent PID so each Claude Code Bash
