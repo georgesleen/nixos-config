@@ -9,8 +9,8 @@ It boots from a 128 GB USB flash drive. Ollama listens on localhost only.
 ssh george-sleen@gs-pi4-fizzbot
 ```
 
-Tailscale uses ordinary OpenSSH, not Tailscale SSH. The Pi keeps its direct-link
-network settings until it moves to the router.
+Tailscale uses ordinary OpenSSH, not Tailscale SSH. The Pi takes its wired address
+from the router by DHCP.
 
 ## Discord token
 
