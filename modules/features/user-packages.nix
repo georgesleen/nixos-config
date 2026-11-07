@@ -28,5 +28,6 @@
     texliveMedium # LaTeX engine
     delfin # Jellyfin client
     zathura # PDF viewer
+    rpi-imager # Raspberry Pi SD card flasher
   ];
 }
