@@ -76,17 +76,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1794055901,
-        "narHash": "sha256-/8tb9adSM490COMkBdupPvH3KvvY/tXJEklYPIp7Byc=",
-        "ref": "refs/heads/main",
-        "rev": "eb3c0adf314afbb2937ce70f8e27918ca3489000",
-        "revCount": 15,
-        "type": "git",
-        "url": "file:///home/george-sleen/Documents/projects/fizzbot-3"
+        "lastModified": 1794074596,
+        "narHash": "sha256-utyuN42pXW1OtFo4u+q5YgBBr6bNaRBfo1jZgvMXX2w=",
+        "owner": "georgesleen",
+        "repo": "fizzbot-3",
+        "rev": "f981b2702e0b2426f1db35b9d8071b736968743c",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/george-sleen/Documents/projects/fizzbot-3"
+        "owner": "georgesleen",
+        "repo": "fizzbot-3",
+        "type": "github"
       }
     },
     "flake-parts": {

@@ -37,7 +37,7 @@
     };
     fizzbot-3 = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "git+file:///home/george-sleen/Documents/projects/fizzbot-3";
+      url = "github:georgesleen/fizzbot-3";
     };
     home-manager = {
       inputs.nixpkgs.follows = "nixpkgs";
