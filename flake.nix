@@ -288,6 +288,10 @@
           ];
           specialArgs = { inherit inputs user; };
         };
+        gs-pi4-fizzbot = nixpkgs.lib.nixosSystem {
+          modules = [ ./hosts/gs-pi4-fizzbot ];
+          specialArgs = { inherit inputs user; };
+        };
         gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
         gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
       };

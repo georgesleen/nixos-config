@@ -4,7 +4,7 @@ SHELL := bash
 .PHONY: check-boot-order gs-openwrt-one gs-openwrt-one-flash gs-pi1-parents test
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
-NIXOS_HOSTS := gs-framework-13-pro gs-server gs-pi4
+NIXOS_HOSTS := gs-framework-13-pro gs-server gs-pi4 gs-pi4-fizzbot
 NIXOS_BUILD_TARGETS := $(addprefix build-,$(NIXOS_HOSTS))
 .PHONY: $(NIXOS_BUILD_TARGETS)
 
