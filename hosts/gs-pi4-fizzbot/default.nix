@@ -14,10 +14,14 @@ in
 {
   # Mainline is in the binary cache; the nixos-hardware rpi4 kernel is not.
   boot.kernelPackages = lib.mkForce pkgs.linuxPackages_latest;
+  # U-Boot loads the mainline device tree, not the vendor one from the firmware.
+  boot.loader.generic-extlinux-compatible.useGenerationDeviceTree = true;
   # zfs-kernel lags linuxPackages_latest and fails evaluation.
   boot.supportedFilesystems.zfs = lib.mkForce false;
   # The all-hardware profile lists modules that this kernel does not have.
   hardware.enableAllHardware = lib.mkForce false;
+  # nixos-hardware replaces the image firmware files and omits U-Boot by default.
+  hardware.raspberry-pi.firmware.uboot.enable = true;
   imports = [
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
