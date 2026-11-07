@@ -35,6 +35,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:georgesleen/helix-test-debug";
     };
+    fizzbot-3 = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "git+file:///home/george-sleen/Documents/projects/fizzbot-3";
+    };
     home-manager = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/home-manager";

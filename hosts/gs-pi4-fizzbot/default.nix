@@ -26,6 +26,7 @@ in
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ../../modules/core
+    ./fizzbot.nix
     ./ollama.nix
   ];
   networking.hostName = "gs-pi4-fizzbot";
