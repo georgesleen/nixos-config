@@ -25,6 +25,10 @@
     enable = true;
     extraPackages = with pkgs; [ swaybg ];
   };
+  # Keep the Wayland socket reachable from GUI apps run under sudo.
+  security.sudo.extraConfig = ''
+    Defaults env_keep += "WAYLAND_DISPLAY XDG_RUNTIME_DIR"
+  '';
   # Native fingerprint authentication runs alongside password-only PAM.
   security.pam.services.hyprlock.fprintAuth = false;
   xdg.portal = {
