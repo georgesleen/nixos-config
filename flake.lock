@@ -76,15 +76,16 @@
         ]
       },
       "locked": {
-        "lastModified": 1794074596,
-        "narHash": "sha256-utyuN42pXW1OtFo4u+q5YgBBr6bNaRBfo1jZgvMXX2w=",
+        "lastModified": 1794080005,
+        "narHash": "sha256-kBce3ipj8kLmO0kq2mZQZylvKA9+XFgMTJPgrOhni0w=",
         "owner": "georgesleen",
         "repo": "fizzbot-3",
-        "rev": "f981b2702e0b2426f1db35b9d8071b736968743c",
+        "rev": "3e3844a937c929723b51f12d0e07170059ff480c",
         "type": "github"
       },
       "original": {
         "owner": "georgesleen",
+        "ref": "ranking-channel",
         "repo": "fizzbot-3",
         "type": "github"
       }

@@ -37,7 +37,7 @@
     };
     fizzbot-3 = {
       inputs.nixpkgs.follows = "nixpkgs";
-      url = "github:georgesleen/fizzbot-3";
+      url = "github:georgesleen/fizzbot-3/ranking-channel";
     };
     home-manager = {
       inputs.nixpkgs.follows = "nixpkgs";

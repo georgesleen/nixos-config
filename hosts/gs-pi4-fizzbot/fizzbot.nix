@@ -18,7 +18,10 @@
 
   services.fizzbot = {
     enable = true;
+    package = inputs.fizzbot-3.packages.x86_64-linux.aarch64-cross;
     tokenFile = config.sops.secrets.fizzbot_discord_token.path;
     model = "fizzbot";
+    trainingChannelId = "1568701324013477988";
+    trainingEndsAt = 1794207600; # 2026-11-09 00:00 Vancouver
   };
 }

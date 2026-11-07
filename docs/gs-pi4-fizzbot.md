@@ -74,3 +74,17 @@ To read the bot log:
 ```sh
 ssh gs-pi4-fizzbot 'sudo journalctl -u fizzbot -n 30 --no-pager'
 ```
+
+The host builds the bot with the `aarch64-cross` package of fizzbot-3. A native x86 compiler produces the ARM binary, so a bot change builds in minutes instead of 20 to 55 under QEMU.
+
+## Ranking rounds
+
+`trainingChannelId` in `hosts/gs-pi4-fizzbot/fizzbot.nix` turns on ranking rounds in that Discord channel: one batch of ten a day. `trainingEndsAt` stops new rounds at a Unix time. The bot needs permission there to view the channel, send messages, read history and add reactions.
+
+The bot reads `/var/lib/private/fizzbot/requests.txt`, with one request per line. The file holds real names, so it stays out of git and the Nix store. Copy it to the Pi as root:
+
+```bash
+scp notes/fizzbot-pi/requests.txt root@gs-pi4-fizzbot:/var/lib/private/fizzbot/requests.txt
+```
+
+The same directory holds `rounds.jsonl` and `votes.jsonl`. `make pull-votes` in the fizzbot-3 repository copies the votes to the laptop.
