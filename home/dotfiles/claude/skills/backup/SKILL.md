@@ -36,7 +36,6 @@ that case, so confirm that a new subvolume appears.
 
 ## Gotchas
 
-- `/mnt/backup/snapshot` is the old manual backup. It cannot be a btrbk parent.
 - The btrbk private key is machine-local at `/var/lib/btrbk/.ssh/id_ed25519`.
   A new laptop needs its own key in `hosts/gs-pi4/default.nix`.
 - gs-pi4 app data has a separate backup, `pi-state-dump`. This skill does not
