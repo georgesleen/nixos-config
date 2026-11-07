@@ -13,7 +13,7 @@
       OLLAMA_NUM_PARALLEL = "1";
     };
     # Stand-in until the retrained fizzbot model is on the host.
-    loadModels = [ "qwen2.5:0.5b" ];
+    loadModels = [ "qwen2.5:1.5b" ];
   };
   # Compressed RAM swap, so a model load does not exhaust memory.
   zramSwap = {
