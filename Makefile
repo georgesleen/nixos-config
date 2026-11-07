@@ -32,6 +32,7 @@ $(NIXOS_BUILD_TARGETS): build-%:
 #   make check-boot-order HOST=george-sleen@192.168.10.219
 check-boot-order:
 	@test -n "$(HOST)" || { echo "usage: make check-boot-order HOST=<user@host>"; exit 2; }
+	set -o pipefail
 	ssh -o BatchMode=yes "$(HOST)" 'systemd-analyze dot --order 2>/dev/null' \
 	  | sh '$(ROOT)/modules/features/systemd-order-cycles.sh' \
 	  && echo "no ordering cycles on $(HOST)"
