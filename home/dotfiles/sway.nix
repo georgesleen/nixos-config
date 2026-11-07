@@ -251,6 +251,10 @@ in
         for_window [app_id="kitty"] opacity ${config.my.opacity}
         exec_always swaymsg "[app_id=\"kitty\"] opacity ${config.my.opacity}"
 
+        # Keep Xwayland running so root keeps X11 access for sudo GUI apps.
+        xwayland force
+        exec ${pkgs.xhost}/bin/xhost +si:localuser:root
+
         # Fullscreen Steam games and Big Picture inhibit idle.
         for_window [class="^steam_app_"] inhibit_idle fullscreen
         for_window [class="^steam$"] inhibit_idle fullscreen
