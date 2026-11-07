@@ -120,6 +120,23 @@ in
     "100.111.59.110" = [ "gs-server" ];
   };
   networking.networkmanager.enable = true;
+  # USB iPhone tethering ranks below Ethernet and Wi-Fi and adds no IPv6 default route.
+  networking.networkmanager.ensureProfiles.profiles.iphone-usb = {
+    connection = {
+      id = "iphone-usb";
+      type = "ethernet";
+      autoconnect-priority = 10;
+    };
+    match.driver = "ipheth";
+    ipv4 = {
+      method = "auto";
+      route-metric = 700;
+    };
+    ipv6 = {
+      method = "auto";
+      never-default = true;
+    };
+  };
   # Keep only each profile's current generation; known-good is a separate profile.
   nix.gc.options = "--delete-old";
   nix.settings = {
