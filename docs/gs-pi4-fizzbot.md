@@ -55,17 +55,22 @@ the Nix store.
 
 ## Model and service
 
-The bot requests the Ollama model `fizzbot`. The stock `qwen2.5:1.5b` model is a
-stand-in for testing Ollama, not the trained bot model.
-
-The service is manual-only: `fizzbot.nix` overrides `wantedBy` with an empty list.
-Do not start it before installing and checking the trained `fizzbot` model.
-Remove that override to enable automatic startup after model deployment.
+The bot requests the Ollama model `fizzbot` and starts at boot.
+`ollama-preload-fizzbot` loads that model at boot. The model lives in Ollama's
+state directory on the Pi, so a NixOS rebuild does not replace it.
 Do not run fizzbot-2 and fizzbot-3 with the same Discord token at the same time.
 
-After the model is ready:
+To install a new model, run `make export-model` in fizzbot-3 and copy
+`runs/export/fizzbot.gguf` to the Pi. Then run these commands in that directory:
 
 ```sh
-ssh gs-pi4-fizzbot 'sudo systemctl start fizzbot'
+printf 'FROM ./fizzbot.gguf\n' > Modelfile
+ollama create fizzbot -f Modelfile
+sudo systemctl restart ollama ollama-preload-fizzbot fizzbot
+```
+
+To read the bot log:
+
+```sh
 ssh gs-pi4-fizzbot 'sudo journalctl -u fizzbot -n 30 --no-pager'
 ```

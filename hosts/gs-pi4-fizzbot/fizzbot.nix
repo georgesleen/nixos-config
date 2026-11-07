@@ -1,7 +1,6 @@
 {
   config,
   inputs,
-  lib,
   ...
 }:
 
@@ -22,6 +21,4 @@
     tokenFile = config.sops.secrets.fizzbot_discord_token.path;
     model = "fizzbot";
   };
-
-  systemd.services.fizzbot.wantedBy = lib.mkForce [ ];
 }
