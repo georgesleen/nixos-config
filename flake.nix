@@ -248,6 +248,9 @@
               '';
         in
         builtins.mapAttrs shellTest suites
+        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
+          claude-proxy = import ./tests/claude-proxy.nix { inherit pkgs; };
+        }
         // {
           librepods-watch =
             pkgs.runCommand "test-librepods-watch"

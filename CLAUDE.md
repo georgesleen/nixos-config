@@ -103,7 +103,7 @@ check: `dock-ss-recover` (since removed) carried a guard that was always true, s
 the unit exited early on every plug and silently no-opped for its whole life.
 
 Current suites: `arr-season-plan`, `av-step`, `battery-idle`, `battery-level`,
-`cwa-ingest-sweep`, `display-mode`, `epub-normalize`,
+`claude-proxy`, `cwa-ingest-sweep`, `display-mode`, `epub-normalize`,
 `gpu-busy`, `helix-open-cmd`, `hx-split`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
 `library-guard`, `librepods-watch`, `lid-decision`, `media-free`, `media-health`,
 `pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
@@ -171,6 +171,7 @@ or `hosts/gs-thinkpad-t480s/power.nix`.
 
 ### sudo / Claude Code
 
+- `home/dotfiles/claude-proxy.nix:84`: proxy launchers pass `--settings` with a runtime credential helper because agent-view background sessions do not reliably inherit shell-only gateway exports.
 - `hosts/gs-thinkpad-t480s/default.nix` `timestamp_type=ppid`: scopes sudo cache to parent PID so each Claude Bash invocation (new PPID) has no inherited cache; interactive shells cache normally.
 - Both laptop hosts register `sudoAskpass` as sudo's `Path askpass` in `/etc/sudo.conf`: a masked Zenity GTK password window for ttyless sudo, with no `-A` needed. Terminal sudo keeps its normal prompt. Polkit actions use the separate `polkit-gnome` agent; sudo still authenticates through its own PAM stack.
 - `modules/features/sway.nix` `env_keep`: sudo strips `WAYLAND_DISPLAY` and `XDG_RUNTIME_DIR`, so Qt falls back to xcb and Xwayland rejects root. Keeping both lets `sudo <gui-app>` reach the sway socket; root-owned files can land in `/run/user/<uid>`.
