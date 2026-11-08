@@ -19,37 +19,10 @@ let
     fi
     exec ${config.nix.package}/bin/nix-collect-garbage "$@"
   '';
-  sudoNotify = pkgs.writeShellApplication {
-    name = "sudo-notify";
-    runtimeInputs = [
-      pkgs.gnugrep
-      pkgs.libnotify
-      pkgs.mako
-    ];
-    text = ''
-      notification=
-      dismiss_notification() {
-        if [[ -n "$notification" ]]; then
-          makoctl dismiss --no-history -n "$notification"
-          notification=
-        fi
-      }
-      trap dismiss_notification EXIT
-      trap 'exit 130' INT
-      trap 'exit 143' TERM
-      trap 'exit 129' HUP
-      if ! /run/wrappers/bin/sudo -n -v 2>/dev/null; then
-        title="Authenticate with fingerprint reader"
-        if grep -qs closed /proc/acpi/button/lid/*/state; then
-          title="Authenticate with password"
-        fi
-        notification=$(notify-send --print-id --expire-time=0 "$title")
-        /run/wrappers/bin/sudo -v
-        dismiss_notification
-      fi
-      /run/wrappers/bin/sudo "$@"
-    '';
-  };
+  # Polkit names the command in its authentication dialog.
+  sudoNotify = pkgs.writeShellScriptBin "sudo-notify" ''
+    exec /run/wrappers/bin/pkexec "$@"
+  '';
 in
 {
   # NVMe sits behind Intel VMD when the BIOS enables it; without this the
@@ -168,6 +141,7 @@ in
   };
   security.pam.services.greetd.enableGnomeKeyring = true;
   security.pam.services.login.enableGnomeKeyring = true;
+  security.polkit.enablePkexecWrapper = true;
   # Scope sudo credential cache to parent PID so each Claude Code Bash
   # invocation (new shell, new PPID) gets no inherited cache, while interactive
   # shells still cache normally across their own sudo calls.
