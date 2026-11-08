@@ -3,7 +3,8 @@
 #
 # Usage: systemd-order-cycles.sh < graph.dot
 # Reads the dot graph on stdin. Prints one line per cycle found and exits 1;
-# exits 0 and prints nothing when the graph is acyclic.
+# exits 0 and prints nothing when the graph is acyclic; exits 2 when the graph
+# is missing or truncated.
 #
 # systemd breaks a cycle by deleting a job, and the job it picks is arbitrary:
 # on gs-pi4 it chose dbus-broker, local-fs.target and sshd's socket, which left
@@ -11,6 +12,8 @@
 # ordering graph before the boot that would expose it, so it is checkable.
 
 awk '
+/^digraph / { opened = 1 }
+/^}/ { closed = 1 }
 # Only green edges are After/Before ordering; the rest are Requires/Wants.
 /->/ && /color="green"/ {
   if (match($0, /"[^"]+"[[:space:]]*->[[:space:]]*"[^"]+"/)) {
@@ -25,6 +28,10 @@ awk '
   }
 }
 END {
+  if (!opened || !closed) {
+    print "missing or truncated ordering graph" > "/dev/stderr"
+    exit 2
+  }
   for (node in seen) {
     if (state[node] == 0) visit(node)
   }

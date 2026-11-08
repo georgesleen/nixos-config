@@ -19,37 +19,10 @@ let
     fi
     exec ${config.nix.package}/bin/nix-collect-garbage "$@"
   '';
-  sudoNotify = pkgs.writeShellApplication {
-    name = "sudo-notify";
-    runtimeInputs = [
-      pkgs.gnugrep
-      pkgs.libnotify
-      pkgs.mako
-    ];
-    text = ''
-      notification=
-      dismiss_notification() {
-        if [[ -n "$notification" ]]; then
-          makoctl dismiss --no-history -n "$notification"
-          notification=
-        fi
-      }
-      trap dismiss_notification EXIT
-      trap 'exit 130' INT
-      trap 'exit 143' TERM
-      trap 'exit 129' HUP
-      if ! /run/wrappers/bin/sudo -n -v 2>/dev/null; then
-        title="Authenticate with fingerprint reader"
-        if grep -qs closed /proc/acpi/button/lid/*/state; then
-          title="Authenticate with password"
-        fi
-        notification=$(notify-send --print-id --expire-time=0 "$title")
-        /run/wrappers/bin/sudo -v
-        dismiss_notification
-      fi
-      /run/wrappers/bin/sudo "$@"
-    '';
-  };
+  # Polkit names the command in its authentication dialog.
+  sudoNotify = pkgs.writeShellScriptBin "sudo-notify" ''
+    exec /run/wrappers/bin/pkexec "$@"
+  '';
 in
 {
   # NVMe sits behind Intel VMD when the BIOS enables it; without this the
@@ -120,6 +93,23 @@ in
     "100.111.59.110" = [ "gs-server" ];
   };
   networking.networkmanager.enable = true;
+  # USB iPhone tethering ranks below Ethernet and Wi-Fi and adds no IPv6 default route.
+  networking.networkmanager.ensureProfiles.profiles.iphone-usb = {
+    connection = {
+      id = "iphone-usb";
+      type = "ethernet";
+      autoconnect-priority = 10;
+    };
+    match.driver = "ipheth";
+    ipv4 = {
+      method = "auto";
+      route-metric = 700;
+    };
+    ipv6 = {
+      method = "auto";
+      never-default = true;
+    };
+  };
   # Keep only each profile's current generation; known-good is a separate profile.
   nix.gc.options = "--delete-old";
   nix.settings = {
@@ -145,8 +135,13 @@ in
   };
   nixpkgs.config.allowUnfree = true;
   programs.dconf.enable = true;
+  programs.ssh.knownHosts.gs-pi4-fizzbot = {
+    extraHostNames = [ "gs-pi4-fizzbot.tail9e6fba.ts.net" ];
+    publicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPbq/QM8lNp2qn4Gv9EyQcM3s8NA5f96wCyHwAjhkcjI";
+  };
   security.pam.services.greetd.enableGnomeKeyring = true;
   security.pam.services.login.enableGnomeKeyring = true;
+  security.polkit.enablePkexecWrapper = true;
   # Scope sudo credential cache to parent PID so each Claude Code Bash
   # invocation (new shell, new PPID) gets no inherited cache, while interactive
   # shells still cache normally across their own sudo calls.

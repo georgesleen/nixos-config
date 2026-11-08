@@ -35,6 +35,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:georgesleen/helix-test-debug";
     };
+    fizzbot-3 = {
+      inputs.nixpkgs.follows = "nixpkgs";
+      url = "github:georgesleen/fizzbot-3/v3.1.3";
+    };
     home-manager = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:nix-community/home-manager";
@@ -286,6 +290,10 @@
             home-manager.nixosModules.home-manager
             (hmConfig ./home/user-pi.nix)
           ];
+          specialArgs = { inherit inputs user; };
+        };
+        gs-pi4-fizzbot = nixpkgs.lib.nixosSystem {
+          modules = [ ./hosts/gs-pi4-fizzbot ];
           specialArgs = { inherit inputs user; };
         };
         gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;

@@ -4,7 +4,7 @@ SHELL := bash
 .PHONY: check-boot-order gs-openwrt-one gs-openwrt-one-flash gs-pi1-parents test
 
 ROOT    := $(patsubst %/,%,$(dir $(realpath $(firstword $(MAKEFILE_LIST)))))
-NIXOS_HOSTS := gs-framework-13-pro gs-server gs-pi4
+NIXOS_HOSTS := gs-framework-13-pro gs-server gs-pi4 gs-pi4-fizzbot
 NIXOS_BUILD_TARGETS := $(addprefix build-,$(NIXOS_HOSTS))
 .PHONY: $(NIXOS_BUILD_TARGETS)
 
@@ -32,6 +32,7 @@ $(NIXOS_BUILD_TARGETS): build-%:
 #   make check-boot-order HOST=george-sleen@192.168.10.219
 check-boot-order:
 	@test -n "$(HOST)" || { echo "usage: make check-boot-order HOST=<user@host>"; exit 2; }
+	set -o pipefail
 	ssh -o BatchMode=yes "$(HOST)" 'systemd-analyze dot --order 2>/dev/null' \
 	  | sh '$(ROOT)/modules/features/systemd-order-cycles.sh' \
 	  && echo "no ordering cycles on $(HOST)"

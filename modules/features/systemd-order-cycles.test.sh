@@ -62,4 +62,13 @@ check_exit "two-unit ordering loop is detected" 1 run_status pair
 printf 'digraph systemd {\n}\n' > "$tmp/empty"
 check_exit "empty graph exits 0" 0 run_status empty
 
+# No input means the graph never arrived, which proves nothing about cycles.
+: > "$tmp/missing"
+check_exit "missing graph exits 2" 2 run_status missing
+
+# A dropped connection cuts the graph off before its closing brace.
+printf 'digraph systemd {\n\t"a.service"->"b.service" [color="green"];\n' \
+  > "$tmp/truncated"
+check_exit "truncated graph exits 2" 2 run_status truncated
+
 finish
