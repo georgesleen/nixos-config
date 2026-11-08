@@ -76,11 +76,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1794080005,
-        "narHash": "sha256-kBce3ipj8kLmO0kq2mZQZylvKA9+XFgMTJPgrOhni0w=",
+        "lastModified": 1794107970,
+        "narHash": "sha256-RiNxKetWbqFfyZ/OWYvuNM51Gs00OavQcRSbhLy08Lk=",
         "owner": "georgesleen",
         "repo": "fizzbot-3",
-        "rev": "3e3844a937c929723b51f12d0e07170059ff480c",
+        "rev": "1362b5409ca53564a8277a6f2f93d3a85e5013bd",
         "type": "github"
       },
       "original": {
