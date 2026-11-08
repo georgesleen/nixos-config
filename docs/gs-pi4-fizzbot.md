@@ -37,11 +37,12 @@ invitation if it already has these permissions.
 
 ## Build and deploy
 
-The `fizzbot-3` flake input pins the local Git repository at
-`~/Documents/projects/fizzbot-3`. Commit bot changes there before updating its pin:
+The `fizzbot-3` flake input pins the private GitHub repository
+`georgesleen/fizzbot-3`. Push bot changes there before updating its pin. A
+private repository needs a GitHub token for the fetch:
 
 ```sh
-nix flake update fizzbot-3
+NIX_CONFIG="access-tokens = github.com=$(gh auth token)" nix flake update fizzbot-3
 make test
 make build-gs-pi4-fizzbot
 nixos-rebuild switch --flake .#gs-pi4-fizzbot \
