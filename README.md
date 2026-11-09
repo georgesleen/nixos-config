@@ -130,6 +130,15 @@ menu lists the gateway's Codex and Ollama models, not native Claude models.
 These processes use a private local bearer token; upstream OAuth credentials
 stay in `~/.local/state/claude-proxy/auth`, never in the Nix store.
 
+Each launcher passes a read-only `--settings` file without credentials.
+Its credential helper reads the existing private runtime token on demand.
+Agent view (left arrow on an empty prompt) retains that configuration for
+background sessions and new dispatches.
+Use `claude-codex agents` to open agent view with the Codex profile.
+Resume proxy conversations through their matching launcher. Plain `claude`
+keeps its native configuration. Remote Control and voice dictation are
+unavailable in proxy sessions.
+
 Proxy sessions use Codex for the native auto-mode classifier, even when Ollama
 is the coding model, so auto mode still needs ChatGPT quota. Native Anthropic
 sessions keep their normal classifier. Named Claude background reviewers in a

@@ -51,6 +51,8 @@ check_exit "swap needs both outputs on" 1 \
   sh -c "printf '%s' '$closed' | sh '$script' swap"
 
 check_eq "docked layout splits workspaces" "split DP-6" "$(run layout "$docked")"
+check_eq "a mirror keeps every workspace on the panel" "all-internal" \
+  "$(printf '%s' "$docked" | MIRROR=1 sh "$script" layout)"
 check_eq "lid shut puts every workspace on the external" "all-external DP-6" "$(run layout "$closed")"
 check_eq "an inactive external keeps workspaces internal" "all-internal" "$(run layout "$ext_off")"
 check_eq "undocked keeps workspaces internal" "all-internal" "$(run layout "$solo")"

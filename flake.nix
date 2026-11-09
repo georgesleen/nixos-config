@@ -212,6 +212,7 @@
             cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
             display-mode = ./home/dotfiles/display-mode;
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
+            fingerprint-led = ./hosts/gs-framework-13-pro/fingerprint-led;
             gpu-busy = ./home/dotfiles/gpu-busy;
             helix-open-cmd = ./home/dotfiles/helix-open-cmd;
             hx-split = ./home/dotfiles/hx-split;
@@ -252,6 +253,9 @@
               '';
         in
         builtins.mapAttrs shellTest suites
+        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
+          claude-proxy = import ./tests/claude-proxy.nix { inherit pkgs; };
+        }
         // {
           librepods-watch =
             pkgs.runCommand "test-librepods-watch"

@@ -83,6 +83,31 @@ let
   };
   launcher =
     name: model:
+    let
+      settings = pkgs.writeText "${name}-settings.json" (
+        builtins.toJSON {
+          inherit model;
+          apiKeyHelper = ''${pkgs.coreutils}/bin/cat "$XDG_RUNTIME_DIR/claude-proxy/client-key"'';
+          env = {
+            ANTHROPIC_BASE_URL = "http://127.0.0.1:8317";
+            ANTHROPIC_AUTH_TOKEN = "";
+            ANTHROPIC_API_KEY = "";
+            CLAUDE_CODE_OAUTH_TOKEN = "";
+            ANTHROPIC_MODEL = model;
+            ANTHROPIC_DEFAULT_MODEL = model;
+            ANTHROPIC_SMALL_FAST_MODEL = model;
+            ANTHROPIC_DEFAULT_OPUS_MODEL = "";
+            ANTHROPIC_DEFAULT_SONNET_MODEL = "";
+            ANTHROPIC_DEFAULT_HAIKU_MODEL = "";
+            CLAUDE_CODE_MAX_CONTEXT_TOKENS = if lib.hasPrefix "claude-ollama" name then "32768" else "1000000";
+            CLAUDE_CODE_AUTO_MODE_MODEL = "gpt-6.1-sol";
+            CLAUDE_CODE_AUTO_MODE_SERVER = "0";
+            CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1";
+            CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY = "1";
+          };
+        }
+      );
+    in
     pkgs.writeShellApplication {
       inherit name;
       runtimeInputs = [
@@ -93,22 +118,16 @@ let
         systemctl --user start claude-proxy.service
         curl --silent --show-error --output /dev/null --retry 20 --retry-connrefused \
           --retry-delay 1 --retry-max-time 30 http://127.0.0.1:8317/v1/models
-        unset ANTHROPIC_API_KEY CLAUDE_CODE_OAUTH_TOKEN
-        ANTHROPIC_AUTH_TOKEN=$(< "$XDG_RUNTIME_DIR/claude-proxy/client-key")
-        export ANTHROPIC_AUTH_TOKEN
-        export ANTHROPIC_BASE_URL=http://127.0.0.1:8317
-        export ANTHROPIC_MODEL="${model}"
-        export CLAUDE_CODE_MAX_CONTEXT_TOKENS=${
-          if lib.hasPrefix "claude-ollama" name then "32768" else "1000000"
-        }
+        (
+          key=$(< "$XDG_RUNTIME_DIR/claude-proxy/client-key")
+          if [ -z "$key" ]; then
+            printf '%s\n' 'empty proxy client key' >&2
+            exit 1
+          fi
+        )
+        unset ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN CLAUDE_CODE_OAUTH_TOKEN
         unset ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL ANTHROPIC_DEFAULT_HAIKU_MODEL
-        export ANTHROPIC_DEFAULT_MODEL="$ANTHROPIC_MODEL"
-        export ANTHROPIC_SMALL_FAST_MODEL="$ANTHROPIC_MODEL"
-        export CLAUDE_CODE_AUTO_MODE_MODEL=gpt-6.1-sol
-        export CLAUDE_CODE_AUTO_MODE_SERVER=0
-        export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
-        export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1
-        exec ${pkgs.claude-code}/bin/claude --model "$ANTHROPIC_MODEL" "$@"
+        exec ${pkgs.claude-code}/bin/claude --settings ${settings} --model "${model}" "$@"
       '';
     };
 in
