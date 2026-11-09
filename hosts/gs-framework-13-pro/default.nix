@@ -110,6 +110,7 @@ in
     ../../modules/roles/laptop.nix
     ../../virtualization
     inputs.nixos-hardware.nixosModules.framework-intel-core-ultra-series3
+    ./fingerprint-led.nix
     ./fingerprint-lid.nix
     ./hardware-configuration.nix
     ./power.nix

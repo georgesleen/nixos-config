@@ -104,7 +104,7 @@ the unit exited early on every plug and silently no-opped for its whole life.
 
 Current suites: `arr-season-plan`, `av-step`, `battery-idle`, `battery-level`,
 `claude-proxy`, `cwa-ingest-sweep`, `display-mode`, `epub-normalize`,
-`gpu-busy`, `helix-open-cmd`, `hx-split`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
+`fingerprint-led`, `gpu-busy`, `helix-open-cmd`, `hx-split`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
 `library-guard`, `librepods-watch`, `lid-decision`, `media-free`, `media-health`,
 `pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
 `systemd-order-cycles`, `ts-route`, `usb-wedge`, `waybar-fmt`,
@@ -178,6 +178,7 @@ or `hosts/gs-thinkpad-t480s/power.nix`.
 - `home/dotfiles/sway.nix` `xwayland force` + `xhost +si:localuser:root`: Xwayland trusts only the session user, and lazy Xwayland exits after 10 idle seconds and loses any grant. Forcing it keeps root's grant, so X11-only apps work under sudo. `xwayland` changes apply only at sway launch.
 - Framework non-interactive sudo commands use `sudo-notify <command> [arguments...]` from `hosts/gs-framework-13-pro/default.nix`. It validates sudo credentials first, shows `Authenticate with fingerprint reader` (or `Authenticate with password` while the lid is closed) only while authentication is pending, and dismisses its own notification before running the command or on failure/cancellation. Plain `sudo nix-clean` applies the Framework GC policy without flags; the distinct name avoids Nix development shells shadowing the system command.
 - Framework `sudoPasswordTimeout = "5m"` bounds each GTK askpass prompt, not sudo's credential-cache lifetime. The longer window allows time to notice and answer a desktop authentication request.
+- `hosts/gs-framework-13-pro/fingerprint-led.nix` loads `ledtrig_timer`: the `timer` trigger is a module, and without it `chromeos:white:power` offers no blink trigger, so writing `timer` fails with EINVAL. The service hands the LED back to the EC with `chromeos-auto` after each verify and on stop.
 - `hosts/gs-framework-13-pro/fingerprint-lid.nix`: the reader is in the lid, so with it closed every fingerprint-enabled PAM service waited out pam_fprintd's ~30 s timeout before the password prompt. A `pam_exec` rule at the fprintd order minus 100, `[success=1 default=ignore]`, skips exactly the next line when any `/proc/acpi/button/lid/*/state` reads closed. It extends the PAM service submodule, so it lands in all 23 services that carry an `fprintd` rule; `greetd` has `fprintAuth` but delegates to `login`, so the rule is keyed on the fprintd rule existing, never on `fprintAuth`, or it would skip the whole `login` substack. A failing check is ignored, leaving the normal fingerprint-then-password order. Verified lid closed: 30 s fingerprint timeout before, password prompt in 4.7 s after.
 - `home/dotfiles/claude.nix` `secretsHook` (PreToolUse/Bash) + `permissions.deny` on `Read(/run/secrets/**)`: block Claude from reading decrypted sops secrets (`/run/secrets`, `sops -d`), including inside an `ssh <host> "..."` payload. Guardrail against casual reads, not a hard sandbox (matches the command string). To act on a secret-backed service, use its own runtime credential inline without echoing it, or an auth-bypass path.
 
