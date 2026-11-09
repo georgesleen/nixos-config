@@ -44,6 +44,12 @@ let
     MIRROR=0
     ${systemctl} --user is-active --quiet ${mirrorUnit} && MIRROR=1
     export MIRROR
+    # Keeps the cursor on the panel while the external shows its mirror.
+    region='*'
+    [ "$MIRROR" = 1 ] && region=eDP-1
+    for t in pointer touchpad; do
+      ${swaymsg} "input type:$t map_to_output $region" >/dev/null
+    done
     layout=$(${swaymsg} -t get_outputs | ${displayMode} layout) || exit 0
     set -- $layout
     ${swaymsg} -t get_workspaces | ${workspacePlan} "$1" "''${2-}" \
