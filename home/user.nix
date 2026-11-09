@@ -30,6 +30,7 @@
     ./dotfiles/gtk.nix
     ./dotfiles/helix.nix
     ./dotfiles/kitty.nix
+    ./dotfiles/jellyfin-mpv-shim.nix
     ./dotfiles/librepods.nix
     ./dotfiles/mako.nix
     ./dotfiles/omp.nix
