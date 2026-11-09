@@ -35,10 +35,15 @@ let
 
   # Transient unit name for the Duplicate wl-mirror.
   mirrorUnit = "display-mirror";
+  # Workspace that holds the wl-mirror window on the external.
+  mirrorWorkspace = "mirror";
 
   # Re-pins workspaces to the active outputs and refreshes wallpaper and bar.
   displayChanged = pkgs.writeShellScript "display-changed" ''
     set -eu
+    MIRROR=0
+    ${systemctl} --user is-active --quiet ${mirrorUnit} && MIRROR=1
+    export MIRROR
     layout=$(${swaymsg} -t get_outputs | ${displayMode} layout) || exit 0
     set -- $layout
     ${swaymsg} -t get_workspaces | ${workspacePlan} "$1" "''${2-}" \
@@ -47,12 +52,17 @@ let
     ${systemctl} --user restart waybar.service
   '';
 
-  # CALLBACK_CMD: reports errors, then queues display-changed.
+  # CALLBACK_CMD: reports errors.
   callback = pkgs.writeShellScript "way-displays-callback" ''
     case "''${CALLBACK_LEVEL-}" in
       ERROR | FATAL) ${notify} "Displays" "''${CALLBACK_MSG-}" ;;
     esac
-    exec ${systemctl} --user start --no-block display-changed.service
+  '';
+
+  # Queues display-changed on every sway output event.
+  outputEvents = pkgs.writeShellScript "display-events" ''
+    ${swaymsg} -t subscribe -m '["output"]' \
+      | while IFS= read -r _; do ${systemctl} --user start --no-block display-changed.service; done
   '';
 
   # Windows-style display picker (Win+P).
@@ -77,9 +87,11 @@ let
     printf '%s\n' "$plan" | ${applyLines}
     if [ "$mode" = duplicate ]; then
       ext=$(printf '%s' "$outputs" | ${pkgs.jq}/bin/jq -r '[.[] | select(.name != "eDP-1")][0].name')
+      ${swaymsg} "workspace ${mirrorWorkspace} output \"$ext\"" >/dev/null
       ${pkgs.systemd}/bin/systemd-run --user --collect --unit=${mirrorUnit} \
         ${pkgs.wl-mirror}/bin/wl-mirror --fullscreen-output "$ext" eDP-1
     fi
+    ${systemctl} --user start --no-block display-changed.service
     ${notify} -t 1500 "Display mode" "$choice"
   '';
 
@@ -138,6 +150,24 @@ in
     };
     Unit.Description = "Re-pin workspaces and refresh wallpaper and bar after a display change";
   };
+
+  systemd.user.services.display-events = {
+    Install.WantedBy = [ "sway-session.target" ];
+    Service = {
+      ExecStart = "${outputEvents}";
+      Restart = "always";
+      RestartSec = 2;
+    };
+    Unit = {
+      After = [ "sway-session.target" ];
+      Description = "Start display-changed on sway output events";
+      PartOf = [ "sway-session.target" ];
+    };
+  };
+
+  wayland.windowManager.sway.extraConfig = ''
+    for_window [app_id="at.yrlf.wl_mirror"] move container to workspace ${mirrorWorkspace}
+  '';
 
   wayland.windowManager.sway.config.keybindings = {
     "${config.my.modifier}+Shift+m" = "exec ${swapSides}";

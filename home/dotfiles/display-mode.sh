@@ -8,8 +8,8 @@
 #        display-mode.sh layout
 #
 # `layout` prints the workspace-plan.sh mode and external name for the current
-# active outputs. LID_CLOSED=1 means the internal panel is shut. JQ overrides
-# the jq binary.
+# active outputs. LID_CLOSED=1 means the internal panel is shut. MIRROR=1 means
+# the external shows a mirror of the panel. JQ overrides the jq binary.
 
 internal="eDP-1"
 # Every external connector name here starts with DP- or HDMI-; eDP-1 does not.
@@ -73,7 +73,7 @@ case "$action" in
     active "$internal" && edp=1
     [ -n "$ext" ] && active "$ext" && out=1
     case "$edp$out" in
-      11) echo "split $ext" ;;
+      11) if [ "${MIRROR:-0}" = 1 ]; then echo "all-internal"; else echo "split $ext"; fi ;;
       10) echo "all-internal" ;;
       01) echo "all-external $ext" ;;
       *) exit 1 ;;
