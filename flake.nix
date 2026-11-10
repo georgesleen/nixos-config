@@ -134,6 +134,16 @@
         awww = prev.awww.overrideAttrs (old: {
           patches = (old.patches or [ ]) ++ [ ./pkgs/awww-fit-padding.patch ];
         });
+        # Backport of nixpkgs 16b463698a: codex 0.167.0 links system aws-lc,
+        # oniguruma, sqlite and zstd.
+        codex = prev.codex.overrideAttrs (old: {
+          buildInputs = old.buildInputs ++ [
+            final.aws-lc
+            final.oniguruma
+            final.sqlite
+            final.zstd
+          ];
+        });
         diff-review = final.callPackage ./pkgs/diff-review.nix { };
         difit = final.callPackage ./pkgs/difit.nix { };
         md-photo-import = final.callPackage ./pkgs/md-photo-import.nix { };

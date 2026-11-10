@@ -345,6 +345,9 @@ touching the arrs, Jellyfin, qBittorrent or the quality guards.
 
 ### nixpkgs / packaging
 
+- `modules/features/dev.nix` marimo override: marimo 0.25.1's `pyproject.toml` requires `uv_build<0.13.0`, nixpkgs ships 0.13.4, and pypa build rejects the wheel. The override drops the upper bound. Remove it when nixpkgs bumps marimo or relaxes the pin.
+- `flake.nix` `localOverlay` codex: nixos-unstable `f4a03c0` builds codex 0.167.0 with `AWS_LC_SYS_USE_SYSTEM=1` but without aws-lc in `buildInputs`, so `aws-lc-sys` panics. The override backports nixpkgs `16b463698a`; remove it once the locked nixpkgs contains that commit.
+
 - `moonlight-qt` uses the current nixpkgs package (6.2.0), including its current FFmpeg and libva dependencies. The former FFmpeg 7 override for 6.1.0 is obsolete; do not restore the old pinned closure, whose libva could not initialize the Framework's Intel media driver.
 - `flake.nix` WaveForms runtime overlay installs the vendor `usr/lib/udev/dftdrvdtch` into `$out/lib/udev`. waveforms-flake's Adept 2.30.1 installer copies only the separate Adept library directory, leaving its generated udev RUN target absent. Existing autoPatchelf supplies the helper's glibc interpreter and libusb RPATH.
 - `home/dotfiles/helix.nix` `steel-language-server` `environment.STEEL_LSP_HOME`: `pkgs.steel`'s binary wrapper does `--set-default 'STEEL_HOME' '<store path>/lib/steel'`, and the server's `lsp_home()` falls back to `$STEEL_HOME/lsp`, so it panicked on every startup ("Unable to create the lsp home directory: ReadOnlyFilesystem") while helix reported only "failed to initialize language server: server closed the stream". `STEEL_LSP_HOME` short-circuits that fallback and points at `${config.xdg.dataHome}/steel/lsp`; overriding `STEEL_HOME` instead would break stdlib module resolution.
