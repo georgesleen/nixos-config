@@ -105,7 +105,7 @@ the unit exited early on every plug and silently no-opped for its whole life.
 Current suites: `arr-season-plan`, `av-step`, `battery-idle`, `battery-level`,
 `claude-proxy`, `cwa-ingest-sweep`, `display-mode`, `epub-normalize`,
 `fingerprint-led`, `gpu-busy`, `helix-open-cmd`, `hx-split`, `jellyfin-bg-pause`, `known-good-boot`, `lazylibrarian-reap`,
-`library-guard`, `librepods-watch`, `lid-decision`, `media-free`, `media-health`,
+`library-guard`, `librepods-watch`, `lid-decision`, `media-free`, `media-health`, `prebuild-gate`,
 `pressure-guard`, `qbit-seed-reap`, `secrets-guard-match`, `snapper-orphans`,
 `systemd-order-cycles`, `ts-route`, `usb-wedge`, `waybar-fmt`,
 `win11-forward`, `workspace-plan`.

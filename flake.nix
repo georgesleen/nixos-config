@@ -227,6 +227,7 @@
             lazylibrarian-reap = inputs.nixos-pi4 + "/gs-pi4/lazylibrarian-reap";
             library-guard = inputs.nixos-pi4 + "/gs-pi4/library-guard";
             lid-decision = ./modules/hardware/lid-decision;
+            prebuild-gate = ./home/dotfiles/prebuild-gate;
             media-free = inputs.nixos-pi4 + "/gs-pi4/media-free";
             media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
             pressure-guard = inputs.nixos-pi4 + "/gs-pi4/pressure-guard";
