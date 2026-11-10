@@ -31,17 +31,15 @@ straight through Cloudflare where the Playwright launcher does not.
 ### Dependencies
 
 - `chromium` (on PATH via the system profile), the browser.
-- `nodejs` + the `playwright` node library, the driver. Node is on PATH.
-  Playwright ships in the nix store but ESM `import` ignores `NODE_PATH`, so
-  resolve it and symlink a local `node_modules`:
+- `nodejs` + the `playwright-core` node library, the driver. Node is on PATH.
+  `returns.nix` links nixpkgs' `playwright-driver` (the `playwright-core`
+  package) to a fixed path, so scripts require it by absolute path:
 
-  ```bash
-  PW=$(find /nix/store -maxdepth 6 -type d -path '*/node_modules/playwright' 2>/dev/null | head -1)
-  ln -sfn "$(dirname "$PW")" ./node_modules   # bare `import 'playwright'` now resolves
+  ```js
+  const { chromium } = require(process.env.HOME + '/.claude/skills/returns/playwright-core');
   ```
 
-  (`npm install playwright` in the scratchpad also works and gives CommonJS
-  `require`. Either is fine; do not download browsers, use system chromium.)
+  (Do not download browsers; use system chromium.)
 - `imagemagick` for photo prep (crop, rotate, HEIC conversion) when a retailer
   demands product photos.
 
@@ -63,7 +61,7 @@ curl -s http://127.0.0.1:9222/json/version | head -c 120   # CDP up?
 Then connect, act, detach:
 
 ```js
-const { chromium } = require('playwright');
+const { chromium } = require(process.env.HOME + '/.claude/skills/returns/playwright-core');
 const b = await chromium.connectOverCDP('http://127.0.0.1:9222');
 const page = b.contexts()[0].pages().find(p => p.url().includes('<host>'))
           || b.contexts()[0].pages()[0];

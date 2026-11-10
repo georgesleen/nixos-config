@@ -1,8 +1,8 @@
 # Skill: returns (see ./returns/SKILL.md).
 # Browser-driven online return flows (amazon.ca, DigiKey), so it declares its
 # runtime deps here: chromium is the browser; nodejs runs the Playwright driver
-# script; the node playwright library is resolved from the store at runtime (see
-# SKILL.md), with playwright-driver providing the matching browser build.
+# script; playwright-driver (the playwright-core node library) is linked into
+# the skill dir so scripts require it by a fixed path (see SKILL.md).
 # imagemagick handles product-photo prep (HEIC conversion, crop, rotate).
 { pkgs, ... }:
 {
@@ -10,6 +10,7 @@
     recursive = true;
     source = ./returns;
   };
+  home.file.".claude/skills/returns/playwright-core".source = pkgs.playwright-driver;
 
   home.packages = with pkgs; [
     chromium
