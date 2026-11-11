@@ -41,6 +41,7 @@
     ./dotfiles/sway.nix
     ./dotfiles/swayidle.nix
     ./dotfiles/tmux.nix
+    ./dotfiles/udiskie.nix
     ./dotfiles/vscode.nix
     ./dotfiles/wallpaper.nix
     ./dotfiles/waybar.nix
