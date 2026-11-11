@@ -163,6 +163,27 @@ let
       suppressOutput: true
     }'
   '';
+
+  # UserPromptSubmit and Stop hooks: review each turn's file changes in
+  # Plannotator, in a Firefox pane beside the Claude terminal. See
+  # claude-review-hook.sh.
+  reviewHook = pkgs.writeShellApplication {
+    name = "claude-review-hook";
+    runtimeInputs = with pkgs; [
+      coreutils
+      gawk
+      git
+      gnused
+      jq
+      plannotator
+      sway
+    ];
+    runtimeEnv = {
+      PANE = lib.getExe pkgs.plannotator-pane;
+      SNAPSHOT = "${./claude-review-snapshot.sh}";
+    };
+    text = builtins.readFile ./claude-review-hook.sh;
+  };
 in
 {
   home.file.".claude/settings.json".text = builtins.toJSON {
@@ -223,6 +244,28 @@ in
             }
           ];
           matcher = "Bash";
+        }
+      ];
+      # Blocks while George reviews; Esc in Claude skips the review.
+      Stop = [
+        {
+          hooks = [
+            {
+              command = "${lib.getExe reviewHook} stop";
+              timeout = 1800;
+              type = "command";
+            }
+          ];
+        }
+      ];
+      UserPromptSubmit = [
+        {
+          hooks = [
+            {
+              command = "${lib.getExe reviewHook} start";
+              type = "command";
+            }
+          ];
         }
       ];
     };
