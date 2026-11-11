@@ -10,8 +10,9 @@
 # Both read the hook JSON on stdin. Only the repository at the session cwd is
 # watched. CLAUDE_REVIEW=0 turns the hook off. Runs only inside sway, and only
 # when a sway window owns the Claude process, so headless runs never block.
-# Expects SNAPSHOT (claude-review-snapshot.sh) and PANE (plannotator-pane)
-# set by the wrapper.
+# A turn that changes markdown and other files opens both reviews, as two
+# tabs in one pane. Expects SNAPSHOT (claude-review-snapshot.sh) and PANE
+# (plannotator-pane) set by the wrapper.
 
 [ "${CLAUDE_REVIEW:-1}" = 0 ] && exit 0
 input=$(cat)
@@ -56,26 +57,66 @@ while [ "$pid" -gt 1 ]; do
 done
 [ -n "$term" ] || exit 0
 
-mark="plannotator_$session"
+group="plannotator_$session"
 export PLANNOTATOR_BROWSER="$PANE" PLANNOTATOR_PANE_TERM="$term" \
-  PLANNOTATOR_PANE_MARK="$mark"
-title="$(basename "$root") · Claude turn"
+  PLANNOTATOR_PANE_GROUP="$group"
+# The pane finds each window by its title, so make it unique to this Stop.
+stamp="$(basename "$root") · $(date +%H:%M:%S)"
+results=$(mktemp -d)
+trap 'rm -rf "$results"' EXIT
 
 plan=$(sh "$SNAPSHOT" mode "$root" "$start" "$end")
+mode=$(printf '%s\n' "$plan" | head -n 1)
 cd "$root" || exit 0
-if [ "$(printf '%s\n' "$plan" | head -n 1)" = annotate ]; then
+
+annotate() {
   files=$(printf '%s\n' "$plan" | tail -n +2)
   # One path per line; markdown names with newlines do not occur here.
   # shellcheck disable=SC2086
   (IFS='
-'; plannotator annotate $files --gate --hook --title "$title") || true
-else
-  out=$(git diff --no-color --no-renames "$start" "$end" \
-    | plannotator review --patch-file - --json --title "$title") || true
-  if [ "$(printf '%s' "$out" | jq -r '.decision // empty')" = annotated ]; then
-    printf '%s' "$out" | jq '{decision: "block", reason: .message}'
-  fi
-fi
+'
+    PLANNOTATOR_PANE_MARK="${group}_notes" PLANNOTATOR_PANE_TITLE="$stamp notes" \
+      plannotator annotate $files --gate --json --title "$stamp notes" \
+      >"$results/annotate.json") || true
+}
+review() {
+  (git diff --no-color --no-renames "$start" "$end" |
+    PLANNOTATOR_PANE_MARK="${group}_diff" PLANNOTATOR_PANE_TITLE="$stamp diff" \
+      plannotator review --patch-file - --json --title "$stamp diff" \
+      >"$results/review.json") || true
+}
+pane_up() { # Waits until the window marked <mark> exists, up to 20s.
+  for _ in $(seq 200); do
+    swaymsg -t get_marks | jq -e --arg m "$1" 'index($m)' >/dev/null && return
+    sleep 0.1
+  done
+}
 
-swaymsg -q "[con_mark=\"$mark\"] kill; [con_id=$term] focus" || true
+case "$mode" in
+annotate) annotate ;;
+review) review ;;
+both)
+  # The markdown window comes up first so the diff joins it as a tab.
+  annotate &
+  notes=$!
+  pane_up "${group}_notes"
+  review
+  wait "$notes"
+  ;;
+esac
+
+# The window had focus if George was reading it; only then hand focus back.
+focused=$(swaymsg -t get_tree | jq -r --arg g "$group" '.. | objects
+  | select(.focused? == true) | (.marks // []) | any(startswith($g))')
+swaymsg -q "[con_mark=\"^$group\"] kill" || true
+[ "$focused" = true ] && swaymsg -q "[con_id=$term] focus"
+
+# noop is false when the result carries something for Claude: annotations,
+# or notes on an approval. A missing noop counts as feedback when annotated.
+reason=$(cat "$results"/*.json 2>/dev/null | jq -rs '[.[]
+  | select(if has("noop") then .noop == false else .decision == "annotated" end)
+  | .message | select(. != null and . != "")] | join("\n\n")') || true
+if [ -n "$reason" ]; then
+  jq -n --arg r "$reason" '{decision: "block", reason: $r}'
+fi
 exit 0

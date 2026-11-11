@@ -7,8 +7,9 @@
 #     the refs and HEAD stay untouched; the only side effect is loose objects.
 #
 #   claude-review-snapshot.sh mode <root> <tree-a> <tree-b>
-#     Prints "annotate" and then one changed path per line when every changed
-#     path is a markdown file still present at <root>, else "review".
+#     Prints "annotate" when every changed path is a markdown file still
+#     present at <root>, "review" when none is, and "both" for a mix. After
+#     "annotate" or "both" come those markdown paths, one per line.
 set -eu
 
 cmd="${1:?usage: claude-review-snapshot.sh tree <root> | mode <root> <a> <b>}"
@@ -28,16 +29,23 @@ tree)
 mode)
   a="${3:?missing <tree-a>}"
   b="${4:?missing <tree-b>}"
-  files=$(git -C "$root" diff --name-only --no-renames "$a" "$b")
-  [ -n "$files" ] || { echo review; exit 0; }
-  printf '%s\n' "$files" | while IFS= read -r f; do
-    case "$f" in
-    *.md | *.markdown) [ -f "$root/$f" ] || exit 1 ;;
-    *) exit 1 ;;
-    esac
-  done || { echo review; exit 0; }
-  echo annotate
-  printf '%s\n' "$files"
+  md=$(mktemp)
+  trap 'rm -f "$md"' EXIT
+  other=$(git -C "$root" -c core.quotePath=false diff --name-only --no-renames "$a" "$b" |
+    while IFS= read -r f; do
+      case "$f" in
+      *.md | *.markdown) if [ -f "$root/$f" ]; then printf '%s\n' "$f" >>"$md"; else echo x; fi ;;
+      *) echo x ;;
+      esac
+    done)
+  if [ ! -s "$md" ]; then
+    echo review
+  elif [ -n "$other" ]; then
+    echo both
+  else
+    echo annotate
+  fi
+  cat "$md"
   ;;
 *)
   echo "claude-review-snapshot.sh: unknown command: $cmd" >&2

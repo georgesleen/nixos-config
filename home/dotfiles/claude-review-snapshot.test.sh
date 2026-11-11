@@ -36,13 +36,18 @@ check_eq "no change gives review" "review " "$(mode "$t1" "$t1")"
 
 echo c >> "$repo/code.py"
 t2=$(snap)
-check_eq "a code change gives review" "review " "$(mode "$t0" "$t2")"
+check_eq "markdown and code together give both" "both notes.md " "$(mode "$t0" "$t2")"
+check_eq "a code change alone gives review" "review " "$(mode "$t1" "$t2")"
 
 rm "$repo/notes.md"
 t3=$(snap)
 check_eq "a deleted markdown file gives review" "review " "$(mode "$t2" "$t3")"
+mkdir -p "$repo/docs"
+echo d > "$repo/docs/a b.md"
+t4=$(snap)
+check_eq "a markdown path with a space survives" "annotate docs/a b.md " "$(mode "$t3" "$t4")"
 
 g -c user.name=t -c user.email=t@t commit -q -am more
-check_eq "a commit with no worktree change keeps the tree" "$t3" "$(snap)"
+check_eq "a commit with no worktree change keeps the tree" "$t4" "$(snap)"
 
 finish
