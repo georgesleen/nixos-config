@@ -12,9 +12,7 @@
 # $XDG_RUNTIME_DIR/claude-review/off exists no review opens. Runs only inside
 # sway, and only when a sway window owns the Claude process, so headless runs
 # never block. A turn that changes markdown and other files opens both
-# reviews, as two tabs in one pane. Binary files, and files a "-diff"
-# attribute marks as binary, stay out of the review; the title gives their
-# count, and a turn that changes only those opens nothing. Expects SNAPSHOT
+# reviews, as two tabs in one pane. Expects SNAPSHOT
 # (claude-review-snapshot.sh) and PANE (plannotator-pane) set by the wrapper.
 
 [ "${CLAUDE_REVIEW:-1}" = 0 ] && exit 0
@@ -48,10 +46,6 @@ end=$(sh "$SNAPSHOT" tree "$root" 2>/dev/null) || exit 0
 # The next Stop of this turn (after Claude acts on feedback) reviews only what
 # changed since this one.
 printf '%s\n%s\n' "$root" "$end" >"$state"
-plan=$(sh "$SNAPSHOT" mode "$root" "$start" "$end") || exit 0
-mode=$(printf '%s\n' "$plan" | sed -n 1p)
-bin=$(printf '%s\n' "$plan" | sed -n 2p)
-[ "$mode" = skip ] && exit 0
 
 # The sway window that owns this process: kitty runs one process per window.
 term=
@@ -70,27 +64,27 @@ export PLANNOTATOR_BROWSER="$PANE" PLANNOTATOR_PANE_TERM="$term" \
   PLANNOTATOR_PANE_GROUP="$group"
 # The pane finds each window by its title, so make it unique to this Stop.
 stamp="$(basename "$root") · ${session:0:8} · $(date +%H:%M:%S)"
-hidden=
-[ "$bin" -gt 0 ] && hidden=", $bin binary hidden"
 results=$(mktemp -d)
 trap 'rm -rf "$results"' EXIT
 
+plan=$(sh "$SNAPSHOT" mode "$root" "$start" "$end") || exit 0
+mode=$(printf '%s\n' "$plan" | head -n 1)
 cd "$root" || exit 0
 
 annotate() {
-  files=$(printf '%s\n' "$plan" | tail -n +3)
+  files=$(printf '%s\n' "$plan" | tail -n +2)
   # One path per line; markdown names with newlines do not occur here.
   # shellcheck disable=SC2086
   (IFS='
 '
-    PLANNOTATOR_PANE_MARK="${group}_notes" PLANNOTATOR_PANE_TITLE="$stamp notes$hidden" \
-      plannotator annotate $files --gate --json --title "$stamp notes$hidden" \
+    PLANNOTATOR_PANE_MARK="${group}_notes" PLANNOTATOR_PANE_TITLE="$stamp notes" \
+      plannotator annotate $files --gate --json --title "$stamp notes" \
       >"$results/annotate.json") || true
 }
 review() {
-  (sh "$SNAPSHOT" patch "$root" "$start" "$end" |
-    PLANNOTATOR_PANE_MARK="${group}_diff" PLANNOTATOR_PANE_TITLE="$stamp diff$hidden" \
-      plannotator review --patch-file - --json --title "$stamp diff$hidden" \
+  (git diff --no-color --no-renames "$start" "$end" |
+    PLANNOTATOR_PANE_MARK="${group}_diff" PLANNOTATOR_PANE_TITLE="$stamp diff" \
+      plannotator review --patch-file - --json --title "$stamp diff" \
       >"$results/review.json") || true
 }
 pane_up() { # Waits until the window marked <mark> exists, up to 20s.
