@@ -31,23 +31,42 @@ check_eq "the new file stays untracked" "?? notes.md" "$(g status --porcelain | 
 echo noise > "$repo/run.log"
 check_eq "a gitignored file leaves the tree alone" "$t1" "$(snap)"
 
-check_eq "only markdown changed gives annotate" "annotate notes.md " "$(mode "$t0" "$t1")"
-check_eq "no change gives review" "review " "$(mode "$t1" "$t1")"
+check_eq "only markdown changed gives annotate" "annotate 0 notes.md " "$(mode "$t0" "$t1")"
+check_eq "no change gives skip" "skip 0 " "$(mode "$t1" "$t1")"
 
 echo c >> "$repo/code.py"
 t2=$(snap)
-check_eq "markdown and code together give both" "both notes.md " "$(mode "$t0" "$t2")"
-check_eq "a code change alone gives review" "review " "$(mode "$t1" "$t2")"
+check_eq "markdown and code together give both" "both 0 notes.md " "$(mode "$t0" "$t2")"
+check_eq "a code change alone gives review" "review 0 " "$(mode "$t1" "$t2")"
 
 rm "$repo/notes.md"
 t3=$(snap)
-check_eq "a deleted markdown file gives review" "review " "$(mode "$t2" "$t3")"
+check_eq "a deleted markdown file gives review" "review 0 " "$(mode "$t2" "$t3")"
 mkdir -p "$repo/docs"
 echo d > "$repo/docs/a b.md"
 t4=$(snap)
-check_eq "a markdown path with a space survives" "annotate docs/a b.md " "$(mode "$t3" "$t4")"
+check_eq "a markdown path with a space survives" "annotate 0 docs/a b.md " "$(mode "$t3" "$t4")"
 
 g -c user.name=t -c user.email=t@t commit -q -am more
 check_eq "a commit with no worktree change keeps the tree" "$t4" "$(snap)"
+
+printf 'P\0\1' > "$repo/my plot.png"
+t5=$(snap)
+check_eq "a binary file alone gives skip" "skip 1 " "$(mode "$t4" "$t5")"
+mkdir -p "$repo/data" "$repo/.git/info"
+echo 'data/** -diff' > "$repo/.git/info/attributes"
+echo 1,2 > "$repo/data/run.csv"
+: > "$repo/data/empty.csv"
+t6=$(snap)
+check_eq "a -diff text file counts as binary" "skip 3 " "$(mode "$t4" "$t6")"
+echo e >> "$repo/code.py"
+t7=$(snap)
+check_eq "code beside binaries gives review" "review 3 " "$(mode "$t4" "$t7")"
+patch=$(sh "$script" patch "$repo" "$t4" "$t7")
+check_eq "the patch keeps the text file" "diff --git a/code.py b/code.py" \
+  "$(printf '%s\n' "$patch" | grep '^diff --git')"
+check_eq "the patch drops the binary sections" "0" \
+  "$(printf '%s\n' "$patch" | grep -c '^Binary files')"
+check_eq "the patch keeps the hunk" "+e" "$(printf '%s\n' "$patch" | tail -n 1)"
 
 finish

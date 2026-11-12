@@ -7,12 +7,23 @@
 #     the refs and HEAD stay untouched; the only side effect is loose objects.
 #
 #   claude-review-snapshot.sh mode <root> <tree-a> <tree-b>
-#     Prints "annotate" when every changed path is a markdown file still
-#     present at <root>, "review" when none is, and "both" for a mix. After
-#     "annotate" or "both" come those markdown paths, one per line.
+#     Line 1 is "annotate" when every reviewable changed path is a markdown
+#     file still present at <root>, "review" when none is, "both" for a mix,
+#     and "skip" when nothing is reviewable. Line 2 is the count of changed
+#     binary files, which are not reviewable; git counts a path as binary by
+#     content or by a "-diff" attribute. The markdown paths follow, one per
+#     line.
+#
+#   claude-review-snapshot.sh patch <root> <tree-a> <tree-b>
+#     Prints the diff from <tree-a> to <tree-b> without the binary files.
 set -eu
 
-cmd="${1:?usage: claude-review-snapshot.sh tree <root> | mode <root> <a> <b>}"
+# Changed paths as "<added>\t<deleted>\t<path>"; binary files show "-" counts.
+numstat() {
+  git -C "$root" -c core.quotePath=false diff --numstat --no-renames "$1" "$2"
+}
+
+cmd="${1:?usage: claude-review-snapshot.sh tree <root> | mode|patch <root> <a> <b>}"
 root="${2:?missing <root>}"
 
 case "$cmd" in
@@ -31,21 +42,41 @@ mode)
   b="${4:?missing <tree-b>}"
   md=$(mktemp)
   trap 'rm -f "$md"' EXIT
-  other=$(git -C "$root" -c core.quotePath=false diff --name-only --no-renames "$a" "$b" |
-    while IFS= read -r f; do
+  tab=$(printf '\t')
+  kinds=$(numstat "$a" "$b" |
+    while IFS="$tab" read -r added _ f; do
+      if [ "$added" = - ]; then
+        echo bin
+        continue
+      fi
       case "$f" in
-      *.md | *.markdown) if [ -f "$root/$f" ]; then printf '%s\n' "$f" >>"$md"; else echo x; fi ;;
-      *) echo x ;;
+      *.md | *.markdown) if [ -f "$root/$f" ]; then printf '%s\n' "$f" >>"$md"; else echo text; fi ;;
+      *) echo text ;;
       esac
     done)
-  if [ ! -s "$md" ]; then
+  bin=$(printf '%s\n' "$kinds" | grep -c '^bin$') || true
+  text=$(printf '%s\n' "$kinds" | grep -c '^text$') || true
+  if [ -s "$md" ]; then
+    if [ "$text" -gt 0 ]; then echo both; else echo annotate; fi
+  elif [ "$text" -gt 0 ]; then
     echo review
-  elif [ -n "$other" ]; then
-    echo both
   else
-    echo annotate
+    echo skip
   fi
+  echo "$bin"
   cat "$md"
+  ;;
+patch)
+  a="${3:?missing <tree-a>}"
+  b="${4:?missing <tree-b>}"
+  # The same paths mode counts as binary, which includes empty "-diff" files
+  # that get no "Binary files" line.
+  skip=$(numstat "$a" "$b" | awk -F '\t' '$1 == "-" { print ":(exclude,literal)" $3 }')
+  set -f
+  IFS='
+'
+  # shellcheck disable=SC2086
+  git -C "$root" diff --no-color --no-ext-diff --no-renames "$a" "$b" -- . $skip
   ;;
 *)
   echo "claude-review-snapshot.sh: unknown command: $cmd" >&2
