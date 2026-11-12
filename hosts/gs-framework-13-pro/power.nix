@@ -32,6 +32,10 @@ in
   '';
   # Lid closed on AC locks instead of suspending, so builds/downloads keep running.
   services.logind.settings.Login.HandleLidSwitchExternalPower = "lock";
+  # USB hubs, root hubs included, may wake the system: a dock plugged in during sleep, or a key on a docked keyboard.
+  services.udev.extraRules = ''
+    ACTION=="add", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{bDeviceClass}=="09", ATTR{power/wakeup}="enabled"
+  '';
   # Battery: firmware low-power profile and deepest PCIe link power (measured
   # 8.3 W -> 6.9 W idle). AC keeps TLP's performance profile and default ASPM.
   services.tlp.settings = {
