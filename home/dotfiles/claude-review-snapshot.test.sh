@@ -36,7 +36,7 @@ check_eq "no change gives review" "review " "$(mode "$t1" "$t1")"
 
 echo c >> "$repo/code.py"
 t2=$(snap)
-check_eq "markdown and code together give both" "both notes.md " "$(mode "$t0" "$t2")"
+check_eq "markdown and code together give review" "review " "$(mode "$t0" "$t2")"
 check_eq "a code change alone gives review" "review " "$(mode "$t1" "$t2")"
 
 rm "$repo/notes.md"

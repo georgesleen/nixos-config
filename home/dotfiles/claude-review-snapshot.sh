@@ -8,8 +8,8 @@
 #
 #   claude-review-snapshot.sh mode <root> <tree-a> <tree-b>
 #     Prints "annotate" when every changed path is a markdown file still
-#     present at <root>, "review" when none is, and "both" for a mix. After
-#     "annotate" or "both" come those markdown paths, one per line.
+#     present at <root>, followed by those paths, one per line, and "review"
+#     otherwise.
 set -eu
 
 cmd="${1:?usage: claude-review-snapshot.sh tree <root> | mode <root> <a> <b>}"
@@ -38,14 +38,12 @@ mode)
       *) echo x ;;
       esac
     done)
-  if [ ! -s "$md" ]; then
-    echo review
-  elif [ -n "$other" ]; then
-    echo both
-  else
+  if [ -s "$md" ] && [ -z "$other" ]; then
     echo annotate
+    cat "$md"
+  else
+    echo review
   fi
-  cat "$md"
   ;;
 *)
   echo "claude-review-snapshot.sh: unknown command: $cmd" >&2

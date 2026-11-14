@@ -11,8 +11,8 @@
 # watched. CLAUDE_REVIEW=0 at launch turns the hook off, and while the file
 # $XDG_RUNTIME_DIR/claude-review/off exists no review opens. Runs only inside
 # sway, and only when a sway window owns the Claude process, so headless runs
-# never block. A turn that changes markdown and other files opens both
-# reviews, as two tabs in one pane. Expects SNAPSHOT
+# never block. A turn that changes only markdown opens the annotation view;
+# any other change opens one diff of everything. Expects SNAPSHOT
 # (claude-review-snapshot.sh) and PANE (plannotator-pane) set by the wrapper.
 
 [ "${CLAUDE_REVIEW:-1}" = 0 ] && exit 0
@@ -87,24 +87,10 @@ review() {
       plannotator review --patch-file - --json --title "$stamp diff" \
       >"$results/review.json") || true
 }
-pane_up() { # Waits until the window marked <mark> exists, up to 20s.
-  for _ in $(seq 200); do
-    swaymsg -t get_marks | jq -e --arg m "$1" 'index($m)' >/dev/null && return
-    sleep 0.1
-  done
-}
 
 case "$mode" in
 annotate) annotate ;;
 review) review ;;
-both)
-  # The markdown window comes up first so the diff joins it as a tab.
-  annotate &
-  notes=$!
-  pane_up "${group}_notes"
-  review
-  wait "$notes"
-  ;;
 esac
 
 # The window had focus if George was reading it; only then hand focus back.
