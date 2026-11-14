@@ -54,7 +54,7 @@ let
     set -- $layout
     ${swaymsg} -t get_workspaces | ${workspacePlan} "$1" "''${2-}" \
       | while IFS= read -r c; do ${swaymsg} "$c" >/dev/null; done
-    ${systemctl} --user start wallpaper-refresh.service
+    ${systemctl} --user restart wallpaper-refresh.service
     ${systemctl} --user restart waybar.service
   '';
 
