@@ -144,6 +144,10 @@
             final.zstd
           ];
         });
+        # swaymsg exits instead of spinning when IPC closes mid-payload (swaywm/sway#9338).
+        sway-unwrapped = prev.sway-unwrapped.overrideAttrs (old: {
+          patches = (old.patches or [ ]) ++ [ ./pkgs/sway-ipc-recv-eof.patch ];
+        });
         diff-review = final.callPackage ./pkgs/diff-review.nix { };
         difit = final.callPackage ./pkgs/difit.nix { };
         md-photo-import = final.callPackage ./pkgs/md-photo-import.nix { };

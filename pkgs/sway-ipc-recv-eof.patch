@@ -1,0 +1,11 @@
+--- a/common/ipc-client.c
++++ b/common/ipc-client.c
+@@ -104,7 +104,7 @@
+ 	total = 0;
+ 	while (total < response->size) {
+ 		ssize_t received = recv(socketfd, payload + total, response->size - total, 0);
+-		if (received < 0) {
++		if (received <= 0) {
+ 			sway_abort("Unable to receive IPC response");
+ 		}
+ 		total += received;
