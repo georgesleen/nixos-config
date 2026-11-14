@@ -53,6 +53,19 @@ writeShellApplication {
 
     prev=$(swaymsg -t get_tree | jq -r '.. | objects | select(.focused? == true) | .id')
 
+    # A cold start opens the URL as a tab in the restored session window, so
+    # the pane would claim (and the review would close) that window.
+    firefox_up() {
+      swaymsg -t get_tree | jq -e '[.. | objects | select(.app_id? == "firefox")] | length > 0' >/dev/null
+    }
+    if ! firefox_up; then
+      setsid -f "$firefox" </dev/null >/dev/null 2>&1
+      for _ in $(seq 300); do
+        firefox_up && break
+        sleep 0.1
+      done
+    fi
+
     events=$(mktemp)
     trap 'rm -f "$events"' EXIT
     swaymsg -r -t subscribe -m '["window"]' >"$events" &
@@ -65,8 +78,8 @@ writeShellApplication {
 
     setsid -f "$firefox" --new-window "$url" </dev/null >/dev/null 2>&1
 
-    # Firefox hands the URL to the running instance and exits, and a cold
-    # start restores other windows too, so match on the page title.
+    # Firefox hands the URL to the running instance and exits, so match on
+    # the page title.
     con=
     for _ in $(seq 200); do
       con=$(jq -r --arg t "$title" 'select(.container.app_id? == "firefox"
