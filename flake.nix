@@ -219,7 +219,6 @@
             # local one.
             arr-season-plan = inputs.nixos-pi4 + "/gs-pi4/arr-season-plan";
             av-step = ./home/dotfiles/av-step;
-            claude-review-snapshot = ./home/dotfiles/claude-review-snapshot;
             battery-idle = ./home/dotfiles/battery-idle;
             battery-level = ./home/dotfiles/battery-level;
             cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
