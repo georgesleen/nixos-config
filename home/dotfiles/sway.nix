@@ -7,6 +7,7 @@
 
 let
   borderWidth = 2;
+  swaysome = lib.getExe pkgs.swaysome;
   # Open a new kitty OS window in the focused kitty's cwd. Left Alt is the sway
   # modifier (Mod3), so kitty can't bind it internally; this drives kitty's
   # control socket instead. Falls back to a plain kitty when the focus is not a
@@ -141,80 +142,83 @@ in
           input."type:touchpad".accel_profile = "flat";
           input."type:touchpad".natural_scroll = "enabled";
           input."type:touchpad".pointer_accel = "0.7";
-          keybindings = {
-            "${mod}+0" = "workspace number 10";
-            "${mod}+1" = "workspace number 1";
-            "${mod}+2" = "workspace number 2";
-            "${mod}+3" = "workspace number 3";
-            "${mod}+4" = "workspace number 4";
-            "${mod}+5" = "workspace number 5";
-            "${mod}+6" = "workspace number 6";
-            "${mod}+7" = "workspace number 7";
-            "${mod}+8" = "workspace number 8";
-            "${mod}+9" = "workspace number 9";
-            "${mod}+Ctrl+h" = "move workspace to output left";
-            "${mod}+Ctrl+l" = "move workspace to output right";
-            "${mod}+Return" = "exec kitty";
-            "${mod}+Shift+0" = "move container to workspace number 10";
-            "${mod}+Shift+1" = "move container to workspace number 1";
-            "${mod}+Shift+2" = "move container to workspace number 2";
-            "${mod}+Shift+3" = "move container to workspace number 3";
-            "${mod}+Shift+4" = "move container to workspace number 4";
-            "${mod}+Shift+5" = "move container to workspace number 5";
-            "${mod}+Shift+6" = "move container to workspace number 6";
-            "${mod}+Shift+7" = "move container to workspace number 7";
-            "${mod}+Shift+8" = "move container to workspace number 8";
-            "${mod}+Shift+9" = "move container to workspace number 9";
-            "${mod}+Shift+Return" = "exec ${lib.getExe kittyCwdWindow}";
-            "${mod}+Shift+a" = "move workspace to output left";
-            "${mod}+Shift+c" = "reload";
-            "${mod}+Shift+d" = "move workspace to output up";
-            "${mod}+Shift+e" = "exec swaymsg exit";
-            "${mod}+Shift+f" = "move workspace to output right";
-            "${mod}+Shift+h" = "move left";
-            "${mod}+Shift+j" = "move down";
-            "${mod}+Shift+k" = "move up";
-            "${mod}+Shift+l" = "move right";
-            "${mod}+Shift+minus" = "move scratchpad";
-            "${mod}+Shift+q" = "kill";
-            "${mod}+Shift+r" = "restart";
-            "${mod}+Shift+s" = "move workspace to output down";
-            "${mod}+Shift+space" = "floating toggle";
-            "${mod}+a" = "focus parent";
-            "${mod}+b" = "splith";
-            "${mod}+d" = "exec ${pkgs.fuzzel}/bin/fuzzel";
-            "${mod}+e" = "layout toggle split";
-            "${mod}+f" = "fullscreen toggle";
-            "${mod}+h" = "focus left";
-            "${mod}+j" = "focus down";
-            "${mod}+k" = "focus up";
-            "${mod}+l" = "focus right";
-            "${mod}+minus" = "scratchpad show";
-            "${mod}+r" = "mode resize";
-            "${mod}+s" = "layout stacking";
-            "${mod}+space" = "focus mode_toggle";
-            "${mod}+v" = "splitv";
-            "${mod}+w" = "layout tabbed";
-            "--locked ${mod}+Shift+x" = "exec ${lockCmd}";
-            "--locked ${mod}+XF86AudioLowerVolume" = "exec ${volumeScript} down";
-            "--locked ${mod}+XF86AudioMicMute" = "exec ${micMuteScript}";
-            "--locked ${mod}+XF86AudioMute" = "exec ${volumeScript} mute";
-            "--locked ${mod}+XF86AudioRaiseVolume" = "exec ${volumeScript} up";
-            "--locked ${mod}+XF86MonBrightnessDown" = "exec ${brightnessScript} down";
-            "--locked ${mod}+XF86MonBrightnessUp" = "exec ${brightnessScript} up";
-            "--locked XF86AudioLowerVolume" = "exec ${volumeScript} down";
-            "--locked XF86AudioMicMute" = "exec ${micMuteScript}";
-            "--locked XF86AudioMute" = "exec ${volumeScript} mute";
-            "--locked XF86AudioNext" = "exec ${pkgs.playerctl}/bin/playerctl next";
-            "--locked XF86AudioPause" = "exec ${pkgs.playerctl}/bin/playerctl pause";
-            "--locked XF86AudioPlay" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
-            "--locked XF86AudioPrev" = "exec ${pkgs.playerctl}/bin/playerctl previous";
-            "--locked XF86AudioRaiseVolume" = "exec ${volumeScript} up";
-            "--locked XF86MonBrightnessDown" = "exec ${brightnessScript} down";
-            "--locked XF86MonBrightnessUp" = "exec ${brightnessScript} up";
-            "Control+${mod}+t" = "exec kitty";
-            "Print" = "exec ${screenshotScript}/bin/screenshot full";
-          };
+          keybindings =
+            # Workspaces come in swaysome groups of ten (group N is N0-N9). The
+            # mod key picks a slot inside the current group, Super picks the
+            # group. workspace-plan.sh decides which screen a group lives on.
+            lib.listToAttrs (
+              lib.concatMap (
+                n:
+                let
+                  k = toString n;
+                in
+                [
+                  (lib.nameValuePair "${mod}+${k}" "exec ${swaysome} focus ${k}")
+                  (lib.nameValuePair "${mod}+Shift+${k}" "exec ${swaysome} move ${k}")
+                ]
+                ++ lib.optionals (n > 0) [
+                  (lib.nameValuePair "Mod4+${k}" "exec ${swaysome} focus-group ${k}")
+                  (lib.nameValuePair "Mod4+Shift+${k}" "exec ${swaysome} move-to-group ${k}")
+                ]
+              ) (lib.range 0 9)
+            )
+            // {
+              # swaysome has no previous-group command; the previous workspace is
+              # the previous group whenever the last switch was a group switch.
+              "Mod4+Tab" = "workspace back_and_forth";
+              "${mod}+Ctrl+h" = "move workspace to output left";
+              "${mod}+Ctrl+l" = "move workspace to output right";
+              "${mod}+Return" = "exec kitty";
+              "${mod}+Shift+Return" = "exec ${lib.getExe kittyCwdWindow}";
+              "${mod}+Shift+a" = "move workspace to output left";
+              "${mod}+Shift+c" = "reload";
+              "${mod}+Shift+d" = "move workspace to output up";
+              "${mod}+Shift+e" = "exec swaymsg exit";
+              "${mod}+Shift+f" = "move workspace to output right";
+              "${mod}+Shift+h" = "move left";
+              "${mod}+Shift+j" = "move down";
+              "${mod}+Shift+k" = "move up";
+              "${mod}+Shift+l" = "move right";
+              "${mod}+Shift+minus" = "move scratchpad";
+              "${mod}+Shift+q" = "kill";
+              "${mod}+Shift+r" = "restart";
+              "${mod}+Shift+s" = "move workspace to output down";
+              "${mod}+Shift+space" = "floating toggle";
+              "${mod}+a" = "focus parent";
+              "${mod}+b" = "splith";
+              "${mod}+d" = "exec ${pkgs.fuzzel}/bin/fuzzel";
+              "${mod}+e" = "layout toggle split";
+              "${mod}+f" = "fullscreen toggle";
+              "${mod}+h" = "focus left";
+              "${mod}+j" = "focus down";
+              "${mod}+k" = "focus up";
+              "${mod}+l" = "focus right";
+              "${mod}+minus" = "scratchpad show";
+              "${mod}+r" = "mode resize";
+              "${mod}+s" = "layout stacking";
+              "${mod}+space" = "focus mode_toggle";
+              "${mod}+v" = "splitv";
+              "${mod}+w" = "layout tabbed";
+              "--locked ${mod}+Shift+x" = "exec ${lockCmd}";
+              "--locked ${mod}+XF86AudioLowerVolume" = "exec ${volumeScript} down";
+              "--locked ${mod}+XF86AudioMicMute" = "exec ${micMuteScript}";
+              "--locked ${mod}+XF86AudioMute" = "exec ${volumeScript} mute";
+              "--locked ${mod}+XF86AudioRaiseVolume" = "exec ${volumeScript} up";
+              "--locked ${mod}+XF86MonBrightnessDown" = "exec ${brightnessScript} down";
+              "--locked ${mod}+XF86MonBrightnessUp" = "exec ${brightnessScript} up";
+              "--locked XF86AudioLowerVolume" = "exec ${volumeScript} down";
+              "--locked XF86AudioMicMute" = "exec ${micMuteScript}";
+              "--locked XF86AudioMute" = "exec ${volumeScript} mute";
+              "--locked XF86AudioNext" = "exec ${pkgs.playerctl}/bin/playerctl next";
+              "--locked XF86AudioPause" = "exec ${pkgs.playerctl}/bin/playerctl pause";
+              "--locked XF86AudioPlay" = "exec ${pkgs.playerctl}/bin/playerctl play-pause";
+              "--locked XF86AudioPrev" = "exec ${pkgs.playerctl}/bin/playerctl previous";
+              "--locked XF86AudioRaiseVolume" = "exec ${volumeScript} up";
+              "--locked XF86MonBrightnessDown" = "exec ${brightnessScript} down";
+              "--locked XF86MonBrightnessUp" = "exec ${brightnessScript} up";
+              "Control+${mod}+t" = "exec kitty";
+              "Print" = "exec ${screenshotScript}/bin/screenshot full";
+            };
           menu = "${pkgs.fuzzel}/bin/fuzzel";
           modes = {
             resize = {
@@ -238,7 +242,7 @@ in
         };
       enable = true;
       extraConfig = ''
-        workspace 1
+        workspace number 11
 
         output * subpixel rgb
 
