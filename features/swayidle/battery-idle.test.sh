@@ -28,6 +28,8 @@ else
     printf '%s\n' "$*" >> "$BATTERY_IDLE_FIXTURE/actions"
 fi
 STUB
+# Stubs run under this bash: a build sandbox has no /usr/bin/env.
+sed -i "1s|^#!/usr/bin/env bash$|#!$BASH|" "$fixture/bin/"*
 chmod +x "$fixture/bin/"*
 reset_fixture() {
     rm -rf "$BATTERY_IDLE_STATE"
