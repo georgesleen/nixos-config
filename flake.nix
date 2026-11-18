@@ -225,6 +225,7 @@
             secrets-guard-match = ./home/dotfiles/secrets-guard-match;
             snapper-orphans = ./modules/features/snapper-orphans;
             sway-group = ./home/dotfiles/sway-group;
+            sway-names = ./home/dotfiles/sway-names;
             systemd-order-cycles = ./modules/features/systemd-order-cycles;
             ts-route = ./hosts/gs-pi1-parents/ts-route;
             usb-wedge = ./hosts/gs-pi4/usb-wedge;

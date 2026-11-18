@@ -443,8 +443,9 @@ let
   # amount, which is what America/Vancouver uses until 2026-11-01 (BC ending
   # seasonal clock changes), so the native clock reads an hour behind.
   # swaysome group shown on this bar's output (see sway-group.sh), redrawn on
-  # every sway workspace event. Names come from the file the rename binding
-  # writes; a missing file means numbers only.
+  # every sway workspace event and on the tick the group rename binding sends.
+  # Names come from the file that binding writes; a missing file means numbers
+  # only.
   swayGroup = pkgs.writeShellScript "sway-group" ''
     export JQ="${pkgs.jq}/bin/jq"
     ${builtins.readFile ./sway-group.sh}
@@ -454,7 +455,7 @@ let
     export GROUP_NAMES="''${XDG_STATE_HOME:-$HOME/.local/state}/sway-groups/names"
     show() { ${pkgs.sway}/bin/swaymsg -t get_workspaces | ${swayGroup}; }
     show
-    ${pkgs.sway}/bin/swaymsg -r -t subscribe -m '["workspace"]' | while read -r _; do show; done
+    ${pkgs.sway}/bin/swaymsg -r -t subscribe -m '["workspace","tick"]' | while read -r _; do show; done
   '';
   clockBlock = pkgs.writeShellScript "waybar-clock" ''
     set -euo pipefail
@@ -638,20 +639,10 @@ in
           };
           spacing = statusStyle.spacing;
           "sway/mode".format = "<span style=\"italic\">{}</span>";
-          # Workspace N is slot N % 10 of group N / 10; Waybar cannot split a
-          # number, so every plain number gets a `g·k` label. A name with no
-          # entry (the mirror workspace) is shown as it is.
-          "sway/workspaces" = {
-            format = "{icon}";
-            format-icons = lib.listToAttrs (
-              map (
-                n:
-                lib.nameValuePair (toString n) (
-                  if n < 10 then toString n else "${toString (n / 10)}·${toString (lib.mod n 10)}"
-                )
-              ) (lib.range 1 99)
-            );
-          };
+          # sway-names (sway.nix) names workspace 21 `21:2·1 [label]`, and
+          # `{name}` drops the `21:` prefix. A workspace the listener has not
+          # reached yet shows its bare number.
+          "sway/workspaces".format = "{name}";
           tray = {
             icon-size = 16;
             spacing = 8;

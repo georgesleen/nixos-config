@@ -8,6 +8,62 @@
 let
   borderWidth = 2;
   swaysome = lib.getExe pkgs.swaysome;
+  swaymsg = "${pkgs.sway}/bin/swaymsg";
+  jq = "${pkgs.jq}/bin/jq";
+  # Workspace and group names (see sway-names.sh). Labels persist here, so a
+  # renamed workspace gets its label back when it is recreated or after a
+  # reboot; the Waybar group pill reads `names` from the same directory.
+  groupState = "\${XDG_STATE_HOME:-$HOME/.local/state}/sway-groups";
+  swayNames = pkgs.writeShellScript "sway-names" ''
+    export JQ="${jq}"
+    PATH="${
+      lib.makeBinPath [
+        pkgs.coreutils
+        pkgs.gawk
+        pkgs.gnused
+      ]
+    }:$PATH"
+    ${builtins.readFile ./sway-names.sh}
+  '';
+  # Names every workspace as it appears, so Waybar shows `2·1 kicad`.
+  swayNamesListen = pkgs.writeShellScript "sway-names-listen" ''
+    export WS_NAMES="${groupState}/workspaces"
+    apply() { while IFS= read -r c; do ${swaymsg} "$c" >/dev/null || true; done; }
+    ${swaymsg} -t get_workspaces | ${swayNames} plan | apply
+    ${swaymsg} -r -t subscribe -m '["workspace"]' | while IFS= read -r ev; do
+      printf '%s' "$ev" | ${swayNames} plan | apply
+    done
+  '';
+  # Super+Shift+n (workspace) / Super+n (group): a fuzzel prompt prefilled
+  # with the current name. Esc cancels (fuzzel exits 2). fuzzel ignores Enter
+  # on an empty box, so clearing is a lone space, which `set` trims to nothing.
+  renameWorkspace = pkgs.writeShellScript "sway-rename-workspace" ''
+    set -eu
+    dir="${groupState}"; f="$dir/workspaces"
+    mkdir -p "$dir"; touch "$f"
+    num=$(${swaymsg} -t get_workspaces | ${jq} -r '.[] | select(.focused) | .num')
+    [ "$num" -ge 1 ] || exit 0
+    cur=$(${swayNames} get "$num" < "$f")
+    label=$(${lib.getExe pkgs.fuzzel} --dmenu --prompt-only "Name workspace $num: " --search "$cur" --placeholder "space, Enter: clear") || exit 0
+    tmp=$(mktemp "$f.XXXXXX")
+    ${swayNames} set "$num" "$label" < "$f" > "$tmp" && mv "$tmp" "$f"
+    label=$(${swayNames} get "$num" < "$f")
+    ${swaymsg} "rename workspace number $num to \"$(${swayNames} name "$num" "$label")\"" >/dev/null || true
+  '';
+  renameGroup = pkgs.writeShellScript "sway-rename-group" ''
+    set -eu
+    dir="${groupState}"; f="$dir/names"
+    mkdir -p "$dir"; touch "$f"
+    num=$(${swaymsg} -t get_workspaces | ${jq} -r '.[] | select(.focused) | .num')
+    [ "$num" -ge 10 ] || exit 0
+    group=$((num / 10))
+    cur=$(${swayNames} get "$group" < "$f")
+    name=$(${lib.getExe pkgs.fuzzel} --dmenu --prompt-only "Name group $group: " --search "$cur" --placeholder "space, Enter: clear") || exit 0
+    tmp=$(mktemp "$f.XXXXXX")
+    ${swayNames} set "$group" "$name" < "$f" > "$tmp" && mv "$tmp" "$f"
+    # A group name changes nothing in sway, so nudge the pill with a tick.
+    ${swaymsg} -t send_tick sway-groups >/dev/null
+  '';
   # Open a new kitty OS window in the focused kitty's cwd. Left Alt is the sway
   # modifier (Mod3), so kitty can't bind it internally; this drives kitty's
   # control socket instead. Falls back to a plain kitty when the focus is not a
@@ -126,6 +182,19 @@ in
     services.clipman = {
       enable = true;
     };
+    systemd.user.services.sway-names = {
+      Install.WantedBy = [ "sway-session.target" ];
+      Service = {
+        ExecStart = "${swayNamesListen}";
+        Restart = "always";
+        RestartSec = 2;
+      };
+      Unit = {
+        After = [ "sway-session.target" ];
+        Description = "Name sway workspaces as group·slot plus remembered labels";
+        PartOf = [ "sway-session.target" ];
+      };
+    };
     wayland.windowManager.sway = {
       config =
         let
@@ -166,6 +235,8 @@ in
               # swaysome has no previous-group command; the previous workspace is
               # the previous group whenever the last switch was a group switch.
               "Mod4+Tab" = "workspace back_and_forth";
+              "Mod4+n" = "exec ${renameGroup}";
+              "Mod4+Shift+n" = "exec ${renameWorkspace}";
               "${mod}+Ctrl+h" = "move workspace to output left";
               "${mod}+Ctrl+l" = "move workspace to output right";
               "${mod}+Return" = "exec kitty";
