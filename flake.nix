@@ -224,6 +224,7 @@
             qbit-seed-reap = inputs.nixos-pi4 + "/gs-pi4/qbit-seed-reap";
             secrets-guard-match = ./home/dotfiles/secrets-guard-match;
             snapper-orphans = ./modules/features/snapper-orphans;
+            sway-group = ./home/dotfiles/sway-group;
             systemd-order-cycles = ./modules/features/systemd-order-cycles;
             ts-route = ./hosts/gs-pi1-parents/ts-route;
             usb-wedge = ./hosts/gs-pi4/usb-wedge;

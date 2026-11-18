@@ -442,6 +442,20 @@ let
   # tzdb drops the DST offset on a zone line whose RULES column is a literal
   # amount, which is what America/Vancouver uses until 2026-11-01 (BC ending
   # seasonal clock changes), so the native clock reads an hour behind.
+  # swaysome group shown on this bar's output (see sway-group.sh), redrawn on
+  # every sway workspace event. Names come from the file the rename binding
+  # writes; a missing file means numbers only.
+  swayGroup = pkgs.writeShellScript "sway-group" ''
+    export JQ="${pkgs.jq}/bin/jq"
+    ${builtins.readFile ./sway-group.sh}
+  '';
+  groupBlock = pkgs.writeShellScript "waybar-group" ''
+    export OUTPUT="''${WAYBAR_OUTPUT_NAME-}"
+    export GROUP_NAMES="''${XDG_STATE_HOME:-$HOME/.local/state}/sway-groups/names"
+    show() { ${pkgs.sway}/bin/swaymsg -t get_workspaces | ${swayGroup}; }
+    show
+    ${pkgs.sway}/bin/swaymsg -r -t subscribe -m '["workspace"]' | while read -r _; do show; done
+  '';
   clockBlock = pkgs.writeShellScript "waybar-clock" ''
     set -euo pipefail
     while true; do
@@ -542,6 +556,12 @@ in
             return-type = "json";
             signal = 9;
           };
+          "custom/group" = {
+            exec = "${groupBlock}";
+            return-type = "json";
+            # The subscription ends when sway restarts; Waybar then reruns it.
+            restart-interval = 5;
+          };
           "custom/clock" = {
             exec = "${clockBlock}";
             restart-interval = 5;
@@ -576,6 +596,7 @@ in
           layer = "top";
           modules-center = [ ];
           modules-left = [
+            "custom/group"
             "sway/workspaces"
             "sway/mode"
           ];
@@ -617,7 +638,20 @@ in
           };
           spacing = statusStyle.spacing;
           "sway/mode".format = "<span style=\"italic\">{}</span>";
-          "sway/workspaces".format = "{name}";
+          # Workspace N is slot N % 10 of group N / 10; Waybar cannot split a
+          # number, so every plain number gets a `g·k` label. A name with no
+          # entry (the mirror workspace) is shown as it is.
+          "sway/workspaces" = {
+            format = "{icon}";
+            format-icons = lib.listToAttrs (
+              map (
+                n:
+                lib.nameValuePair (toString n) (
+                  if n < 10 then toString n else "${toString (n / 10)}·${toString (lib.mod n 10)}"
+                )
+              ) (lib.range 1 99)
+            );
+          };
           tray = {
             icon-size = 16;
             spacing = 8;
@@ -673,6 +707,7 @@ in
       #custom-disk,
       #custom-battery,
       #custom-power,
+      #custom-group,
       #power-profiles-daemon,
       #custom-clock {
         margin: ${toString statusStyle.marginVertical}px ${toString statusStyle.marginHorizontal}px;
@@ -688,6 +723,7 @@ in
       #power-profiles-daemon { color: ${c.power}; }
       #power-profiles-daemon.performance { color: ${c.batLow}; }
       #custom-clock { color: ${c.fg}; }
+      #custom-group { color: ${c.accent}; margin-left: 4px; }
     '';
     systemd.enable = true;
   };
