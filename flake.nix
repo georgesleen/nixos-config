@@ -208,6 +208,7 @@
             cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
             display-mode = ./home/dotfiles/display-mode;
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
+            firefox-target = ./home/dotfiles/firefox-target;
             fingerprint-led = ./hosts/gs-framework-13-pro/fingerprint-led;
             gpu-busy = ./home/dotfiles/gpu-busy;
             helix-open-cmd = ./home/dotfiles/helix-open-cmd;
