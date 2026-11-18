@@ -11,6 +11,8 @@
       scriptText ? null,
       runtimeInputs ? [ ],
       env ? { },
+      vars ? { },
+      bashOptions ? null,
       service ? { },
       timerDescription ? null,
     }:
@@ -23,15 +25,23 @@
         }
         (lib.mkIf (script != null) {
           serviceConfig.ExecStart = lib.getExe (
-            pkgs.writeShellApplication {
-              inherit name runtimeInputs;
-              # The file keeps its shebang for editors; the wrapper has its own.
-              text =
-                let
-                  t = builtins.readFile script;
-                in
-                if lib.hasPrefix "#!" t then lib.concatStringsSep "\n" (lib.tail (lib.splitString "\n" t)) else t;
-            }
+            pkgs.writeShellApplication (
+              {
+                inherit name runtimeInputs;
+                # `vars` become shell assignments ahead of the file, so values
+                # reach it verbatim with no systemd Environment= quoting. The
+                # file keeps its shebang for editors; the wrapper has its own.
+                text =
+                  let
+                    t = builtins.readFile script;
+                    body =
+                      if lib.hasPrefix "#!" t then lib.concatStringsSep "\n" (lib.tail (lib.splitString "\n" t)) else t;
+                    assigns = lib.concatStrings (lib.mapAttrsToList (k: v: "${k}=${lib.escapeShellArg v}\n") vars);
+                  in
+                  assigns + body;
+              }
+              // lib.optionalAttrs (bashOptions != null) { inherit bashOptions; }
+            )
           );
         })
         (lib.mkIf (scriptText != null) { script = scriptText; })

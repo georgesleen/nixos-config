@@ -79,6 +79,38 @@ let
       wantedBy = [ "timers.target" ];
     };
   };
+  varsHelper = system (
+    { gs, ... }:
+    {
+      imports = [
+        (gs.timerJob {
+          name = "probe";
+          description = "Probe";
+          timer.OnCalendar = "daily";
+          script = script;
+          vars.GREETING = "it's \"$HOME\" 100%";
+          bashOptions = [ "errexit" ];
+        })
+      ];
+    }
+  );
+  varsByHand = system {
+    systemd.services.probe = {
+      description = "Probe";
+      serviceConfig.Type = "oneshot";
+      serviceConfig.ExecStart = lib.getExe (
+        pkgs.writeShellApplication {
+          name = "probe";
+          bashOptions = [ "errexit" ];
+          text = "GREETING=${lib.escapeShellArg "it's \"$HOME\" 100%"}\necho probe\n";
+        }
+      );
+    };
+    systemd.timers.probe = {
+      timerConfig.OnCalendar = "daily";
+      wantedBy = [ "timers.target" ];
+    };
+  };
   unit = c: n: c.systemd.units.${n}.text;
   clash = system {
     gs.ports.a = 8083;
@@ -88,6 +120,8 @@ let
   checks = {
     "timerJob service unit" = unit helper "probe.service" == unit byHand "probe.service";
     "timerJob timer unit" = unit helper "probe.timer" == unit byHand "probe.timer";
+    "timerJob vars and bashOptions" =
+      unit varsHelper "probe.service" == unit varsByHand "probe.service";
     "timerJob inline script and env" =
       unit inlineHelper "probe.service" == unit inlineByHand "probe.service";
     "port clash asserts" = builtins.any (a: lib.hasInfix "8083" a.message) failed;
