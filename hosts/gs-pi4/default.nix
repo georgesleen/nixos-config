@@ -152,8 +152,8 @@ in
   imports = [
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
-    ../../modules/roles/pi.nix
-    ../../modules/features/pi-api.nix
+    ../../roles/pi.nix
+    ../../features/pi-api/default.nix
     ./usb-wedge.nix
     # Host-specific service modules live in the private nixos-pi4 input.
     inputs.nixos-pi4.nixosModules.gs-pi4
@@ -183,7 +183,7 @@ in
   nixpkgs.config.allowUnfree = true;
   nixpkgs.hostPlatform = "aarch64-linux";
   security.sudo.wheelNeedsPassword = false;
-  # Receives the laptop's /home; see modules/features/home-backup.nix.
+  # Receives the laptop's /home; see features/home-backup/default.nix.
   services.btrbk.sshAccess = [
     {
       key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMhDb8pIXDe6VuEYWyczd25jYB7v0gE8uG7rJiO6NYTd btrbk@gs-framework-13-pro";

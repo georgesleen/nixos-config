@@ -10,11 +10,11 @@
   home.homeDirectory = "/home/${user}";
 
   imports = [
-    ./dotfiles/bashrc.nix
-    ./dotfiles/git.nix
-    ./dotfiles/helix.nix
-    ./dotfiles/rclone.nix
-    ./dotfiles/tmux.nix
+    ../features/bashrc/home.nix
+    ../features/git/home.nix
+    ../features/helix/home.nix
+    ../features/rclone/home.nix
+    ../features/tmux/home.nix
   ];
 
   home.stateVersion = "25.11";

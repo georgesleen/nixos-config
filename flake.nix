@@ -15,10 +15,10 @@
     };
     # Photo-into-markdown cog for steel helix, local clone (published repo
     # pending). Needs md-photo-pick and md-photo-import on PATH; both are
-    # packaged here, see modules/features/taildrop.nix.
+    # packaged here, see features/taildrop/default.nix.
     helix-photo-insert.url = "git+file:///home/george-sleen/Documents/projects/helix-photo-insert";
     # Session save/restore cog for steel helix, local clone (published
-    # repo pending). Consumed by home/dotfiles/helix.nix.
+    # repo pending). Consumed by features/helix/home.nix.
     helix-session.url = "git+file:///home/george-sleen/Documents/projects/helix-session";
     # Helix with the Steel plugin system (upstream PR #8675, not merged yet)
     # plus the native coloured-output API used by helix-test-debug. Native
@@ -30,7 +30,7 @@
       url = "github:georgesleen/helix/steel-event-system-output";
     };
     # Debug-the-test-under-the-cursor cog for steel helix. Own repo so it is
-    # usable outside this config; see home/dotfiles/helix.nix.
+    # usable outside this config; see features/helix/home.nix.
     helix-test-debug = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:georgesleen/helix-test-debug";
@@ -40,7 +40,7 @@
       url = "github:nix-community/home-manager";
     };
     # Helix-style copy mode kitten for kitty, a fork of yurikhan/kitty_grab.
-    # Own repo so it is usable outside this config; see home/dotfiles/kitty.nix.
+    # Own repo so it is usable outside this config; see features/kitty/home.nix.
     kitty_grab_helix = {
       inputs.nixpkgs.follows = "nixpkgs";
       url = "github:georgesleen/kitty_grab_helix";
@@ -185,32 +185,32 @@
             # base path, so a store path from an input works the same as a
             # local one.
             arr-season-plan = inputs.nixos-pi4 + "/gs-pi4/arr-season-plan";
-            av-step = ./home/dotfiles/av-step;
-            battery-idle = ./home/dotfiles/battery-idle;
-            battery-level = ./home/dotfiles/battery-level;
+            av-step = ./features/sway/av-step;
+            battery-idle = ./features/swayidle/battery-idle;
+            battery-level = ./features/battery/battery-level;
             cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
-            display-mode = ./home/dotfiles/display-mode;
+            display-mode = ./features/way-displays/display-mode;
             epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
             fingerprint-led = ./hosts/gs-framework-13-pro/fingerprint-led;
-            gpu-busy = ./home/dotfiles/gpu-busy;
-            helix-open-cmd = ./home/dotfiles/helix-open-cmd;
-            hx-split = ./home/dotfiles/hx-split;
+            gpu-busy = ./features/waybar/gpu-busy;
+            helix-open-cmd = ./features/yazi-sidebar/helix-open-cmd;
+            hx-split = ./features/yazi-sidebar/hx-split;
             jellyfin-bg-pause = inputs.nixos-pi4 + "/gs-pi4/jellyfin-bg-pause";
-            known-good-boot = ./modules/features/known-good-boot;
+            known-good-boot = ./features/known-good-boot/known-good-boot;
             lazylibrarian-reap = inputs.nixos-pi4 + "/gs-pi4/lazylibrarian-reap";
             library-guard = inputs.nixos-pi4 + "/gs-pi4/library-guard";
             media-free = inputs.nixos-pi4 + "/gs-pi4/media-free";
             media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
             pressure-guard = inputs.nixos-pi4 + "/gs-pi4/pressure-guard";
             qbit-seed-reap = inputs.nixos-pi4 + "/gs-pi4/qbit-seed-reap";
-            secrets-guard-match = ./home/dotfiles/secrets-guard-match;
-            snapper-orphans = ./modules/features/snapper-orphans;
-            systemd-order-cycles = ./modules/features/systemd-order-cycles;
+            secrets-guard-match = ./features/claude/secrets-guard-match;
+            snapper-orphans = ./features/btrfs/snapper-orphans;
+            systemd-order-cycles = ./tools/systemd-order-cycles;
             ts-route = ./hosts/gs-pi1-parents/ts-route;
             usb-wedge = ./hosts/gs-pi4/usb-wedge;
-            waybar-fmt = ./home/dotfiles/waybar-fmt;
+            waybar-fmt = ./features/waybar/waybar-fmt;
             win11-forward = ./hosts/gs-server/win11-forward;
-            workspace-plan = ./home/dotfiles/workspace-plan;
+            workspace-plan = ./features/way-displays/workspace-plan;
           };
           shellTest =
             name: base:
@@ -232,7 +232,7 @@
         in
         builtins.mapAttrs shellTest suites
         // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
-          claude-proxy = import ./tests/claude-proxy.nix { inherit pkgs; };
+          claude-proxy = import ./features/claude/claude-proxy.check.nix { inherit pkgs; };
         }
         // {
           librepods-watch =
@@ -242,7 +242,7 @@
               }
               ''
                 set -o pipefail
-                python ${./home/dotfiles/librepods-watch.test.py} ${./home/dotfiles/librepods-watch.py} 2>&1 | tee "$out"
+                python ${./features/librepods/librepods-watch.test.py} ${./features/librepods/librepods-watch.py} 2>&1 | tee "$out"
               '';
         }
       );

@@ -1,0 +1,614 @@
+{
+  config,
+  inputs,
+  pkgs,
+  ...
+}:
+let
+  helixDapVars = inputs.helix-test-debug.packages.${pkgs.stdenv.hostPlatform.system}.helix-dap-vars;
+  steelwoolPackage = inputs.steelwool.packages.${pkgs.stdenv.hostPlatform.system}.default;
+  steelwool =
+    if pkgs.stdenv.hostPlatform.isAarch64 then
+      steelwoolPackage.overrideAttrs { doCheck = false; }
+    else
+      steelwoolPackage;
+  # Helix ships no d2 grammar. The main-helix branch is the ABI 14 build
+  # with Helix capture names, kept by upstream for ravsii/tree-sitter-d2#102.
+  d2GrammarSrc = pkgs.fetchFromGitHub {
+    hash = "sha256-ZoMM8zZLayJLeR9hF1nAdzmq7BX6tUF6a1DXuL5qYTY=";
+    owner = "ravsii";
+    repo = "tree-sitter-d2";
+    rev = "fa10588301700cddc563a631eca490bb4567387d";
+  };
+  d2Grammar = pkgs.tree-sitter.buildGrammar {
+    language = "d2";
+    src = d2GrammarSrc;
+    version = "0.6.0-main-helix";
+  };
+  # d2 has no language server; efm reports `d2 validate` errors as diagnostics.
+  d2Efm = (pkgs.formats.yaml { }).generate "efm-d2.yaml" {
+    languages.d2 = [
+      {
+        # efm skips the first lint on open unless asked, and warns on every
+        # clean exit unless the exit code is ignored.
+        lint-after-open = true;
+        lint-command = "${pkgs.d2}/bin/d2 validate -";
+        lint-formats = [
+          "err: %l:%c: %m"
+          "err: %*[^ ] %l:%c: %m"
+        ];
+        lint-ignore-exit-code = true;
+        lint-source = "d2";
+        lint-stdin = true;
+      }
+    ];
+    version = 2;
+  };
+in
+{
+  home.packages = [
+    helixDapVars
+    steelwool
+  ];
+  programs.helix = {
+    enable = true;
+    languages = {
+      language = [
+        {
+          formatter = {
+            args = [ "-" ];
+            command = "${pkgs.nixfmt}/bin/nixfmt";
+          };
+          language-servers = [
+            "nil"
+            "harper"
+          ];
+          name = "nix";
+        }
+        {
+          formatter = {
+            args = [
+              "--quiet"
+              "-"
+            ];
+            command = "black";
+          };
+          language-servers = [
+            "pylsp"
+            "harper"
+          ];
+          name = "python";
+        }
+        {
+          formatter = {
+            args = [
+              "--parser"
+              "markdown"
+              "--print-width"
+              "80"
+              "--prose-wrap"
+              "always"
+            ];
+            command = "prettier";
+          };
+          language-servers = [
+            "harper"
+            "marksman"
+          ];
+          name = "markdown";
+        }
+        {
+          formatter = {
+            args = [
+              "--line-width"
+              "80"
+              "--wrap-text"
+            ];
+            command = "typstyle";
+          };
+          language-servers = [
+            "tinymist"
+            "harper"
+          ];
+          name = "typst";
+        }
+        {
+          # Helix's built-in cpp debugger block, restated because a user
+          # `debugger` key replaces it wholesale, plus the template
+          # :debug-here drives. ctest names the executable and the one
+          # argument that selects the test, so no filter flag belongs here.
+          debugger = {
+            args = [
+              "--"
+              "lldb-dap"
+            ];
+            command = "helix-dap-vars";
+            name = "lldb-dap";
+            templates = [
+              {
+                args = {
+                  console = "internalConsole";
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                ];
+                name = "binary";
+                request = "launch";
+              }
+              {
+                args = {
+                  args = [ "{1}" ];
+                  console = "internalConsole";
+                  preRunCommands = [ "breakpoint set --file {2} --line {3}" ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                  { name = "test argument"; }
+                  { name = "source file"; }
+                  { name = "line"; }
+                ];
+                name = "binary at line";
+                request = "launch";
+              }
+            ];
+            transport = "stdio";
+          };
+          language-servers = [
+            "clangd"
+            "harper"
+          ];
+          name = "c";
+        }
+        {
+          debugger = {
+            args = [
+              "--"
+              "lldb-dap"
+            ];
+            command = "helix-dap-vars";
+            name = "lldb-dap";
+            templates = [
+              {
+                args = {
+                  console = "internalConsole";
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                ];
+                name = "binary";
+                request = "launch";
+              }
+              {
+                args = {
+                  args = [ "{1}" ];
+                  console = "internalConsole";
+                  preRunCommands = [ "breakpoint set --file {2} --line {3}" ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                  { name = "test argument"; }
+                  { name = "source file"; }
+                  { name = "line"; }
+                ];
+                name = "binary at line";
+                request = "launch";
+              }
+            ];
+            transport = "stdio";
+          };
+          language-servers = [
+            "clangd"
+            "harper"
+          ];
+          name = "cpp";
+        }
+        {
+          # Helix's built-in rust debugger block, restated because a user
+          # `debugger` key replaces it wholesale, plus a cargo-test template.
+          # Cargo test binaries take the filter as argv, and --test-threads=1
+          # keeps stepping sequential. Find the binary with
+          # `cargo test --no-run --message-format=json`.
+          debugger = {
+            args = [
+              "--"
+              "lldb-dap-rust"
+            ];
+            # Wrapper from features/lsp/rust.nix; loads rustc's LLDB
+            # type formatters.
+            command = "helix-dap-vars";
+            name = "lldb-dap";
+            templates = [
+              {
+                args.program = "{0}";
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "binary";
+                  }
+                ];
+                name = "binary";
+                request = "launch";
+              }
+              {
+                args = {
+                  args = [
+                    "{1}"
+                    "--test-threads=1"
+                    "--nocapture"
+                    "--color=always"
+                  ];
+                  program = "{0}";
+                };
+                completion = [
+                  {
+                    completion = "filename";
+                    name = "test binary";
+                  }
+                  { name = "test filter"; }
+                ];
+                name = "cargo test";
+                request = "launch";
+              }
+              inputs.helix-test-debug.lib.rustDebuggerTemplate
+              inputs.helix-test-debug.lib.programDebuggerTemplate
+            ];
+            transport = "stdio";
+          };
+          language-servers = [
+            "rust-analyzer"
+            "harper"
+          ];
+          name = "rust";
+        }
+        {
+          # harper keys its comment parsers off the LSP language ID, which for
+          # shell is "shellscript", not helix's language name "bash".
+          language-id = "shellscript";
+          language-servers = [
+            "bash-language-server"
+            "harper"
+          ];
+          name = "bash";
+        }
+        {
+          formatter = {
+            args = [ "-" ];
+            command = "${steelwool}/bin/steelwool";
+          };
+          # Helix's built-in scheme entry already owns scm file detection;
+          # user language config merges these fields into it.
+          language-servers = [
+            "steel-language-server"
+            "harper"
+          ];
+          name = "scheme";
+        }
+        {
+          block-comment-tokens = {
+            end = ''"""'';
+            start = ''"""'';
+          };
+          comment-token = "#";
+          file-types = [ "d2" ];
+          formatter = {
+            args = [
+              "fmt"
+              "-"
+            ];
+            command = "${pkgs.d2}/bin/d2";
+          };
+          indent = {
+            tab-width = 2;
+            unit = "  ";
+          };
+          language-servers = [ "efm-d2" ];
+          name = "d2";
+          scope = "source.d2";
+        }
+      ];
+
+      language-server = {
+        efm-d2 = {
+          args = [
+            "-c"
+            "${d2Efm}"
+          ];
+          command = "${pkgs.efm-langserver}/bin/efm-langserver";
+        };
+        harper = {
+          args = [ "--stdio" ];
+          command = "harper-ls";
+          # harper pulls workspace/configuration on every document update and
+          # bails on a null reply ("Settings must be an object"), so hand it
+          # the object shape it wants.
+          config.harper-ls = { };
+        };
+        marksman = {
+          command = "marksman";
+        };
+        nil = {
+          command = "nil";
+        };
+        pylsp = {
+          command = "pylsp";
+        };
+        rust-analyzer = {
+          config = {
+            files.watcher = "server";
+          };
+        };
+        steel-language-server = {
+          command = "steel-language-server";
+          # Its default lsp home is $STEEL_HOME/lsp, which the nixpkgs
+          # wrapper points at a read-only store path; the server panics
+          # creating it.
+          environment.STEEL_LSP_HOME = "${config.xdg.dataHome}/steel/lsp";
+        };
+        tinymist = {
+          command = "tinymist";
+        };
+      };
+    };
+    package = pkgs.helix;
+    settings = {
+      # No format-on-save for any language (yaml/sops files especially). The
+      # per-language formatters below stay available for an explicit `:format`.
+      editor.auto-format = false;
+      editor.bufferline = "always";
+      editor.line-number = "relative";
+      editor.rulers = [ 80 ];
+      editor.soft-wrap.enable = false;
+      # Helix binds delete_word_backward to C-w and A-backspace only; left Alt
+      # is Hyper_L under sway (sway.nix customKeymap), so A-backspace needs
+      # right Alt. kitty's keyboard protocol reports C-backspace distinctly.
+      keys.insert."C-backspace" = "delete_word_backward";
+      theme = "nightfox";
+    };
+  };
+  xdg.configFile."helix/cogs/dap-vars.scm".source = "${inputs.helix-test-debug}/dap-vars.scm";
+  # Own repo so it is usable outside this config; the two programs it calls
+  # are packaged here, see features/taildrop/default.nix.
+  xdg.configFile."helix/cogs/photo-insert.scm".source =
+    "${inputs.helix-photo-insert}/photo-insert.scm";
+  # Steel cogs plus their glue. Stock hx (gs-pi4) ignores these files. Each
+  # cog lives in its own repo, pinned via a flake input; init and the
+  # typed-command module are machine glue, so they stay here.
+  xdg.configFile."helix/cogs/session.scm".source = "${inputs.helix-session}/session.scm";
+  # Those two require the package's modules relative to themselves, so the
+  # tree has to land beside them in cogs/.
+  xdg.configFile."helix/cogs/test-debug" = {
+    recursive = true;
+    source = "${inputs.helix-test-debug}/test-debug";
+  };
+  xdg.configFile."helix/cogs/test-debug-cpp.scm".source =
+    "${inputs.helix-test-debug}/test-debug-cpp.scm";
+  xdg.configFile."helix/cogs/test-debug-picker.scm".source =
+    "${inputs.helix-test-debug}/test-debug-picker.scm";
+  xdg.configFile."helix/cogs/test-debug-rust.scm".source =
+    "${inputs.helix-test-debug}/test-debug-rust.scm";
+  xdg.configFile."helix/cogs/test-debug.scm".source = "${inputs.helix-test-debug}/test-debug.scm";
+  xdg.configFile."helix/helix.scm".text = ''
+    (require (prefix-in helix. "helix/commands.scm"))
+    (require (prefix-in helix.static. "helix/static.scm"))
+    (require (prefix-in ed. "helix/editor.scm"))
+    (require (prefix-in misc. "helix/misc.scm"))
+    (require-builtin steel/process)
+    (require "cogs/session.scm")
+    (require "cogs/test-debug.scm")
+    (require "cogs/photo-insert.scm")
+
+    (provide
+      session-save
+      session-restore
+      debug-here
+      run-here
+      test-pick
+      debug-again
+      debug-doctor
+      debug-failure
+      debug-cancel
+      debug-output
+      debug-breakpoint
+      debug-breakpoints
+      debug-breakpoints-clear
+      debug-variables
+      debug-step-over
+      debug-step-in
+      debug-step-out
+      debug-continue
+      photo-insert
+      photo-insert-in
+      photo-insert-taildrop
+      photo-insert-next
+      open-helix-scm
+      open-init-scm
+      diff-review
+      explorer)
+
+    ;;@doc
+    ;; Open the helix.scm file
+    (define (open-helix-scm)
+      (helix.open (helix.static.get-helix-scm-path)))
+
+    ;;@doc
+    ;; Opens the init.scm file
+    (define (open-init-scm)
+      (helix.open (helix.static.get-init-scm-path)))
+
+    ;; Path of the focused document, or #f for a scratch buffer.
+    (define (focused-path)
+      (let ((doc (ed.editor->doc-id (ed.editor-focus))))
+        (and doc (ed.editor-document->path doc))))
+
+    ;; Run program with args and show its one-line stdout as the status,
+    ;; or failure when it prints nothing.
+    (define (run-for-status program args failure)
+      (let* ((spawned (spawn-process
+                       (set-stdout-piped! (command program args))))
+             (output (if (Err? spawned)
+                         #f
+                         (let ((finished (wait->stdout (Ok->value spawned))))
+                           (if (Err? finished) #f (Ok->value finished))))))
+        (misc.set-status!
+         (if (and (string? output) (not (equal? "" output)))
+             output
+             failure))))
+
+    ;;@doc
+    ;; Review the focused document's repository in difit (browser).
+    ;; diff-review detaches difit and prints one status line, so waiting on it
+    ;; cannot stall the editor. A scratch buffer falls back to the editor's
+    ;; cwd. Hosts without the launcher (gs-server) get the failure status.
+    (define (diff-review)
+      (let ((path (focused-path)))
+        (run-for-status "diff-review" (if path (list path) '())
+                        "diff-review: could not open difit; run `diff-review` in a shell for the reason")))
+
+    ;;@doc
+    ;; Toggle a yazi file explorer in a kitty split left of this editor.
+    ;; It opens on the focused document; Enter on a file opens it here.
+    (define (explorer)
+      (let ((path (focused-path)))
+        (run-for-status "hx-sidebar" (if path (list path) '())
+                        "explorer: could not start; run `hx-sidebar` in a shell for the reason")))
+  '';
+  xdg.configFile."helix/init.scm".text = ''
+    (require "cogs/session.scm")
+    ;; enqueue-thread-local-callback(-with-delay) live here.
+    (require "helix/misc.scm")
+    (require "helix/keymaps.scm")
+
+    ;; Snapshot every minute so any quit path (or a crash) restores the same
+    ;; buffer set on the next bare launch. First run after 30s. The cog puts
+    ;; the file in <workspace-root>/.helix/session.txt, so each project keeps
+    ;; its own session. Nothing to configure here.
+    (define (session-autosave-loop)
+      (session-save)
+      (enqueue-thread-local-callback-with-delay 60000 session-autosave-loop))
+    (enqueue-thread-local-callback-with-delay 30000 session-autosave-loop)
+
+    ;; Bare `hx`: reopen the workspace's last snapshot. Launches with file
+    ;; arguments are left alone.
+    (when (equal? (command-line) '("hx"))
+      (enqueue-thread-local-callback session-restore))
+
+    ;; The cog's commands in helix's own debug submenu. d, R, a, p, f and O
+    ;; are free there; r is helix's dap_restart. add-global-keybinding
+    ;; merges through helix's keymap merge, so the rest of the submenu
+    ;; survives.
+    ;; v toggles the live variables split; the DAP proxy refreshes it on
+    ;; every stop, so the step and continue commands need no timing logic.
+    ;; b is helix's own dap_toggle_breakpoint, which this replaces with the
+    ;; remembering one.
+    (add-global-keybinding
+     (hash "normal"
+           (hash "space"
+                 (hash "G"
+                       (hash "d" ":debug-here"
+                             "R" ":run-here"
+                             "a" ":debug-again"
+                             "p" ":test-pick"
+                             "b" ":debug-breakpoint"
+                             "f" ":debug-failure"
+                             "O" ":debug-output"
+                             "v" ":debug-variables"
+                             "n" ":debug-step-over"
+                             "i" ":debug-step-in"
+                             "o" ":debug-step-out"
+                             "c" ":debug-continue")))))
+
+    ;; space i: the insert submenu. i browses from the directory used last,
+    ;; d asks for a directory, t starts in the Taildrop inbox, and l takes
+    ;; the next photo waiting there without browsing. i is free in helix's
+    ;; own space menu (f F e . b j s S d D g a ' G w y Y p P R / k r h c C
+    ;; A-c ?), and add-global-keybinding merges, so the rest survives.
+    ;; A nested hash is how the keymap layer spells a submenu: merge-values
+    ;; in helix/keymaps.scm replaces a string with a hash.
+    (add-global-keybinding
+     (hash "normal"
+           (hash "space"
+                 (hash "i"
+                       (hash "i" ":photo-insert"
+                             "d" ":photo-insert-in"
+                             "t" ":photo-insert-taildrop"
+                             "l" ":photo-insert-next")))))
+
+    ;; space v: review the repository like a pull request in difit. v is free
+    ;; in helix's own space menu (list above), and add-global-keybinding
+    ;; merges.
+    (add-global-keybinding
+     (hash "normal"
+           (hash "space"
+                 (hash "v" ":diff-review"))))
+
+    ;; space e: toggle the yazi sidebar. This replaces helix's own file
+    ;; explorer picker on e; space E still opens that picker.
+    (add-global-keybinding
+     (hash "normal"
+           (hash "space"
+                 (hash "e" ":explorer"))))
+  '';
+  xdg.configFile."helix/runtime/grammars/d2.so".source = "${d2Grammar}/parser";
+  xdg.configFile."helix/runtime/queries/d2".source = "${d2GrammarSrc}/queries";
+  # The stock query without block scopes. Helix's containment engine ignores
+  # @extend at the end of a block, so Enter there drops to column 0.
+  xdg.configFile."helix/runtime/queries/python/indents.scm".text = ''
+    [
+      (list)
+      (tuple)
+      (dictionary)
+      (set)
+      (import_from_statement)
+
+      (parenthesized_expression)
+      (generator_expression)
+      (list_comprehension)
+      (set_comprehension)
+      (dictionary_comprehension)
+
+      (tuple_pattern)
+      (list_pattern)
+      (argument_list)
+      (parameters)
+      (binary_operator)
+    ] @indent
+
+    [
+      ")"
+      "]"
+      "}"
+    ] @outdent
+
+    (parameters
+      .
+      (identifier) @anchor
+      ) @align
+    (argument_list
+      .
+      (_) @anchor
+      ) @align
+
+    ; String bodies (triple-quoted strings span lines) are literal content.
+    (string) @opaque
+  '';
+  xdg.configFile."rustfmt/rustfmt.toml".text = ''
+    max_width = 80
+    wrap_comments = true
+  '';
+}

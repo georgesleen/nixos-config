@@ -39,7 +39,7 @@ in
   hardware.amdgpu.opencl.enable = true;
   i18n.defaultLocale = "en_CA.UTF-8";
   imports = [
-    ../../modules/roles/server.nix
+    ../../roles/server.nix
     ./hardware-configuration.nix
     ./wifi.nix
     ./win11-vm.nix

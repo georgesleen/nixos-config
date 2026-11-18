@@ -148,5 +148,5 @@ to ~1 FPS, so segmentation offload stays off at every hop that applies:
 - Guest VirtIO NIC: "UDP Segmentation Offload" disabled (IPv4 and v6) in the
   adapter's advanced properties. A Windows/driver update can silently revert
   this; re-check if quality tanks.
-- NixOS hosts: `tailscale-disable-uso` unit in `modules/core/common.nix`
+- NixOS hosts: `tailscale-disable-uso` unit in `features/common/default.nix`
   (only relevant if streaming ever crosses tailscale0 again).

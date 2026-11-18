@@ -1,6 +1,6 @@
 # Btrfs backup (btrbk)
 
-`modules/features/home-backup.nix` sends `/home` from a laptop to gs-pi4 every
+`features/home-backup/default.nix` sends `/home` from a laptop to gs-pi4 every
 six hours. The timer is `btrbk-home.timer`. A run starts only on AC power.
 
 | Location | Path | Kept |

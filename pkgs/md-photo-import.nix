@@ -1,7 +1,7 @@
 # File one given photo beside a markdown document, and print the markdown
 # image link for it.
 #
-# The editor half is home/dotfiles/cogs/photo-insert.scm, which asks for the
+# The editor half is photo-insert.scm (helix-photo-insert input), which asks for the
 # name and inserts this command's stdout at the cursor; the file itself is
 # chosen by md-photo-pick. Everything that touches the filesystem lives here,
 # so the same import can be run from a terminal and tested without an editor.

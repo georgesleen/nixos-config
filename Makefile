@@ -34,7 +34,7 @@ check-boot-order:
 	@test -n "$(HOST)" || { echo "usage: make check-boot-order HOST=<user@host>"; exit 2; }
 	set -o pipefail
 	ssh -o BatchMode=yes "$(HOST)" 'systemd-analyze dot --order 2>/dev/null' \
-	  | sh '$(ROOT)/modules/features/systemd-order-cycles.sh' \
+	  | sh '$(ROOT)/tools/systemd-order-cycles.sh' \
 	  && echo "no ordering cycles on $(HOST)"
 
 # Build the OpenWrt One WISP image. sops exec-env decrypts the Wi-Fi secrets

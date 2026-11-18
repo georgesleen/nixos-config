@@ -10,7 +10,7 @@
 # including a --dir that points somewhere else. The point of the refresh is
 # that a photo shared from the phone seconds ago is on disk before anything is
 # listed, and the drain is cheap and idempotent (a one-shot `tailscale file
-# get` alongside the running --loop unit in modules/features/taildrop.nix
+# get` alongside the running --loop unit in features/taildrop/default.nix
 # returns 0 with no output, so the two do not fight over the inbox).
 #
 # yazi and kitty are resolved from the caller's PATH, not from runtimeInputs,

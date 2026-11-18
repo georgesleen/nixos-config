@@ -163,7 +163,7 @@ can be embedded in Typst with `#image("diagram.svg")`.
 
 ## Laptop VMs
 
-The Framework imports `virtualization/default.nix`. NixVirt manages the
+The Framework imports `features/vms/default.nix`. NixVirt manages the
 `ubuntu-tools` and `windows-workstation` domain definitions on
 `qemu:///system`; use virt-manager for their normal start, shutdown and console
 controls. Neither guest starts automatically, and a rebuild does not restart a
@@ -173,8 +173,8 @@ are not adopted into its authoritative lists.
 
 | Guest | Definition | Private state | Shared work |
 | --- | --- | --- | --- |
-| Ubuntu 24.04, 4 vCPU / 6 GiB / 64 GiB disk | `virtualization/ubuntu-24-04/default.nix` | `~/Virtualization/ubuntu-24-04` | `~/Documents/VMWork/ubuntu-24-04` |
-| Windows 11, 8 vCPU / 12 GiB / 128 GiB disk | `virtualization/windows-11/default.nix` | `~/Virtualization/windows-11` | `~/Documents/VMWork/windows-11` |
+| Ubuntu 24.04, 4 vCPU / 6 GiB / 64 GiB disk | `features/vms/ubuntu-24-04/default.nix` | `~/Virtualization/ubuntu-24-04` | `~/Documents/VMWork/ubuntu-24-04` |
+| Windows 11, 8 vCPU / 12 GiB / 128 GiB disk | `features/vms/windows-11/default.nix` | `~/Virtualization/windows-11` | `~/Documents/VMWork/windows-11` |
 
 Private state directories are Btrfs subvolumes excluded from home snapshots.
 Their disks inherit NOCOW and grow on demand. Initialization never replaces an
@@ -220,7 +220,7 @@ installing `spice-gtk` or listing it as a udev package alone does not provide
 that privilege. No blanket USB mode or group permission is required.
 
 To retire a guest, export documents, shut it down, and remove its entry from
-`workspaces` in `virtualization/default.nix`. Before applying that removal,
+`workspaces` in `features/vms/default.nix`. Before applying that removal,
 undefine the guest with its private disk, NVRAM and TPM cleanup through
 libvirt; do not select shared work or installation media for deletion. Remove
 only its `workspace-<domain-name>` storage pool and private state subvolume.

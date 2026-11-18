@@ -19,31 +19,31 @@
   home.stateVersion = "25.11";
   home.username = user;
   imports = [
-    ./dotfiles/bashrc.nix
-    ./dotfiles/bashrc-desktop.nix
-    ./dotfiles/battery.nix
-    ./dotfiles/claude.nix
-    ./dotfiles/darkman.nix
-    ./dotfiles/dconf.nix
-    ./dotfiles/fuzzel.nix
-    ./dotfiles/git.nix
-    ./dotfiles/gtk.nix
-    ./dotfiles/helix.nix
-    ./dotfiles/kitty.nix
-    ./dotfiles/librepods.nix
-    ./dotfiles/mako.nix
-    ./dotfiles/packages.nix
+    ../features/bashrc/home.nix
+    ../features/bashrc-desktop/home.nix
+    ../features/battery/home.nix
+    ../features/claude/home.nix
+    ../features/darkman/home.nix
+    ../features/dconf/home.nix
+    ../features/fuzzel/home.nix
+    ../features/git/home.nix
+    ../features/gtk/home.nix
+    ../features/helix/home.nix
+    ../features/kitty/home.nix
+    ../features/librepods/home.nix
+    ../features/mako/home.nix
+    ../features/user-packages/home.nix
     (inputs.nixos-pi4 + "/home/pi-state-backup.nix")
-    ./dotfiles/rclone.nix
-    ./dotfiles/steam.nix
-    ./dotfiles/sway.nix
-    ./dotfiles/swayidle.nix
-    ./dotfiles/tmux.nix
-    ./dotfiles/vscode.nix
-    ./dotfiles/wallpaper.nix
-    ./dotfiles/waybar.nix
-    ./dotfiles/yazi-sidebar.nix
-    ./dotfiles/xresources.nix
-    ./dotfiles/way-displays.nix
+    ../features/rclone/home.nix
+    ../features/steam/home.nix
+    ../features/sway/home.nix
+    ../features/swayidle/home.nix
+    ../features/tmux/home.nix
+    ../features/vscode/home.nix
+    ../features/wallpaper/home.nix
+    ../features/waybar/home.nix
+    ../features/yazi-sidebar/home.nix
+    ../features/xresources/home.nix
+    ../features/way-displays/home.nix
   ];
 }
