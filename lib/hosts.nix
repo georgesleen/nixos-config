@@ -8,6 +8,7 @@
 inputs.nixpkgs.lib.nixosSystem {
   modules = [
     host
+    ./gs.nix
     { nixpkgs.overlays = overlays; }
     inputs.sops-nix.nixosModules.sops
     inputs.home-manager.nixosModules.home-manager
@@ -19,5 +20,8 @@ inputs.nixpkgs.lib.nixosSystem {
       home-manager.useUserPackages = true;
     }
   ];
-  specialArgs = { inherit inputs user; };
+  specialArgs = {
+    inherit inputs user;
+    gs = import ./gs-helpers.nix;
+  };
 }

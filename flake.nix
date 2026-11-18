@@ -98,6 +98,7 @@
           roots = [
             ./features
             ./hosts
+            ./lib
             ./tools
             inputs.nixos-pi4
           ];
