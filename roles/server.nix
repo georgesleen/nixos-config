@@ -9,5 +9,6 @@
     "known-good-boot"
     "lsp"
     "virtualization"
+    "waveforms"
   ];
 }

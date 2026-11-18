@@ -517,7 +517,7 @@ in
   programs.waybar = {
     enable = true;
     package = pkgs.waybar.overrideAttrs (previous: {
-      patches = (previous.patches or [ ]) ++ [ ../../pkgs/waybar-sway-title-events.patch ];
+      patches = (previous.patches or [ ]) ++ [ ./waybar-sway-title-events.patch ];
     });
     settings =
       let

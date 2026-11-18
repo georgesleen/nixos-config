@@ -94,7 +94,10 @@ Adding a suite:
 1. Write `foo.sh` (the decision) and `foo.test.sh` next to the module.
 2. `foo.test.sh` takes the script as `$1` and sources the shared harness from
    `$2` (`tests/lib.sh`, giving `check_eq`, `check_exit`, `finish`).
-3. Add one line to `suites` in `flake.nix`, pointing at the shared base path.
+
+`lib/checks.nix` finds every `X.sh` + `X.test.sh` pair (also `X.py` +
+`X.test.py`, and `X.check.nix` for a custom check) under `features/`, `hosts/`,
+`tools/` and the private nixos-pi4 input; nothing else needs registering.
 
 **A suite must be proven to fail.** After writing one, reintroduce the bug it
 covers and confirm the suite goes red. A check that cannot fail is worse than no

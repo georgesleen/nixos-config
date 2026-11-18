@@ -19,7 +19,7 @@
   ];
   programs.hyprlock = {
     enable = true;
-    package = import ../../pkgs/hyprlock.nix { inherit pkgs; };
+    package = import ../../pkgs/hyprlock { inherit pkgs; };
   };
   programs.sway = {
     enable = true;

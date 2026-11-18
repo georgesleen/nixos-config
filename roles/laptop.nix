@@ -40,6 +40,7 @@
     "usb-microscope"
     "user-packages"
     "virtualization"
+    "waveforms"
     "bashrc-desktop"
     "battery"
     "claude"

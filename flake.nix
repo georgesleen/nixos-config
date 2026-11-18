@@ -22,7 +22,7 @@
     helix-session.url = "git+file:///home/george-sleen/Documents/projects/helix-session";
     # Helix with the Steel plugin system (upstream PR #8675, not merged yet)
     # plus the native coloured-output API used by helix-test-debug. Native
-    # hosts only, see helixOverlay. Kept as ordinary commits in our fork so
+    # hosts only, see pkgs/helix. Kept as ordinary commits in our fork so
     # updates are rebased and reviewed in Git instead of failing as a Nix
     # package patch.
     helix-steel = {
@@ -78,204 +78,50 @@
   };
 
   outputs =
-    inputs@{
-      helix,
-      helix-steel,
-      home-manager,
-      nixpkgs,
-      sops-nix,
-      waveforms,
-      ...
-    }:
+    inputs@{ nixpkgs, ... }:
     let
       user = "george-sleen";
-
-      perlGrammarOverlay = _final: previous: {
-        perl = previous.perl.overrideAttrs (old: {
-          patches = (old.patches or [ ]) ++ [ ./pkgs/tree-sitter-perl-glibc-2.44.patch ];
-        });
-      };
-
-      # Our Steel Helix fork, including the native coloured-output API, for
-      # native x86_64 hosts. gs-pi4 keeps the cross build of upstream master.
-      helixOverlay = final: _prev: {
-        helix =
-          (helix-steel.packages.${final.stdenv.hostPlatform.system}.default.override {
-            grammarOverlays = [ perlGrammarOverlay ];
-          }).overrideAttrs
-            (_: {
-              cargoBuildFeatures = [ "steel" ];
-            });
-      };
-
-      # Cross-compiled helix for gs-pi4 (see overlays file).
-      crossOverlay = import ./overlays/cross-compilation.nix {
-        inherit nixpkgs helix;
-      };
-
-      # Packages defined in this repo that are not tied to another tool.
-      localOverlay = final: prev: {
-        awww = prev.awww.overrideAttrs (old: {
-          patches = (old.patches or [ ]) ++ [ ./pkgs/awww-fit-padding.patch ];
-        });
-        diff-review = final.callPackage ./pkgs/diff-review.nix { };
-        difit = final.callPackage ./pkgs/difit.nix { };
-        md-photo-import = final.callPackage ./pkgs/md-photo-import.nix { };
-        md-photo-pick = final.callPackage ./pkgs/md-photo-pick.nix { };
-      };
-
-      systems = [
+      forAllSystems = nixpkgs.lib.genAttrs [
         "x86_64-linux"
         "aarch64-linux"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs systems;
-
-      # The user's home is assembled by the features each role lists.
-      hmConfig = {
-        home-manager.backupFileExtension = "hm-backup";
-        home-manager.extraSpecialArgs = { inherit user inputs; };
-        home-manager.useGlobalPkgs = true;
-        home-manager.useUserPackages = true;
-      };
-
-      mkHost =
-        hostPath:
-        nixpkgs.lib.nixosSystem {
-          modules = [
-            hostPath
-            {
-              nixpkgs.overlays = [
-                helixOverlay
-                localOverlay
-              ];
-            }
-            waveforms.nixosModule
-            {
-              nixpkgs.overlays = nixpkgs.lib.mkAfter [
-                (_final: previous: {
-                  adept2-runtime = previous.adept2-runtime.overrideAttrs (old: {
-                    # The vendor's udev helper lives outside its Adept library directory.
-                    postInstall = (old.postInstall or "") + ''
-                      install -Dm755 usr/lib/udev/dftdrvdtch "$out/lib/udev/dftdrvdtch"
-                    '';
-                  });
-                })
-              ];
-            }
-            sops-nix.nixosModules.sops
-            home-manager.nixosModules.home-manager
-            hmConfig
-          ];
-          specialArgs = { inherit inputs user; };
-        };
+      mkHost = import ./lib/hosts.nix { inherit inputs user; };
     in
     {
-      # Unit tests for the shell logic embedded in this config. Each suite is a
-      # `<base>.sh` script paired with a `<base>.test.sh`, both given to the
-      # shared harness in tests/lib.sh. Run them with `make test`; a plain
-      # `nix flake check` also tries to build gs-openwrt-one, whose ImageBuilder
-      # package index is a fixed-output derivation that drifts upstream.
-      # Adding a suite is one line here.
+      # Run with `make test`; `nix flake check` also builds gs-openwrt-one,
+      # whose ImageBuilder index drifts upstream. The private repo's suites run
+      # here too, since they share tests/lib.sh.
       checks = forAllSystems (
         system:
-        let
+        import ./lib/checks.nix {
           pkgs = nixpkgs.legacyPackages.${system};
-          suites = {
-            # Lives in the private nixos-pi4 input; the harness only needs a
-            # base path, so a store path from an input works the same as a
-            # local one.
-            arr-season-plan = inputs.nixos-pi4 + "/gs-pi4/arr-season-plan";
-            av-step = ./features/sway/av-step;
-            battery-idle = ./features/swayidle/battery-idle;
-            battery-level = ./features/battery/battery-level;
-            cwa-ingest-sweep = inputs.nixos-pi4 + "/gs-pi4/cwa-ingest-sweep";
-            display-mode = ./features/way-displays/display-mode;
-            epub-normalize = inputs.nixos-pi4 + "/gs-pi4/epub-normalize";
-            fingerprint-led = ./hosts/gs-framework-13-pro/fingerprint-led;
-            gpu-busy = ./features/waybar/gpu-busy;
-            helix-open-cmd = ./features/yazi-sidebar/helix-open-cmd;
-            hx-split = ./features/yazi-sidebar/hx-split;
-            jellyfin-bg-pause = inputs.nixos-pi4 + "/gs-pi4/jellyfin-bg-pause";
-            known-good-boot = ./features/known-good-boot/known-good-boot;
-            lazylibrarian-reap = inputs.nixos-pi4 + "/gs-pi4/lazylibrarian-reap";
-            library-guard = inputs.nixos-pi4 + "/gs-pi4/library-guard";
-            media-free = inputs.nixos-pi4 + "/gs-pi4/media-free";
-            media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
-            pressure-guard = inputs.nixos-pi4 + "/gs-pi4/pressure-guard";
-            qbit-seed-reap = inputs.nixos-pi4 + "/gs-pi4/qbit-seed-reap";
-            secrets-guard-match = ./features/claude/secrets-guard-match;
-            snapper-orphans = ./features/btrfs/snapper-orphans;
-            systemd-order-cycles = ./tools/systemd-order-cycles;
-            ts-route = ./hosts/gs-pi1-parents/ts-route;
-            usb-wedge = ./hosts/gs-pi4/usb-wedge;
-            waybar-fmt = ./features/waybar/waybar-fmt;
-            win11-forward = ./hosts/gs-server/win11-forward;
-            workspace-plan = ./features/way-displays/workspace-plan;
-          };
-          shellTest =
-            name: base:
-            pkgs.runCommand "test-${name}"
-              {
-                nativeBuildInputs = [
-                  pkgs.bash
-                  pkgs.gawk
-                  pkgs.git
-                  pkgs.gnugrep
-                  pkgs.findutils
-                  pkgs.jq
-                  pkgs.util-linux
-                ];
-              }
-              ''
-                bash ${base + ".test.sh"} ${base + ".sh"} ${./tests/lib.sh} 2>&1 | tee "$out"
-              '';
-        in
-        builtins.mapAttrs shellTest suites
-        // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isx86_64 {
-          claude-proxy = import ./features/claude/claude-proxy.check.nix { inherit pkgs; };
-        }
-        // {
-          librepods-watch =
-            pkgs.runCommand "test-librepods-watch"
-              {
-                nativeBuildInputs = [ pkgs.python3 ];
-              }
-              ''
-                set -o pipefail
-                python ${./features/librepods/librepods-watch.test.py} ${./features/librepods/librepods-watch.py} 2>&1 | tee "$out"
-              '';
+          roots = [
+            ./features
+            ./hosts
+            ./tools
+            inputs.nixos-pi4
+          ];
         }
       );
 
-      devShells = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-        in
-        {
-          default = pkgs.mkShell {
-            packages = [
-              pkgs.nix
-              pkgs.pre-commit
-            ];
-          };
-        }
-      );
-      nixosConfigurations = {
-        gs-framework-13-pro = mkHost ./hosts/gs-framework-13-pro;
-        gs-pi4 = nixpkgs.lib.nixosSystem {
-          modules = [
-            ./hosts/gs-pi4
-            { nixpkgs.overlays = [ crossOverlay ]; }
-            sops-nix.nixosModules.sops
-            inputs.nixos-pi4.nixosModules.gs-pi4
-            home-manager.nixosModules.home-manager
-            hmConfig
+      devShells = forAllSystems (system: {
+        default = nixpkgs.legacyPackages.${system}.mkShell {
+          packages = [
+            nixpkgs.legacyPackages.${system}.nix
+            nixpkgs.legacyPackages.${system}.pre-commit
           ];
-          specialArgs = { inherit inputs user; };
         };
-        gs-server = mkHost ./hosts/gs-server;
+      });
+
+      nixosConfigurations = {
+        gs-framework-13-pro = mkHost { host = ./hosts/gs-framework-13-pro; };
+        gs-pi4 = mkHost {
+          host = ./hosts/gs-pi4;
+          overlays = [ (import ./pkgs/helix/cross.nix { inherit (inputs) helix nixpkgs; }) ];
+        };
+        gs-server = mkHost { host = ./hosts/gs-server; };
       };
+
       # OpenWrt One firmware image (WISP mode). ImageBuilder is x86_64-linux
       # only; build via `make gs-openwrt-one` so sops injects the Wi-Fi secrets.
       packages.x86_64-linux.gs-openwrt-one = import ./hosts/gs-openwrt-one {
