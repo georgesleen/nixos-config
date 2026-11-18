@@ -12,7 +12,7 @@ let
           "network_text"
         else if name == "power-profiles-daemon" then
           "profile_text"
-        else if name == "custom/clock" then
+        else if name == "clock" then
           "date ${lib.escapeShellArg style.clockFormat}"
         else if name == "custom/gpu" then
           "gpu_text"

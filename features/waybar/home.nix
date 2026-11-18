@@ -429,21 +429,7 @@ let
     fi
     ${tooltipJson} "<span color='$color'>󰾲 $label</span>" "$tooltip"
   '';
-  # Clock via glibc `date`, not waybar's native module:
-  clockBlock = pkgs.writeShellScript "waybar-clock" ''
-    set -euo pipefail
-    while true; do
-      next_minute=$(( (EPOCHSECONDS / 60 + 1) * 60 ))
-      now="$(${pkgs.coreutils}/bin/date '${statusStyle.clockFormat}')"
-      cal="$(${pkgs.util-linux}/bin/cal)"
-      ${pkgs.jq}/bin/jq -n -c --arg t "$now" --arg c "$cal" \
-        '{text: $t, tooltip: ("<tt>" + $c + "</tt>")}'
-      remaining=$(( next_minute - EPOCHSECONDS ))
-      if (( remaining > 0 )); then
-        ${pkgs.coreutils}/bin/sleep "$remaining"
-      fi
-    done
-  '';
+
   # RAM and swap used/available in one block and hover.
   memoryBlock = pkgs.writeShellScript "waybar-memory" ''
     set -euo pipefail
@@ -530,10 +516,9 @@ in
             return-type = "json";
             signal = 9;
           };
-          "custom/clock" = {
-            exec = "${clockBlock}";
-            restart-interval = 5;
-            return-type = "json";
+          clock = {
+            format = "{:${lib.removePrefix "+" statusStyle.clockFormat}}";
+            tooltip-format = "<tt>{calendar}</tt>";
           };
           "custom/cpu" = {
             exec = "${cpuBlock}";
@@ -578,7 +563,7 @@ in
             "custom/battery"
             "custom/power"
             "power-profiles-daemon"
-            "custom/clock"
+            "clock"
             "tray"
           ];
           network = {
@@ -662,7 +647,7 @@ in
       #custom-battery,
       #custom-power,
       #power-profiles-daemon,
-      #custom-clock {
+      #clock {
         margin: ${toString statusStyle.marginVertical}px ${toString statusStyle.marginHorizontal}px;
         padding: 0 ${toString statusStyle.paddingHorizontal}px;
         background: ${hexToRgba c.pill c.pillAlpha};
@@ -675,7 +660,7 @@ in
       #custom-memory { color: ${c.memory}; }
       #power-profiles-daemon { color: ${c.power}; }
       #power-profiles-daemon.performance { color: ${c.batLow}; }
-      #custom-clock { color: ${c.fg}; }
+      #clock { color: ${c.fg}; }
     '';
     systemd.enable = true;
   };
