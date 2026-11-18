@@ -29,6 +29,10 @@ in
     enable = true;
     # Installed system-wide; bashrc.nix defines its own `y` wrapper.
     enableBashIntegration = false;
+    settings.mgr = {
+      sort_by = "mtime";
+      sort_reverse = true;
+    };
     keymap.mgr.prepend_keymap = [
       {
         desc = "Taildrop to a device";
