@@ -44,11 +44,7 @@
     delta # diff pager for git
     wakeonlan # wake on lan commands
   ];
-  # Collect garbage weekly. Without this nothing ever prunes a superseded
-  # closure: every nixos-rebuild switch orphans the one it replaced and keeps
-  # the generation forever. The T480s reached 130 generations and a 222 GiB
-  # store by 2026-09-20 (104 GiB of it unreachable) before this existed.
-  # mkDefault so gs-pi4 can keep its tighter 14d window for the 29 GB SD.
+  # Collect garbage weekly.
   nix.gc = {
     automatic = lib.mkDefault true;
     dates = lib.mkDefault "weekly";
@@ -78,10 +74,7 @@
   # Power device info for battery notifications
   services.upower.enable = true;
   services.xserver.xkb.layout = "us";
-  # Disable UDP Segmentation Offload on tailscale0. Same class of bug as the
-  # win11 VirtIO USO issue (see CLAUDE.md Workarounds): coalesced UDP fools
-  # latency-sensitive streamers (Steam Remote Play, Sunshine/Moonlight) into
-  # treating timing artifacts as packet loss and throttling to ~1 FPS.
+  # Disable UDP Segmentation Offload on tailscale0.
   systemd.services.tailscale-disable-uso = {
     after = [ "sys-subsystem-net-devices-tailscale0.device" ];
     bindsTo = [ "sys-subsystem-net-devices-tailscale0.device" ];

@@ -1,13 +1,4 @@
-# Status bar. Native waybar modules cover network and the SNI tray
-# (swaybar rendered tray icons as blobs). Audio uses wpctl for device tooltips.
-# Blocks with deliberate custom logic stay shell scripts: battery counts down to the
-# hibernate target not 0% (see battery-thresholds.nix), gpu reads Intel RC6, cpu
-# shows freq+temp, memory uses binary GiB, disk aggregates all real filesystems, brightness via
-# brightnessctl (waybar's native backlight module renders nothing here), clock
-# via glibc `date` (waybar's own is an hour behind, see clockBlock). Native
-# modules also cover the power profile (tlp-pd's power-profiles-daemon D-Bus
-# API); clicking the pill cycles profiles.
-# Palette and compact geometry are shared with the lock-screen status bar.
+# Status bar. See NOTES.md.
 
 {
   lib,
@@ -438,10 +429,7 @@ let
     fi
     ${tooltipJson} "<span color='$color'>󰾲 $label</span>" "$tooltip"
   '';
-  # Clock via glibc `date`, not waybar's native module: libstdc++'s std::chrono
-  # tzdb drops the DST offset on a zone line whose RULES column is a literal
-  # amount, which is what America/Vancouver uses until 2026-11-01 (BC ending
-  # seasonal clock changes), so the native clock reads an hour behind.
+  # Clock via glibc `date`, not waybar's native module:
   clockBlock = pkgs.writeShellScript "waybar-clock" ''
     set -euo pipefail
     while true; do

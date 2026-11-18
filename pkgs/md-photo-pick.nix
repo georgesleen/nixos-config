@@ -1,22 +1,4 @@
-# Choose one file to import, and print its absolute path.
-#
-# This is the half of the photo-insert workflow that decides *which* file;
-# md-photo-import files whatever it is given. They are separate programs so
-# either can be replaced: the picker knows about explorers and Taildrop, the
-# importer knows about EXIF dates and markdown links, and neither needs the
-# other's knowledge.
-#
-# Every run first drains tailscaled's Taildrop inbox, including --next and
-# including a --dir that points somewhere else. The point of the refresh is
-# that a photo shared from the phone seconds ago is on disk before anything is
-# listed, and the drain is cheap and idempotent (a one-shot `tailscale file
-# get` alongside the running --loop unit in features/taildrop/default.nix
-# returns 0 with no output, so the two do not fight over the inbox).
-#
-# yazi and kitty are resolved from the caller's PATH, not from runtimeInputs,
-# because both are meant to be swappable: MD_PHOTO_EXPLORER picks another of
-# the four known explorers, MD_PHOTO_EXPLORER_CMD takes a template for any
-# other one, and MD_PHOTO_TERMINAL picks the window it runs in.
+# Choose one file to import, and print its absolute path. See NOTES.md.
 
 {
   coreutils,

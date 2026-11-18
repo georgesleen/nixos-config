@@ -1,9 +1,5 @@
 # OpenWrt One (mediatek/filogic) firmware image, built declaratively via the
-# upstream OpenWrt ImageBuilder (astro/nix-openwrt-imagebuilder). Not a NixOS
-# host: this evaluates to a sysupgrade .bin package, built on the T480s only
-# (ImageBuilder is x86_64-linux only). See docs/gs-openwrt-one.md.
-#
-# WISP mode: Wi-Fi client uplink (wwan) -> NAT -> wired LAN + a local AP.
+# upstream OpenWrt ImageBuilder (astro/nix-openwrt-imagebuilder). See NOTES.md.
 {
   openwrt-imagebuilder,
   pkgs,
@@ -18,8 +14,7 @@ let
 
   # OpenWrt rebuilds package indexes in place, so every cached `packages.adb`
   # hash goes stale and fails its fixed-output derivation; updating the input
-  # does not help. profiles takes cachePath for this. Refresh a value with
-  # `nix store prefetch-file --json <url>` whenever a hash mismatch appears.
+  # does not help.
   freshHashes = {
     # luci/packages.adb
     "sha256-33oou+C7XNKX5bfzolAWc1swNtI157xA/HE281ZwBak=" =
@@ -68,9 +63,7 @@ let
   profiles = openwrt-imagebuilder.lib.profiles { inherit pkgs release cachePath; };
 
   # Secret Wi-Fi values, decrypted at build time by `sops exec-env` (Makefile
-  # `gs-openwrt-one` target). builtins.getEnv needs `--impure`; when absent
-  # (plain `nix flake check`) these fall back to obvious placeholders so eval
-  # still succeeds and yields a harmless non-secret test image.
+  # `gs-openwrt-one` target).
   envOr =
     name: default:
     let
@@ -83,11 +76,7 @@ let
   apKey = envOr "openwrt_one_ap_key" "CHANGEME_ap_key";
   # Reusable Tailscale auth key (from sops); used once at the first-boot join.
   tsAuthkey = envOr "openwrt_one_ts_authkey" "";
-  # Static dropbear host key (from sops, base64-encoded: it's a binary
-  # dropbearkey-format file, not an OpenSSH PEM one, which dropbear's OpenWrt
-  # build rejects as invalid and silently replaces at boot). Baked into the
-  # image so a reflash doesn't regenerate it, keeping the SSH fingerprint
-  # (and known_hosts) stable across sysupgrades.
+  # Static dropbear host key (from sops, base64-encoded:
   sshHostKey = envOr "openwrt_one_ssh_host_key" "";
 
   # Shared with every other host here, so a new device is added in one place.

@@ -1,27 +1,6 @@
-# Status colourways. `status-style.nix` selects one palette for Waybar and
-# the lock-screen bar.
-#
-# Slots are named for what they mean, not for a hue, because a monochrome theme
-# has to be able to say "cpu and gpu are the same colour as everything else"
-# without lying about it:
-#
-#   bg / bgAlpha       window background and its opacity
-#   pill / pillAlpha   status-block background and its opacity
-#   fg                 default text: clock, focused workspace
-#   muted              unfocused workspaces, "n/a" fallbacks
-#   accent             focused-workspace underline
-#   urgent             urgent workspace
-#   network audio brightness cpu gpu memory disk power battery
-#                      each module's normal colour
-#   load / loadHigh    cpu or gpu at 50-80% / >=80%
-#   batCharge          battery while charging
-#   batLow / batCrit   battery under 20% / under 10%
+# Status colourways. See NOTES.md.
 {
-  # The muted one: every reading is the same light lavender over a
-  # violet-black, so the bar is one even band of text and the only variation is
-  # information. White means a state worth noticing but not a problem (charging,
-  # cpu or gpu pinned over 80%); amber and rose are battery trouble only.
-  # Mid-range load (50-80%) stays lavender, so ordinary work never lights up.
+  # The muted one:
   lavender-mono =
     let
       lav = "#cbb8ee"; # lavenderLt: light enough to read as body text

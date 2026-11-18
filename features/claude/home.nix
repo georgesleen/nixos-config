@@ -93,16 +93,7 @@ let
     echo "$out"
   '';
 
-  # PreToolUse hook: block any Bash command that would read decrypted secrets,
-  # i.e. the sops-nix runtime mount (/run/secrets, /run/secrets.d) or a sops
-  # decrypt-to-stdout (sops -d / --decrypt). The grep sees the whole command
-  # string, so it also catches these paths inside an `ssh <host> "..."` payload
-  # (the real gap: /run/secrets is 0400 locally, but an ssh login user or sudo
-  # routes around file perms). Guardrail against casual/accidental reads, not a
-  # hard sandbox: string matching can be defeated by obfuscation.
-  # The match itself lives in secrets-guard-match.sh so it can be tested
-  # adversarially, including the cases it deliberately does not catch;
-  # tests run by `make test`.
+  # PreToolUse hook:
   secretsGuardMatch = pkgs.writeShellScript "secrets-guard-match" ''
     PATH="${pkgs.gnugrep}/bin:$PATH"
     ${builtins.readFile ./secrets-guard-match.sh}
@@ -118,14 +109,7 @@ let
     fi
   '';
 
-  # Debug-skill nudge: PostToolUse on Bash. When a command's output carries a
-  # strong failure signal (not a bare non-zero exit, which grep/test/[ produce
-  # benignly), emit a one-line NON-BLOCKING reminder to invoke /debug for
-  # root-cause analysis. Deliberately cheap: the methodology lives in the debug
-  # SKILL.md and only loads when the skill is actually invoked; this only nudges.
-  # Deduped by error signature so a re-run of the same failure does not
-  # re-inject. Never blocks: exits 0 with a
-  # systemMessage, so it costs ~1 line and never derails routine failures.
+  # Debug-skill nudge:
   debugHook = pkgs.writeShellScript "claude-debug-nudge" ''
     set -euo pipefail
     input="$(${pkgs.coreutils}/bin/cat)"
@@ -188,11 +172,7 @@ in
       "kotlin-lsp@claude-plugins-official" = true;
       "lua-lsp@claude-plugins-official" = true;
       "php-lsp@claude-plugins-official" = true;
-      # Disabled: the npx-based plugin cannot run a browser on NixOS. Browser
-      # work goes through the `returns` skill instead, which drives the
-      # playwright node library over CDP against a headed Chromium. The nix
-      # playwright-mcp server that used to stand in here was removed from
-      # mcp-servers.nix on 2026-09-11; see the note there.
+      # Disabled:
       "playwright@claude-plugins-official" = false;
       "pr-review-toolkit@claude-plugins-official" = true;
       "pyright-lsp@claude-plugins-official" = true;
@@ -249,11 +229,7 @@ in
     };
   };
 
-  # Each skill under ./skills is a self-contained module: a <name>.nix
-  # that links its ./<name> content dir (recursively, so ~/.claude/skills stays
-  # writable for ad-hoc skills) and declares any runtime deps of its own. Auto-
-  # import every such file, so adding a skill is just dropping in a <name>/ dir
-  # plus a sibling <name>.nix, with no edit here.
+  # Each skill under ./skills is a self-contained module:
   imports = [
     ./claude-proxy.nix
   ]

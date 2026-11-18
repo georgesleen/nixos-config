@@ -55,9 +55,7 @@
     };
   };
   # broadcom_sta is unmaintained and carries unfixed CVE-2019-9501/9502 (remote
-  # code execution from crafted Wi-Fi frames). Matched by name, not by the
-  # versioned derivation name, so a kernel bump does not break eval. A
-  # mainline-supported USB adapter would retire this whole driver stanza.
+  # code execution from crafted Wi-Fi frames).
   nixpkgs.config.allowInsecurePredicate = pkg: lib.getName pkg == "broadcom-sta";
   sops.secrets.openwrt_one_ap_key = { };
   sops.secrets.openwrt_one_ap_ssid = { };

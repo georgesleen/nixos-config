@@ -1,13 +1,5 @@
 # Declarative win11 libvirt domain (GPU passthrough) plus the NAT network it
-# sits on. The qcow2 disk and NVRAM are mutable runtime state under
-# /var/lib/libvirt; only the definitions are managed here. active = null means
-# NixVirt defines the domain but never starts/stops it, so a rebuild won't
-# disturb a running session; start it on demand with `virsh start win11`.
-#
-# The guest is on libvirt's NAT bridge, not macvtap, because macvtap cannot
-# ride a Wi-Fi uplink: an 802.11 station may only present its own MAC to the
-# AP, so the AP drops the guest's frames. The hook below re-exposes the guest
-# on the host's addresses. See docs/steam-remote-play.md.
+# sits on. See NOTES.md.
 { inputs, pkgs, ... }:
 
 let

@@ -1,22 +1,4 @@
-# Open a git repository in difit for PR-style review: `diff-review [PATH]`.
-#
-# PATH may be a file or a directory inside the repository and defaults to the
-# cwd. A dirty tree reviews the uncommitted changes, untracked files included;
-# a clean one reviews the HEAD commit. difit opens the browser itself.
-#
-# On success it prints one status line with no trailing newline, because the
-# helix `space v` command shows stdout verbatim in the status bar. difit is
-# started with `setsid -f` and all three fds redirected, and that is
-# load-bearing: helix waits for this script's stdout to reach EOF, so a child
-# still holding the pipe would freeze the editor until the review closed.
-#
-# difit runs in its foreground mode, not --background/--keep-alive, so the
-# server exits when its browser client disconnects and servers never pile up.
-# Any client counts, so a second tab on the same server kills it on close.
-# --include-untracked makes difit `git add -N` untracked files; that is how it
-# diffs them, and the only index change this launcher causes. Its output goes
-# to a log that names the port, which is how an agent finds the server to read
-# comments from (see the diff-review skill).
+# Open a git repository in difit for PR-style review: See NOTES.md.
 
 {
   coreutils,

@@ -76,16 +76,7 @@ in
 {
   imports = [
     # Self-heal for the USB3 controller fault described at boot.kernelParams in
-    # default.nix. The UAS quirk there is the prevention; this is the backstop for
-    # a wedge that gets past it, because the failure is unattended-fatal: the
-    # media drive disappears, every service that needs it dies, and no amount of
-    # replugging helps. A reboot is the only recovery, and when the drive is dead
-    # nothing on this box is usable anyway, so an automatic one costs nothing.
-    #
-    # Accepted trade-off: a Host System Error that the controller somehow rides
-    # out still triggers one reboot, since the log line cannot be distinguished
-    # from the fatal case. That is bounded to a single reboot by the cooldown, and
-    # is far cheaper than missing a real wedge for hours.
+    # default.nix.
     (gs.timerJob {
       name = "usb-wedge-guard";
       description = "Reboot to recover a wedged USB3 controller holding the media drive";

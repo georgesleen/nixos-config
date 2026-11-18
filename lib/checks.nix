@@ -1,8 +1,4 @@
-# Every test under the given roots, found by filename:
-#   X.sh + X.test.sh   shell suite run under tests/lib.sh (`make test`)
-#   X.py + X.test.py   Python unittest
-#   X.check.nix        a custom check, `{ pkgs }: derivation`, x86_64 only
-# The check is named X; two tests with one name fail evaluation.
+# Every test under the given roots, found by filename: See NOTES.md.
 { pkgs, roots }:
 let
   inherit (pkgs) lib;

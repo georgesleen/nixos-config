@@ -7,10 +7,7 @@
 
 let
   borderWidth = 2;
-  # Open a new kitty OS window in the focused kitty's cwd. Left Alt is the sway
-  # modifier (Mod3), so kitty can't bind it internally; this drives kitty's
-  # control socket instead. Falls back to a plain kitty when the focus is not a
-  # kitty (no socket).
+  # Open a new kitty OS window in the focused kitty's cwd.
   kittyCwdWindow = pkgs.writeShellApplication {
     name = "kitty-cwd-window";
     runtimeInputs = with pkgs; [
@@ -30,9 +27,6 @@ let
     '';
   };
   # Remap left alt → Hyper_L in Mod3 so it is the sole sway modifier.
-  # Mod3 is otherwise unused; this isolates it from Win (Mod4/Super) and
-  # right alt (Mod1/Alt_R). Right alt passes through to applications as a
-  # normal Alt key. Caps → Escape is embedded here instead of xkb_options.
   customKeymap = pkgs.writeText "sway-keymap.xkb" ''
     xkb_keymap {
       xkb_keycodes { include "evdev+aliases(qwerty)" };

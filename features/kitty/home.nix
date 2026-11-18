@@ -7,10 +7,8 @@
 }:
 
 let
-  # Keyboard-driven copy mode with helix motions and the helix selection
-  # model, bound to ctrl+shift+x. grab.py is run straight from the store; the
-  # kitten loader adds its directory to sys.path so the sibling modules
-  # resolve without cloning into the config dir.
+  # Keyboard-driven copy mode with helix motions and the helix selection model,
+  # bound to ctrl+shift+x.
   kittyGrab = inputs.kitty_grab_helix.packages.${pkgs.stdenv.hostPlatform.system}.default;
 in
 
@@ -85,10 +83,7 @@ in
         inactive_tab_foreground = "#8a6fb5";
         listen_on = "unix:/tmp/kitty-{kitty_pid}";
         tab_bar_background = "none";
-        # tmux-style status line: the tab bar at the bottom, one entry per tab
-        # (kitty tab = tmux window). Mirrors the tmux "| #I:#W" window-status
-        # format; lavender pipe, active tab bold, transparent background. Custom
-        # style adds the right-aligned clock via tab_bar.py below.
+        # tmux-style status line:
         tab_bar_edge = "bottom";
         tab_bar_min_tabs = 1;
         tab_bar_style = "custom";

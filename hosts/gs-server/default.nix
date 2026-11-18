@@ -19,10 +19,7 @@ in
     "amdgpu"
   ];
   boot.kernelPackages = pkgs.linuxPackages_latest;
-  # GPU: amdgpu loads on the host for ROCm/compute.
-  # IOMMU stays on so the RX580 can be detached and handed to a VM at runtime
-  # via `virsh nodedev-detach pci_0000_01_00_0` (rebinds to vfio-pci).
-  # After the VM stops, `virsh nodedev-reattach` returns it to amdgpu.
+  # GPU:
   boot.kernelParams = [
     "intel_iommu=on"
     "iommu=pt"
@@ -74,10 +71,6 @@ in
     }
   ];
   # Passwordless power-off for remote/scripted use (wake-do-work-sleep flows).
-  # Both idioms are whitelisted since scripts reach for either; `systemctl` is
-  # pinned to the `poweroff` verb so this isn't a blanket systemctl grant.
-  # Headless box reached only over SSH with keys; unattended `nixos-rebuild
-  # switch --target-host` needs sudo not to prompt.
   security.sudo.wheelNeedsPassword = false;
   # Services
   services.openssh = {

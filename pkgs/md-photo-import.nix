@@ -1,18 +1,5 @@
-# File one given photo beside a markdown document, and print the markdown
-# image link for it.
-#
-# The editor half is photo-insert.scm (helix-photo-insert input), which asks for the
-# name and inserts this command's stdout at the cursor; the file itself is
-# chosen by md-photo-pick. Everything that touches the filesystem lives here,
-# so the same import can be run from a terminal and tested without an editor.
-#
-# The name is used twice, as the alt text and as the filename, so the picture
-# is described once and never named separately. An empty name keeps the
-# camera's own stem (IMG_1975), which is what the prompt offers by default.
-#
-# Files taken out of the Taildrop inbox are moved; files picked anywhere else
-# are copied, because a photo picked out of a synced directory must not
-# disappear from it.
+# File one given photo beside a markdown document, and print the markdown image
+# link for it. See NOTES.md.
 
 {
   coreutils,

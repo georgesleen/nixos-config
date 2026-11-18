@@ -1,7 +1,4 @@
-# difit: GitHub-style "Files changed" view of a local git diff in the
-# browser, with line/range comments an agent can read back
-# (`difit comment get --port N`). Not in nixpkgs. Built from source because
-# the npm tarball ships dist/ without its runtime node_modules.
+# difit: See NOTES.md.
 {
   autoPatchelfHook,
   fetchFromGitHub,
