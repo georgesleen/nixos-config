@@ -153,11 +153,11 @@ in
     inputs.nixos-hardware.nixosModules.raspberry-pi-4
     (modulesPath + "/installer/sd-card/sd-image-aarch64.nix")
     ../../roles/pi.nix
-    ../../features/pi-api/default.nix
     ./usb-wedge.nix
     # Host-specific service modules live in the private nixos-pi4 input.
     inputs.nixos-pi4.nixosModules.gs-pi4
-  ];
+  ]
+  ++ import ../../lib/features.nix [ "pi-api" ];
   networking.hostName = "gs-pi4";
   networking.networkmanager.enable = true;
   # 29 GB SD: keep the store from filling. Auto-GC old generations weekly, and

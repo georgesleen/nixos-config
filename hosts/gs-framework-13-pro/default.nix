@@ -79,14 +79,16 @@ in
   hardware.graphics.extraPackages = [ pkgs.intel-media-driver ];
   i18n.defaultLocale = "en_CA.UTF-8";
   imports = [
-    ../../features/ollama/default.nix
     ../../roles/laptop.nix
-    ../../features/vms
     inputs.nixos-hardware.nixosModules.framework-intel-core-ultra-series3
     ./fingerprint-led.nix
     ./fingerprint-lid.nix
     ./hardware-configuration.nix
     ./power.nix
+  ]
+  ++ import ../../lib/features.nix [
+    "ollama"
+    "vms"
   ];
   # Networking
   networking.hostName = "gs-framework-13-pro";

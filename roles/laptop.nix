@@ -1,33 +1,62 @@
-# Laptop role — interactive Wayland desktop on a portable machine.
-# Imported by laptop hosts.
+# Interactive Wayland desktop on a portable machine.
 
-{ pkgs, ... }:
+{
+  inputs,
+  pkgs,
+  user,
+  ...
+}:
 
 {
   environment.systemPackages = with pkgs; [
     brightnessctl
     iw
   ];
+  # Pulls in the private repo's state-pull job, which runs on the laptop.
+  home-manager.users.${user}.imports = [ (inputs.nixos-pi4 + "/home/pi-state-backup.nix") ];
   imports = [
-    ../features/common
-    ../features/btrfs/default.nix
-    ../features/desktop/default.nix
-    ../features/dev/default.nix
-    ../features/lsp/default.nix
-    ../features/dns/default.nix
-    ../features/firmware/default.nix
-    ../features/laptop-power/default.nix
-    ../features/steam/default.nix
-    ../features/keychron/default.nix
-    ../features/known-good-boot/default.nix
-    ../features/numeric-keypad/default.nix
-    ../features/flipper-zero/default.nix
-    ../features/gpib/default.nix
-    ../features/home-backup/default.nix
-    ../features/taildrop/default.nix
-    ../features/usb-microscope/default.nix
-    ../features/user-packages/default.nix
-    ../features/virtualization/default.nix
+    ./base.nix
+  ]
+  ++ import ../lib/features.nix [
+    "btrfs"
+    "audio"
+    "firefox"
+    "fonts"
+    "sway"
+    "sway-extras"
+    "dev"
+    "lsp"
+    "dns"
+    "firmware"
+    "laptop-power"
+    "steam"
+    "keychron"
+    "known-good-boot"
+    "numeric-keypad"
+    "flipper-zero"
+    "gpib"
+    "home-backup"
+    "taildrop"
+    "usb-microscope"
+    "user-packages"
+    "virtualization"
+    "bashrc-desktop"
+    "battery"
+    "claude"
+    "darkman"
+    "dconf"
+    "fuzzel"
+    "gtk"
+    "kitty"
+    "librepods"
+    "mako"
+    "swayidle"
+    "vscode"
+    "wallpaper"
+    "waybar"
+    "yazi-sidebar"
+    "xresources"
+    "way-displays"
   ];
   # Lid switch accessible to way-displays through libinput.
   services.udev.extraRules = ''

@@ -130,16 +130,16 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
 
-      hmConfig = hmHome: {
+      # The user's home is assembled by the features each role lists.
+      hmConfig = {
         home-manager.backupFileExtension = "hm-backup";
         home-manager.extraSpecialArgs = { inherit user inputs; };
         home-manager.useGlobalPkgs = true;
         home-manager.useUserPackages = true;
-        home-manager.users.${user} = import hmHome;
       };
 
       mkHost =
-        hostPath: hmHome:
+        hostPath:
         nixpkgs.lib.nixosSystem {
           modules = [
             hostPath
@@ -164,7 +164,7 @@
             }
             sops-nix.nixosModules.sops
             home-manager.nixosModules.home-manager
-            (hmConfig hmHome)
+            hmConfig
           ];
           specialArgs = { inherit inputs user; };
         };
@@ -262,7 +262,7 @@
         }
       );
       nixosConfigurations = {
-        gs-framework-13-pro = mkHost ./hosts/gs-framework-13-pro ./home/user.nix;
+        gs-framework-13-pro = mkHost ./hosts/gs-framework-13-pro;
         gs-pi4 = nixpkgs.lib.nixosSystem {
           modules = [
             ./hosts/gs-pi4
@@ -270,11 +270,11 @@
             sops-nix.nixosModules.sops
             inputs.nixos-pi4.nixosModules.gs-pi4
             home-manager.nixosModules.home-manager
-            (hmConfig ./home/user-pi.nix)
+            hmConfig
           ];
           specialArgs = { inherit inputs user; };
         };
-        gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
+        gs-server = mkHost ./hosts/gs-server;
       };
       # OpenWrt One firmware image (WISP mode). ImageBuilder is x86_64-linux
       # only; build via `make gs-openwrt-one` so sops injects the Wi-Fi secrets.

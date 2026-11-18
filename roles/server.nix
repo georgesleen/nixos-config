@@ -1,14 +1,13 @@
-# Server role — headless host with libvirt + dev toolchain.
-
-{ ... }:
-
+# Headless host with libvirt and the dev toolchain.
 {
   imports = [
-    ../features/common
-    ../features/btrfs/default.nix
-    ../features/dev/default.nix
-    ../features/known-good-boot/default.nix
-    ../features/lsp/default.nix
-    ../features/virtualization/default.nix
+    ./base.nix
+  ]
+  ++ import ../lib/features.nix [
+    "btrfs"
+    "dev"
+    "known-good-boot"
+    "lsp"
+    "virtualization"
   ];
 }
