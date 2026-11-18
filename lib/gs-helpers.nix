@@ -8,7 +8,8 @@
 {
   # A oneshot service plus the timer that starts it. `script` is a shell file
   # wrapped with writeShellApplication (so it is shellchecked and gets
-  # `runtimeInputs` on PATH), with `env` as its environment; `scriptText` is
+  # `runtimeInputs` on PATH), with `env` as its environment and any leading
+  # shebang dropped; `scriptText` is
   # inline shell for NixOS's own `script` instead. `service` is merged into
   # the unit unchanged.
   timerJob =
@@ -34,7 +35,12 @@
           serviceConfig.ExecStart = lib.getExe (
             pkgs.writeShellApplication {
               inherit name runtimeInputs;
-              text = builtins.readFile script;
+              # The file keeps its shebang for editors; the wrapper has its own.
+              text =
+                let
+                  t = builtins.readFile script;
+                in
+                if lib.hasPrefix "#!" t then lib.concatStringsSep "\n" (lib.tail (lib.splitString "\n" t)) else t;
             }
           );
         })

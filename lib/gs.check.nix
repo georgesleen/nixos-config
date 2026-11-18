@@ -21,7 +21,7 @@ let
         module
       ];
     }).config;
-  script = pkgs.writeText "probe.sh" "echo probe\n";
+  script = pkgs.writeText "probe.sh" "#!/usr/bin/env bash\necho probe\n";
   helper = system (
     { gs, ... }:
     {
@@ -44,7 +44,7 @@ let
       serviceConfig.ExecStart = lib.getExe (
         pkgs.writeShellApplication {
           name = "probe";
-          text = builtins.readFile script;
+          text = "echo probe\n";
         }
       );
     };
