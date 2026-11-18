@@ -62,16 +62,16 @@ in
         OnCalendar = "daily";
         Persistent = true;
       };
-      scriptText = ''
-        ${snapperOrphans} | while read -r d; do
-          echo "reaping orphan snapshot $d"
-          if ${pkgs.btrfs-progs}/bin/btrfs subvolume delete "$d/snapshot"; then
-            ${pkgs.coreutils}/bin/rmdir "$d"
-          else
-            echo "failed to delete $d/snapshot, leaving it for the next run" >&2
-          fi
-        done
-      '';
+      script = ./snapper-reap-orphans-run.sh;
+      # NixOS's own `script` ran with errexit only; keep that.
+      bashOptions = [ "errexit" ];
+      vars = {
+        DECIDE = "${snapperOrphans}";
+      };
+      runtimeInputs = [
+        pkgs.btrfs-progs
+        pkgs.coreutils
+      ];
       service = {
         serviceConfig.Type = "oneshot";
       };
