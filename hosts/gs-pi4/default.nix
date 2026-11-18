@@ -105,21 +105,6 @@ in
       "x-systemd.device-timeout=90s"
     ];
   };
-  # Immich's photo/video library. Own sibling subvolume (not "media"): photos
-  # are originals, not re-downloadable like the arr library, so their growth
-  # shouldn't compete with it for the same quota.
-  fileSystems."/srv/media/immich" = {
-    device = "/dev/mapper/backup";
-    fsType = "btrfs";
-    options = [
-      "subvol=immich"
-      "noatime"
-      "compress=zstd:1"
-      "nofail"
-      "x-systemd.automount"
-      "x-systemd.device-timeout=90s"
-    ];
-  };
   # sd-image.nix imports profiles/all-hardware.nix which sets enableAllHardware=true,
   # adding Rockchip/sun4i/etc. modules (dw-hdmi, dw-mipi-dsi, ...) that don't exist in
   # the RPi kernel. makeModulesClosure hard-fails on any listed-but-absent module.
@@ -190,7 +175,6 @@ in
   systemd.services.btrfs-media-layout =
     let
       mediaQuotaGiB = 3072;
-      immichQuotaGiB = 2048;
       snapshotQuotaGiB = 1024;
     in
     {
@@ -200,7 +184,7 @@ in
       ];
       # No `before` on the mounts, for the same cycle reason as
       # cryptsetup-backup above.
-      description = "Ensure the media/state/immich/snapshot/containers subvolumes and quotas exist";
+      description = "Ensure the media/state/snapshot/containers subvolumes and quotas exist";
       path = with pkgs; [
         btrfs-progs
         coreutils
@@ -211,7 +195,7 @@ in
         top=$(mktemp -d)
         trap 'umount "$top" 2>/dev/null || true; rmdir "$top" 2>/dev/null || true' EXIT
         mount -o subvolid=5 /dev/mapper/backup "$top"
-        for sub in media state immich snapshot containers; do
+        for sub in media state snapshot containers; do
           if [ ! -e "$top/$sub" ]; then
             btrfs subvolume create "$top/$sub"
           fi
@@ -219,16 +203,7 @@ in
         # Quotas must be on before a limit will stick; enabling twice is a no-op.
         btrfs quota enable "$top" 2>/dev/null || true
         btrfs qgroup limit ${toString mediaQuotaGiB}G "$top/media"
-        btrfs qgroup limit ${toString immichQuotaGiB}G "$top/immich"
         btrfs qgroup limit ${toString snapshotQuotaGiB}G "$top/snapshot"
-        # services.immich's own tmpfiles rule can't fix this: systemd-tmpfiles
-        # skips paths under an automount rather than triggering it. Correct the
-        # real subvolume while Immich is enabled; its account is intentionally
-        # absent while the memory-heavy service is paused.
-        if id immich >/dev/null 2>&1; then
-          chown immich:immich "$top/immich"
-          chmod 0700 "$top/immich"
-        fi
       '';
       serviceConfig = {
         RemainAfterExit = true;
