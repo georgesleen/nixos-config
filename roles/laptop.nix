@@ -13,7 +13,7 @@
     iw
   ];
   # Pulls in the private repo's state-pull job, which runs on the laptop.
-  home-manager.users.${user}.imports = [ (inputs.nixos-pi4 + "/home/pi-state-backup.nix") ];
+  home-manager.users.${user}.imports = [ (inputs.nixos-pi4 + "/features/state-backup/home.nix") ];
   imports = [
     ./base.nix
   ]

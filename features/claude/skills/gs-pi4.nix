@@ -2,5 +2,5 @@
 # out of this public repo; link it in from there rather than a local dir.
 { inputs, ... }:
 {
-  home.file.".claude/skills/gs-pi4".source = inputs.nixos-pi4 + "/home/skills/gs-pi4";
+  home.file.".claude/skills/gs-pi4".source = inputs.nixos-pi4 + "/skills/gs-pi4";
 }
