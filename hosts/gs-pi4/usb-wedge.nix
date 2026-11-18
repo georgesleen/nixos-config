@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ gs, pkgs, ... }:
 let
   # Wedge detection and the reboot-loop guards, kept in their own file so they
   # are testable against fixtures; tests run by `make test`.
@@ -74,32 +74,33 @@ let
   '';
 in
 {
-  # Self-heal for the USB3 controller fault described at boot.kernelParams in
-  # default.nix. The UAS quirk there is the prevention; this is the backstop for
-  # a wedge that gets past it, because the failure is unattended-fatal: the
-  # media drive disappears, every service that needs it dies, and no amount of
-  # replugging helps. A reboot is the only recovery, and when the drive is dead
-  # nothing on this box is usable anyway, so an automatic one costs nothing.
-  #
-  # Accepted trade-off: a Host System Error that the controller somehow rides
-  # out still triggers one reboot, since the log line cannot be distinguished
-  # from the fatal case. That is bounded to a single reboot by the cooldown, and
-  # is far cheaper than missing a real wedge for hours.
-  systemd.services.usb-wedge-guard = {
-    description = "Reboot to recover a wedged USB3 controller holding the media drive";
-    serviceConfig = {
-      ExecStart = guard;
-      Type = "oneshot";
-    };
-  };
+  imports = [
+    # Self-heal for the USB3 controller fault described at boot.kernelParams in
+    # default.nix. The UAS quirk there is the prevention; this is the backstop for
+    # a wedge that gets past it, because the failure is unattended-fatal: the
+    # media drive disappears, every service that needs it dies, and no amount of
+    # replugging helps. A reboot is the only recovery, and when the drive is dead
+    # nothing on this box is usable anyway, so an automatic one costs nothing.
+    #
+    # Accepted trade-off: a Host System Error that the controller somehow rides
+    # out still triggers one reboot, since the log line cannot be distinguished
+    # from the fatal case. That is bounded to a single reboot by the cooldown, and
+    # is far cheaper than missing a real wedge for hours.
+    (gs.timerJob {
+      name = "usb-wedge-guard";
+      description = "Reboot to recover a wedged USB3 controller holding the media drive";
+      timerDescription = "Probe for a wedged USB3 controller holding the media drive";
+      timer = {
+        AccuracySec = "30s";
+        OnBootSec = "2min";
+        OnUnitActiveSec = "2min";
+      };
+      service = {
+        serviceConfig = {
+          ExecStart = guard;
+        };
+      };
+    })
+  ];
 
-  systemd.timers.usb-wedge-guard = {
-    description = "Probe for a wedged USB3 controller holding the media drive";
-    timerConfig = {
-      AccuracySec = "30s";
-      OnBootSec = "2min";
-      OnUnitActiveSec = "2min";
-    };
-    wantedBy = [ "timers.target" ];
-  };
 }
