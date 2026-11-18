@@ -8,14 +8,18 @@
 {
   # A oneshot service plus the timer that starts it. `script` is a shell file
   # wrapped with writeShellApplication (so it is shellchecked and gets
-  # `runtimeInputs` on PATH); `service` is merged into the unit unchanged.
+  # `runtimeInputs` on PATH), with `env` as its environment; `scriptText` is
+  # inline shell for NixOS's own `script` instead. `service` is merged into
+  # the unit unchanged.
   timerJob =
     {
       name,
       description,
       timer,
       script ? null,
+      scriptText ? null,
       runtimeInputs ? [ ],
+      env ? { },
       service ? { },
       timerDescription ? null,
     }:
@@ -34,6 +38,8 @@
             }
           );
         })
+        (lib.mkIf (scriptText != null) { script = scriptText; })
+        (lib.mkIf (env != { }) { environment = env; })
         service
       ];
       systemd.timers.${name} = {

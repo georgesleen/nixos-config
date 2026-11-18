@@ -53,6 +53,32 @@ let
       wantedBy = [ "timers.target" ];
     };
   };
+  inlineHelper = system (
+    { gs, ... }:
+    {
+      imports = [
+        (gs.timerJob {
+          name = "probe";
+          description = "Probe";
+          timer.OnCalendar = "daily";
+          scriptText = "echo probe";
+          env.PROBE = "1";
+        })
+      ];
+    }
+  );
+  inlineByHand = system {
+    systemd.services.probe = {
+      description = "Probe";
+      environment.PROBE = "1";
+      script = "echo probe";
+      serviceConfig.Type = "oneshot";
+    };
+    systemd.timers.probe = {
+      timerConfig.OnCalendar = "daily";
+      wantedBy = [ "timers.target" ];
+    };
+  };
   unit = c: n: c.systemd.units.${n}.text;
   clash = system {
     gs.ports.a = 8083;
@@ -62,6 +88,8 @@ let
   checks = {
     "timerJob service unit" = unit helper "probe.service" == unit byHand "probe.service";
     "timerJob timer unit" = unit helper "probe.timer" == unit byHand "probe.timer";
+    "timerJob inline script and env" =
+      unit inlineHelper "probe.service" == unit inlineByHand "probe.service";
     "port clash asserts" = builtins.any (a: lib.hasInfix "8083" a.message) failed;
   };
   bad = lib.attrNames (lib.filterAttrs (_: ok: !ok) checks);
