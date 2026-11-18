@@ -39,12 +39,19 @@ check_eq "renamed workspace is matched by its number" \
 "workspace number 31; move workspace to output \"DP-4\"
 workspace number 11" "$(actions split DP-4 "$renamed")"
 
-# The wl-mirror workspace has no number (sway reports -1) and is placed by
-# way-displays.nix, never here; focus on it is restored by name.
-mirror="[$(ws -1 mirror DP-4 true),$(ws 11 11 DP-4 false)]"
-check_eq "non-numeric workspace is left alone and refocused by name" \
+# The wl-mirror workspace is `0:mirror`, placed by way-displays.nix, never
+# here; focus on it is restored by name. A bare name (num -1) is treated alike.
+mirror="[$(ws 0 0:mirror DP-4 true),$(ws 11 11 DP-4 false)]"
+check_eq "mirror workspace 0 is left alone and refocused by name" \
 "workspace number 11; move workspace to output eDP-1
-workspace \"mirror\"" "$(actions split DP-4 "$mirror")"
+workspace \"0:mirror\"" "$(actions split DP-4 "$mirror")"
+check_eq "mirror workspace stays put in all-internal mode" \
+"workspace number 11; move workspace to output eDP-1
+workspace \"0:mirror\"" "$(actions all-internal '' "$mirror")"
+bare="[$(ws -1 notes DP-4 true),$(ws 11 11 DP-4 false)]"
+check_eq "a bare-named workspace is left alone too" \
+"workspace number 11; move workspace to output eDP-1
+workspace \"notes\"" "$(actions split DP-4 "$bare")"
 
 check_eq "all-internal sends every group to the panel without an external" \
 "workspace number 21; move workspace to output eDP-1

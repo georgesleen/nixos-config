@@ -41,7 +41,7 @@ renamed="[$(ws 42 42:kicad DP-4 true)]"
 check_eq "renamed workspace still maps to its group" "G4" "$(field "$(out DP-4 "$renamed")" text)"
 
 # Hidden output is checked whole: a crashed script also prints no text.
-mirror="[$(ws -1 mirror DP-4 true),$(ws 21 21 DP-4 false)]"
+mirror="[$(ws 0 0:mirror DP-4 true),$(ws 21 21 DP-4 false)]"
 check_eq "the mirror workspace hides the pill" '{"text":"","tooltip":""}' "$(out DP-4 "$mirror")"
 legacy="[$(ws 3 3 eDP-1 true)]"
 check_eq "pre-group workspaces hide the pill" '{"text":"","tooltip":""}' "$(out eDP-1 "$legacy")"

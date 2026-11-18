@@ -16,7 +16,7 @@
 # workspaces by criteria (only window containers), so a move focuses the
 # workspace first, and the originally focused workspace is restored at the end.
 # Matching is by number, so a renamed workspace (`21:kicad`) is still found;
-# named non-numeric workspaces (the wl-mirror one) are left alone.
+# workspace 0 (`0:mirror`, the wl-mirror one) and bare names are left alone.
 
 mode="${1-}"
 ext="${2-}"
