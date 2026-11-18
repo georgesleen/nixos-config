@@ -2,8 +2,8 @@
 
 ## Overview
 
-Firmware updates via fwupd/LVFS.
+Firmware updates via fwupd/LVFS: `fwupdmgr refresh && fwupdmgr update`.
 
-The ThinkPad Universal USB-C Dock (40AY) carries its own updatable firmware. Windows hosts get it automatically through Lenovo Vantage; on Linux LVFS is the only path, so without fwupd the dock keeps whatever it shipped with.
-
-lvfs-testing is required: the dock's firmware is published only there, and without it fwupd reports the dock as having no firmware at all rather than as up to date.
+The `lvfs-testing` remote was dropped with the ThinkPad Universal USB-C Dock
+(40AY), whose firmware is published only there. Re-add
+`services.fwupd.extraRemotes = [ "lvfs-testing" ];` if a device needs it.

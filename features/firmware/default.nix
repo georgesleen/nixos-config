@@ -1,10 +1,6 @@
-# Firmware updates via fwupd/LVFS. See NOTES.md.
-
+# Firmware updates via fwupd/LVFS (the Framework's BIOS and EC ship there).
 { ... }:
 
 {
-  services.fwupd = {
-    enable = true;
-    extraRemotes = [ "lvfs-testing" ];
-  };
+  services.fwupd.enable = true;
 }
