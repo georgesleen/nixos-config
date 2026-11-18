@@ -33,3 +33,8 @@ This is the half of the photo-insert workflow that decides *which* file; md-phot
 Every run first drains tailscaled's Taildrop inbox, including --next and including a --dir that points somewhere else. The point of the refresh is that a photo shared from the phone seconds ago is on disk before anything is listed, and the drain is cheap and idempotent (a one-shot `tailscale file get` alongside the running --loop unit in features/taildrop/default.nix returns 0 with no output, so the two do not fight over the inbox).
 
 yazi and kitty are resolved from the caller's PATH, not from runtimeInputs, because both are meant to be swappable: MD_PHOTO_EXPLORER picks another of the four known explorers, MD_PHOTO_EXPLORER_CMD takes a template for any other one, and MD_PHOTO_TERMINAL picks the window it runs in.
+
+## Workarounds
+
+- `pkgs/awww/awww-fit-padding.patch`, applied by `pkgs/default.nix`: awww 0.12.1 adds `img_w % 2` to right padding even when the destination width is odd. At 1.75×, the panel's computed image width is 2879, so fit rendering adds one unwanted pixel per row and diagonally wraps the penguin. Compute right padding as destination minus image minus left padding. An isolated 2880×1920/1.75× compositor reproduced the corruption; the patched client rendered correctly, and switching back produced a byte-identical corrupted screenshot.
+- `moonlight-qt` uses the current nixpkgs package (6.2.0), including its current FFmpeg and libva dependencies. The former FFmpeg 7 override for 6.1.0 is obsolete; do not restore the old pinned closure, whose libva could not initialize the Framework's Intel media driver.

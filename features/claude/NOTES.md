@@ -21,3 +21,10 @@ Each skill under ./skills is a self-contained module: a <name>.nix that links it
 MCP servers for Claude Code, consumed through its settings.json (claude.nix).
 
 A server's tool schemas ride every request of every session, used or not. `playwright` was dropped for that: 23 schemas, never called, and the `returns` skill drives playwright over CDP itself.
+
+## Workarounds
+
+- `features/claude/claude-proxy.nix:84`: proxy launchers pass `--settings` with a runtime credential helper because agent-view background sessions do not reliably inherit shell-only gateway exports.
+- Both laptop hosts register `sudoAskpass` as sudo's `Path askpass` in `/etc/sudo.conf`: a masked Zenity GTK password window for ttyless sudo, with no `-A` needed. Terminal sudo keeps its normal prompt. Polkit actions use the separate `polkit-gnome` agent; sudo still authenticates through its own PAM stack.
+- Framework `sudoPasswordTimeout = "5m"` bounds each GTK askpass prompt, not sudo's credential-cache lifetime. The longer window allows time to notice and answer a desktop authentication request.
+- `features/claude/home.nix` `secretsHook` (PreToolUse/Bash) + `permissions.deny` on `Read(/run/secrets/**)`: block Claude from reading decrypted sops secrets (`/run/secrets`, `sops -d`), including inside an `ssh <host> "..."` payload. Guardrail against casual reads, not a hard sandbox (matches the command string). To act on a secret-backed service, use its own runtime credential inline without echoing it, or an auth-bypass path.

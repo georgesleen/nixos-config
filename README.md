@@ -229,15 +229,17 @@ Keep the tracked definition and shared work folder for later reuse.
 
 ## Layout
 
-- `hosts/<host>/`: host-specific config: hardware, networking, boot, services,
-  power tuning.
-- `modules/`: reusable system modules (see `modules/README.md`):
-  - `core/`: imported by every host (universal CLI packages).
-  - `roles/`: one per host kind (`laptop`, `server`); a host imports one role.
-  - `features/`: opt-in modules a role pulls in.
-  - `hardware/`: per-machine quirks.
-- `home/`: home-manager entry points and `dotfiles/`.
-- `assets/`: wallpapers.
-- `docs/`: longer-form notes.
+- `flake.nix`: inputs and outputs only.
+- `lib/`: the wiring: `mkHost`, feature lookup, test discovery, typed `gs.*`
+  options and the `gs.timerJob` / `gs.statusPage` helpers.
+- `features/<name>/`: one folder per thing the system does: `default.nix`
+  (NixOS), `home.nix` (home-manager), its scripts and tests, and `NOTES.md`
+  with the history behind it.
+- `roles/`: lists of features (`base`, `laptop`, `server`, `pi`).
+- `hosts/<host>/`: a role, hardware, and anything only that host has.
+- `pkgs/`: packages defined or patched here, patches beside their package.
+- `tools/`: scripts not tied to a host.
+- `assets/`: wallpapers and fonts.
+- `docs/`: runbooks that span several features.
 - `secrets/`: sops-nix encrypted secrets (`docs/secrets.md`).
 - `hooks/`: tracked git hooks, wired via `.envrc` on `direnv allow`.

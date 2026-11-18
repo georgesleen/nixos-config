@@ -1,5 +1,3 @@
-# modules/steam.nix
-
 { ... }:
 
 {
