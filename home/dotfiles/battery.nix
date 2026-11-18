@@ -66,9 +66,9 @@ let
       notify-critical | silent-critical)
         if [ "$action" = "notify-critical" ]; then
           msg="Battery at $pct% - hibernating in 60 seconds unless plugged in"
-          # A switch since boot usually moves the e820 map, and resume then
-          # rejects the image (docs/t480s-power.md). Still hibernate: a dead
-          # battery loses the session anyway.
+          # A switch since boot can move the firmware e820 map, and resume
+          # then rejects the image (seen on the T480s). Still hibernate: a
+          # dead battery loses the session anyway.
           if [ -e /run/booted-system ] && [ -e /nix/var/nix/profiles/system ] && ! [ /run/booted-system -ef /nix/var/nix/profiles/system ]; then
             msg="$msg. System was rebuilt since boot: resume will likely fail, save your work now"
           fi

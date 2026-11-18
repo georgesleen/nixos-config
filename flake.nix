@@ -49,7 +49,7 @@
     nixos-hardware.url = "github:NixOS/nixos-hardware/master";
     # gs-pi4 host modules, kept in a private repo so its stack stays out of this
     # public repo. A flake that owns its own downstream inputs; nixpkgs follows
-    # ours so there's a single nixpkgs. Local git checkout on the T480s (the only
+    # ours so there's a single nixpkgs. Local git checkout on the laptop (the only
     # machine that builds gs-pi4), so no remote fetch/token is needed.
     nixos-pi4 = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -199,7 +199,6 @@
             known-good-boot = ./modules/features/known-good-boot;
             lazylibrarian-reap = inputs.nixos-pi4 + "/gs-pi4/lazylibrarian-reap";
             library-guard = inputs.nixos-pi4 + "/gs-pi4/library-guard";
-            lid-decision = ./modules/hardware/lid-decision;
             media-free = inputs.nixos-pi4 + "/gs-pi4/media-free";
             media-health = inputs.nixos-pi4 + "/gs-pi4/media-health";
             pressure-guard = inputs.nixos-pi4 + "/gs-pi4/pressure-guard";
@@ -276,7 +275,6 @@
           specialArgs = { inherit inputs user; };
         };
         gs-server = mkHost ./hosts/gs-server ./home/user-server.nix;
-        gs-thinkpad-t480s = mkHost ./hosts/gs-thinkpad-t480s ./home/user.nix;
       };
       # OpenWrt One firmware image (WISP mode). ImageBuilder is x86_64-linux
       # only; build via `make gs-openwrt-one` so sops injects the Wi-Fi secrets.

@@ -1,6 +1,5 @@
 # Laptop role — interactive Wayland desktop on a portable machine.
-# Imported by laptop hosts; combine with a hardware/ module for the specific
-# chassis (e.g. hardware/thinkpad.nix).
+# Imported by laptop hosts.
 
 { pkgs, ... }:
 
