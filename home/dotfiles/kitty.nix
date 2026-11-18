@@ -64,9 +64,7 @@ in
       };
       settings = {
         # tmux-style panes: splits layout with lavender single-line dividers,
-        # active pane brighter than inactive. Accent is omp's lavender ladder
-        # (dark-mix.json `lavender` / `lavenderDeep`), so the terminal chrome
-        # and the agent running inside it share one hue.
+        # active pane brighter than inactive.
         active_border_color = "#b49ae0";
         active_tab_background = "#000000";
         active_tab_font_style = "bold";

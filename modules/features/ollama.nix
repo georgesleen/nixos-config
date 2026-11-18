@@ -1,6 +1,4 @@
-# Local LLMs via Ollama, for offline work. omp discovers the server on its
-# own (implicit `ollama` provider at 127.0.0.1:11434), so nothing on the omp
-# side needs configuring beyond the context length in home/dotfiles/omp.nix.
+# Local LLMs via Ollama, for offline work.
 #
 # Sized for the Framework: 32 GB shared RAM, about 8 GB of it taken by the
 # desktop. The 26B-A4B MoE (4B active) fits; the dense 31B is too slow.
@@ -12,8 +10,7 @@
     enable = true;
     environmentVariables = {
       # Ollama's own default num_ctx is far too small for an agent's system
-      # prompt. omp reads the same variable to size its budget (omp.nix), so
-      # the two must agree or omp overruns the window without noticing.
+      # prompt.
       OLLAMA_CONTEXT_LENGTH = "32768";
       OLLAMA_FLASH_ATTENTION = "1";
       OLLAMA_KEEP_ALIVE = "30m";

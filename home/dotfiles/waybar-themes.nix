@@ -22,7 +22,6 @@
   # information. White means a state worth noticing but not a problem (charging,
   # cpu or gpu pinned over 80%); amber and rose are battery trouble only.
   # Mid-range load (50-80%) stays lavender, so ordinary work never lights up.
-  # Tones lifted from ./omp/dark-mix.json, so bar and agent share one palette.
   lavender-mono =
     let
       lav = "#cbb8ee"; # lavenderLt: light enough to read as body text
@@ -51,7 +50,7 @@
       power = lav;
       urgent = "#c47b86"; # rose
     };
-  # Matches the helix theme; accent shared with omp's dark-mix. Function-matched
+  # Matches the helix theme. Function-matched
   # colours: one hue per kind of reading.
   nightfox = {
     accent = "#b49ae0";

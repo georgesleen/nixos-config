@@ -32,7 +32,6 @@
     ./dotfiles/kitty.nix
     ./dotfiles/librepods.nix
     ./dotfiles/mako.nix
-    ./dotfiles/omp.nix
     ./dotfiles/packages.nix
     (inputs.nixos-pi4 + "/home/pi-state-backup.nix")
     ./dotfiles/rclone.nix

@@ -58,11 +58,6 @@
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
     # Last-good nixpkgs pin for Jellyfin 10.11 on gs-pi4 (hosts/gs-pi4/default.nix).
     nixpkgs-lastgood.url = "github:nixos/nixpkgs/e73de5be04e0eff4190a1432b946d469c794e7b4";
-    # omp (oh-my-pi): coding agent with LSP, DAP and subagents wired in. Its
-    # inputs are deliberately left unfollowed. The flake pins a rust-overlay
-    # toolchain and a bun2nix lock that its source build is tested against, and
-    # following our nixpkgs rebuilds ~1700 derivations against an untested set.
-    oh-my-pi.url = "github:can1357/oh-my-pi";
     # Declarative OpenWrt images via the upstream ImageBuilder (gs-openwrt-one).
     openwrt-imagebuilder = {
       inputs.nixpkgs.follows = "nixpkgs";
@@ -118,17 +113,6 @@
         inherit nixpkgs helix;
       };
 
-      # omp from its own flake, plus the extensions it loads by absolute path
-      # (see home/dotfiles/omp.nix): the auto-mode guardrail and the Claude
-      # Code provider bridge.
-      ompOverlay = final: _prev: {
-        omp = inputs.oh-my-pi.packages.${final.stdenv.hostPlatform.system}.omp.overrideAttrs (old: {
-          patches = (old.patches or [ ]) ++ [ ./pkgs/omp-focused-switch.patch ];
-        });
-        omp-claude-bridge = final.callPackage ./pkgs/omp-claude-bridge.nix { };
-        pi-automode = final.callPackage ./pkgs/pi-automode.nix { };
-      };
-
       # Packages defined in this repo that are not tied to another tool.
       localOverlay = final: prev: {
         awww = prev.awww.overrideAttrs (old: {
@@ -163,7 +147,6 @@
               nixpkgs.overlays = [
                 helixOverlay
                 localOverlay
-                ompOverlay
               ];
             }
             waveforms.nixosModule

@@ -24,8 +24,6 @@ then updating their flake inputs or source pins:
 - `georgesleen/helix`, `steel-event-system-output`, from
   `mattwparas/helix`'s `steel-event-system` branch, not `master`.
 - `georgesleen/kitty_grab_helix`, `main`, from `yurikhan/kitty_grab`'s `master`.
-- `georgesleen/pi-automode`, the branch consumed by `pkgs/pi-automode.nix`,
-  from `czottmann/pi-automode`'s `main`.
 
 Also check manually pinned desktop tools and Open WebUI's official OCI image.
 Advance the WebUI release tag and immutable digest together; its persistent state

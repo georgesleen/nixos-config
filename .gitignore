@@ -1,5 +1,4 @@
 .direnv/
 result
 logs/
-.omp/
 .gcroots/

@@ -1,6 +1,4 @@
-# MCP servers shared by every agent on this host. Claude Code consumes this
-# through its settings.json (claude.nix); omp reads it from a file of its own
-# (omp.nix). Add a server once, here.
+# MCP servers for Claude Code, consumed through its settings.json (claude.nix).
 #
 # A server's tool schemas ride every request of every session, used or not.
 # `playwright` was dropped for that: 23 schemas, never called, and the
