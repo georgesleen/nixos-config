@@ -5,7 +5,7 @@
   timerJob =
     {
       name,
-      description,
+      description ? null,
       timer,
       script ? null,
       scriptText ? null,
@@ -20,9 +20,9 @@
     {
       systemd.services.${name} = lib.mkMerge [
         {
-          inherit description;
           serviceConfig.Type = "oneshot";
         }
+        (lib.mkIf (description != null) { inherit description; })
         (lib.mkIf (script != null) {
           serviceConfig.ExecStart = lib.getExe (
             pkgs.writeShellApplication (
