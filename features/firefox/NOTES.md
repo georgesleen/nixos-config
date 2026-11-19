@@ -8,4 +8,4 @@ Extensions are force_installed from AMO's "latest" URL, so they track upstream a
 
 ## Workarounds
 
-- `features/firefox/default.nix` VA-API prefs: set explicitly because Firefox keeps VA-API opt-in upstream even when system VA-API works.
+- `default.nix` VA-API prefs: set explicitly because Firefox keeps VA-API opt-in upstream even when system VA-API works.

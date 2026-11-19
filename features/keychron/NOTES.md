@@ -8,4 +8,4 @@ uaccess/udev-acl tags don't fire under sway/Wayland sessions; use GROUP="plugdev
 
 ## Workarounds
 
-- `features/keychron/default.nix` udev: `TAG+="uaccess"` never grants hidraw under sway/Wayland (logind seat grant doesn't fire); needs `MODE="0660", GROUP="plugdev"`.
+- `default.nix` udev: `TAG+="uaccess"` never grants hidraw under sway/Wayland (logind seat grant doesn't fire); needs `MODE="0660", GROUP="plugdev"`.
