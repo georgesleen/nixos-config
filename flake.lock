@@ -100,11 +100,11 @@
         "rust-overlay": "rust-overlay_2"
       },
       "locked": {
-        "lastModified": 1793958326,
-        "narHash": "sha256-mONYCQvmcac5cMrlR5XFYkFR6wcOmf8qLrVWDcYxz+s=",
+        "lastModified": 1795072283,
+        "narHash": "sha256-LxxHMF/GFG2QskGevlBmGm1Knctw4S1U9qkKBcW1BfY=",
         "owner": "georgesleen",
         "repo": "helix",
-        "rev": "031a4e47f76218953091e09c34247107320048a6",
+        "rev": "c63ca4a41bafd6f33353d0f229ddcc7e33d65d49",
         "type": "github"
       },
       "original": {
