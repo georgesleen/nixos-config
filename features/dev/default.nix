@@ -36,13 +36,7 @@
         ipykernel
         seaborn
         scikit-learn
-        # marimo 0.25.1 caps uv_build below 0.13, which nixpkgs has passed.
-        (marimo.overridePythonAttrs (old: {
-          postPatch = (old.postPatch or "") + ''
-            substituteInPlace pyproject.toml \
-              --replace-fail '"uv_build>=0.8.3,<0.13.0"' '"uv_build>=0.8.3"'
-          '';
-        }))
+        marimo
         openai
         ipython
         pytest

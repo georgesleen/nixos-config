@@ -490,9 +490,6 @@ in
 {
   programs.waybar = {
     enable = true;
-    package = pkgs.waybar.overrideAttrs (previous: {
-      patches = (previous.patches or [ ]) ++ [ ./waybar-sway-title-events.patch ];
-    });
     settings =
       let
         bar = {
