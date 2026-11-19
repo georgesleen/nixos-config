@@ -35,6 +35,14 @@ build the local host with its retained-build target, activate it, and check
 service health and the systemd ordering graph. Updating the shared lock file
 does not deploy remote hosts or flash router images.
 
+The laptops prebuild the input update every night at 03:00
+(`nightly-prebuild` user timer). The job runs only on mains power over a full,
+unmetered connection. It resets branch `auto-update` in the worktree
+`~/.cache/nixos-prebuild` to local `main`, then commits `nix flake update`
+there and runs `make build-<host> test`. A notification reports the result. To
+apply it, run `git merge auto-update`, then build and switch as usual. Fork
+synchronization stays manual.
+
 ### Retained builds
 
 Build without activating or flashing:

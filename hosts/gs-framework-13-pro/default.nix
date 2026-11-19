@@ -102,6 +102,8 @@ in
       id = "iphone-usb";
       type = "ethernet";
       autoconnect-priority = 10;
+      # NMMetered: 1 is yes.
+      metered = 1;
     };
     match.driver = "ipheth";
     ipv4 = {

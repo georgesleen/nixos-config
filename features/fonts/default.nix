@@ -13,6 +13,7 @@
       noto-fonts-cjk-serif
       noto-fonts-color-emoji
       jetbrains-mono
+      lato
       pkgs.nerd-fonts."jetbrains-mono"
 
       (pkgs.runCommand "track-font" { } ''
