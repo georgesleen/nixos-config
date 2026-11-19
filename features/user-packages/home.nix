@@ -9,6 +9,8 @@
     EDITOR = "hx";
     # btrfs reflinks for uv venvs, dedups against ~/.cache/uv.
     UV_LINK_MODE = "clone";
+    # uv's own Python builds, which nix-ld runs; native wheels fail on nixpkgs Python.
+    UV_PYTHON_PREFERENCE = "only-managed";
     VISUAL = "hx";
   };
   services.playerctld.enable = true;
