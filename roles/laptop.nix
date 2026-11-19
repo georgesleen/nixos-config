@@ -32,7 +32,6 @@
     "steam"
     "keychron"
     "known-good-boot"
-    "numeric-keypad"
     "flipper-zero"
     "gpib"
     "home-backup"

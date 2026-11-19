@@ -1,7 +1,29 @@
 { config, pkgs, ... }:
 
+let
+  # Default URL handler. Firefox sends a link to its most recently focused
+  # window on any workspace; this opens it beside you instead (see
+  # firefox-target.sh). Bare `firefox` is the system wrapper carrying the
+  # policies in modules/features/firefox.nix.
+  firefoxTarget = pkgs.writeShellScript "firefox-target" ''
+    export JQ="${pkgs.jq}/bin/jq"
+    ${builtins.readFile ./firefox-target.sh}
+  '';
+  firefoxHere = pkgs.writeShellScriptBin "firefox-here" ''
+    plan=$(${pkgs.sway}/bin/swaymsg -t get_tree 2>/dev/null | ${firefoxTarget}) || plan=""
+    case "$plan" in
+      "focus "*)
+        ${pkgs.sway}/bin/swaymsg "[con_id=''${plan#focus }] focus" >/dev/null
+        exec firefox "$@"
+        ;;
+      new-window) exec firefox --new-window "$@" ;;
+      *) exec firefox "$@" ;;
+    esac
+  '';
+in
 {
   home.packages = with pkgs; [
+    firefoxHere
     git-filter-repo
     playerctl
   ];
@@ -19,6 +41,20 @@
       categories = [ "Settings" ];
       exec = "kitty -e bluetuith";
       name = "Bluetooth";
+      terminal = false;
+    };
+    firefox-here = {
+      exec = "firefox-here %U";
+      icon = "firefox";
+      mimeType = [
+        "text/html"
+        "x-scheme-handler/about"
+        "x-scheme-handler/http"
+        "x-scheme-handler/https"
+        "x-scheme-handler/unknown"
+      ];
+      name = "Firefox (this workspace)";
+      noDisplay = true;
       terminal = false;
     };
     network = {
@@ -58,11 +94,11 @@
       "image/webp" = "imv.desktop";
       # Directories open in yazi, not VS Code.
       "inode/directory" = "yazi.desktop";
-      "text/html" = "firefox.desktop";
-      "x-scheme-handler/about" = "firefox.desktop";
-      "x-scheme-handler/http" = "firefox.desktop";
-      "x-scheme-handler/https" = "firefox.desktop";
-      "x-scheme-handler/unknown" = "firefox.desktop";
+      "text/html" = "firefox-here.desktop";
+      "x-scheme-handler/about" = "firefox-here.desktop";
+      "x-scheme-handler/http" = "firefox-here.desktop";
+      "x-scheme-handler/https" = "firefox-here.desktop";
+      "x-scheme-handler/unknown" = "firefox-here.desktop";
     };
     enable = true;
   };

@@ -35,8 +35,12 @@ let
 
   # Transient unit name for the Duplicate wl-mirror.
   mirrorUnit = "display-mirror";
-  # Workspace that holds the wl-mirror window on the external.
-  mirrorWorkspace = "mirror";
+  # Workspace that holds the wl-mirror window on the external. Numbered 0 because
+  # swaysome reads every workspace number as unsigned and aborts on the -1 sway
+  # reports for a bare name, which killed every group/slot key during Duplicate.
+  # 0 is outside the 1-99 range workspace-plan.sh places and sway-names names,
+  # and Waybar's `{name}` still reads `mirror`.
+  mirrorWorkspace = "0:mirror";
 
   # Re-pins workspaces to the active outputs and refreshes wallpaper and bar.
   displayChanged = pkgs.writeShellScript "display-changed" ''

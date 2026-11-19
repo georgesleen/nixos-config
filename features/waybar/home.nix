@@ -430,6 +430,19 @@ let
     ${tooltipJson} "<span color='$color'>󰾲 $label</span>" "$tooltip"
   '';
 
+  # swaysome group shown on this bar's output (see sway-group.sh), redrawn on
+  # every sway workspace event and on the tick the group rename binding sends.
+  swayGroup = pkgs.writeShellScript "sway-group" ''
+    export JQ="${pkgs.jq}/bin/jq"
+    ${builtins.readFile ./sway-group.sh}
+  '';
+  groupBlock = pkgs.writeShellScript "waybar-group" ''
+    export OUTPUT="''${WAYBAR_OUTPUT_NAME-}"
+    export GROUP_NAMES="''${XDG_STATE_HOME:-$HOME/.local/state}/sway-groups/names"
+    show() { ${pkgs.sway}/bin/swaymsg -t get_workspaces | ${swayGroup}; }
+    show
+    ${pkgs.sway}/bin/swaymsg -r -t subscribe -m '["workspace","tick"]' | while read -r _; do show; done
+  '';
   # RAM and swap used/available in one block and hover.
   memoryBlock = pkgs.writeShellScript "waybar-memory" ''
     set -euo pipefail
@@ -513,6 +526,12 @@ in
             return-type = "json";
             signal = 9;
           };
+          "custom/group" = {
+            exec = "${groupBlock}";
+            return-type = "json";
+            # The subscription ends when sway restarts; Waybar then reruns it.
+            restart-interval = 5;
+          };
           clock = {
             format = "{:${lib.removePrefix "+" statusStyle.clockFormat}}";
             tooltip-format = "<tt>{calendar}</tt>";
@@ -546,6 +565,7 @@ in
           layer = "top";
           modules-center = [ ];
           modules-left = [
+            "custom/group"
             "sway/workspaces"
             "sway/mode"
           ];
@@ -587,6 +607,9 @@ in
           };
           spacing = statusStyle.spacing;
           "sway/mode".format = "<span style=\"italic\">{}</span>";
+          # sway-names (features/sway) names workspace 21 `21:2·1 [label]`, and
+          # `{name}` drops the `21:` prefix. A workspace the listener has not
+          # reached yet shows its bare number.
           "sway/workspaces".format = "{name}";
           tray = {
             icon-size = 16;
@@ -643,6 +666,7 @@ in
       #custom-disk,
       #custom-battery,
       #custom-power,
+      #custom-group,
       #power-profiles-daemon,
       #clock {
         margin: ${toString statusStyle.marginVertical}px ${toString statusStyle.marginHorizontal}px;
@@ -658,6 +682,7 @@ in
       #power-profiles-daemon { color: ${c.power}; }
       #power-profiles-daemon.performance { color: ${c.batLow}; }
       #clock { color: ${c.fg}; }
+      #custom-group { color: ${c.accent}; margin-left: 4px; }
     '';
     systemd.enable = true;
   };
