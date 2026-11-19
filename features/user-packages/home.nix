@@ -4,7 +4,7 @@ let
   # Default URL handler. Firefox sends a link to its most recently focused
   # window on any workspace; this opens it beside you instead (see
   # firefox-target.sh). Bare `firefox` is the system wrapper carrying the
-  # policies in modules/features/firefox.nix.
+  # policies in features/firefox.
   firefoxTarget = pkgs.writeShellScript "firefox-target" ''
     export JQ="${pkgs.jq}/bin/jq"
     ${builtins.readFile ./firefox-target.sh}
